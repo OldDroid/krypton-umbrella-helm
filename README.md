@@ -1,7 +1,5 @@
 # krypton-umbrella
 
-> Deutsche Version: [README.de.md](README.de.md) &middot; Docs site (EN/DE, light/dark, config examples with rendered outputs): [docs/index.html](docs/index.html) — enable GitHub Pages via *Settings → Pages → Deploy from a branch → /docs*.
-
 Helm umbrella chart for the Krypton platform, deployed by ArgoCD to
 Kubernetes/OpenShift. All subcharts share one library chart (`krypton-lib`)
 that enforces the platform naming convention, standard labels, merged

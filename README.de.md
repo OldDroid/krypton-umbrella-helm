@@ -1,7 +1,5 @@
 # krypton-umbrella
 
-> English version: [README.md](README.md) &middot; Docs-Seite (EN/DE, Light/Dark, Konfig-Beispiele mit gerenderten Ausgaben): [docs/index.html](docs/index.html) — GitHub Pages aktivieren via *Settings → Pages → Deploy from a branch → /docs*.
-
 Helm-Umbrella-Chart für die Krypton-Plattform, deployt via ArgoCD nach
 Kubernetes/OpenShift. Alle Subcharts teilen sich ein Library-Chart
 (`krypton-lib`), das die Namenskonvention der Plattform, Standard-Labels,
