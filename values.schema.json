@@ -1,0 +1,77 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "krypton-umbrella values",
+  "description": "Validates the umbrella's own keys, most importantly the global block. The krypton-* blocks are left permissive here on purpose: Helm coalesces them into each subchart's values, where the subchart's own (strict) values.schema.json rejects unknown keys.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["global"],
+  "properties": {
+    "global": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["laneName"],
+      "properties": {
+        "laneName": {
+          "type": "string",
+          "pattern": "^[a-z0-9]([a-z0-9-]{0,30}[a-z0-9])?$",
+          "description": "Lane/environment name; part of every resource name: <subchart>-<lane>-<component>."
+        },
+        "labelDomain": {
+          "type": "string",
+          "pattern": "^[a-z0-9]([a-z0-9.-]{0,251}[a-z0-9])?$",
+          "description": "Domain prefix for generated label/annotation keys; defaults to krypton.io."
+        },
+        "imageRegistry": {
+          "type": "string",
+          "description": "When set, overrides every subchart's image.registry (per-lane proxy/air-gapped registries). Empty disables the override."
+        },
+        "labels": {
+          "type": ["object", "null"],
+          "additionalProperties": { "type": "string" },
+          "description": "Static labels stamped onto every resource; values must be strings."
+        },
+        "annotations": {
+          "type": ["object", "null"],
+          "additionalProperties": { "type": "string" },
+          "description": "Static annotations stamped onto every resource; values must be strings."
+        },
+        "syncWaves": { "$ref": "#/definitions/syncWaves" },
+        "syncPrune": { "$ref": "#/definitions/syncPrune" }
+      }
+    },
+    "krypton-lib": {
+      "type": ["object", "null"],
+      "description": "Injected by Helm for the declared library dependency; carries no values."
+    },
+    "krypton-banking": { "type": "object" },
+    "krypton-auth": { "type": "object" }
+  },
+  "definitions": {
+    "componentType": {
+      "type": "string",
+      "pattern": "^[a-zA-Z][a-zA-Z0-9]*$",
+      "description": "Component-type key. Membership in the platform catalog is enforced at render time by krypton-lib.componentCatalog (see krypton-lib/templates/_helpers.tpl); the schema only checks the shape."
+    },
+    "syncWaves": {
+      "type": ["object", "null"],
+      "propertyNames": { "$ref": "#/definitions/componentType" },
+      "additionalProperties": { "$ref": "#/definitions/wave" }
+    },
+    "wave": {
+      "oneOf": [
+        { "type": "string", "pattern": "^-?[0-9]+$" },
+        { "type": "integer" }
+      ]
+    },
+    "syncPrune": {
+      "type": ["object", "null"],
+      "propertyNames": { "$ref": "#/definitions/componentType" },
+      "additionalProperties": {
+        "oneOf": [
+          { "type": "boolean" },
+          { "type": "string", "enum": ["true", "false"] }
+        ]
+      }
+    }
+  }
+}

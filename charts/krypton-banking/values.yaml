@@ -1,0 +1,144 @@
+replicaCount: 1
+
+image:
+  # Registry host. global.imageRegistry in the umbrella overrides it for ALL
+  # subcharts at once - the per-lane proxy / air-gapped registry switch.
+  registry: registry.example.com
+  repository: krypton/banking-service
+  tag: "1.4.2"
+  # digest: "sha256:..."   # takes precedence over tag when set
+  pullPolicy: IfNotPresent
+
+# Compute sizing. Lanes override this from the umbrella (the release lane
+# sizes up, test lanes can shrink it) - important on OpenShift with
+# ResourceQuotas and LimitRanges in play.
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+# ServiceAccount the workload pods run as. create=true renders a dedicated
+# SA (component type serviceAccount, sync wave -2, so it exists before the
+# Vault objects that authenticate with it) named
+# <subchart>-<lane>-service-account - bind the VaultAuth Kubernetes role to
+# exactly that name. create=false references an existing SA instead
+# (name empty -> the namespace "default" SA).
+serviceAccount:
+  create: true
+  name: ""
+
+# Plain key/value pairs rendered into the ConfigMap (and exposed to the
+# Deployment via envFrom).
+config:
+  BANKING_LOG_LEVEL: info
+  BANKING_FEATURE_INSTANT_PAYMENTS: "true"
+
+service:
+  type: ClusterIP
+  port: 8080
+
+route:
+  host: ""            # empty -> OpenShift generates <name>-<namespace>.<appsDomain>; may contain template syntax (rendered via tpl)
+  targetPort: http
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+
+# Probe specs are passed through verbatim to the container. Readiness is what
+# makes the sync waves real: ArgoCD only starts the next wave once the
+# current one is healthy, and without a readiness probe "healthy" merely
+# means "container started". Overridable per lane via the umbrella.
+probes:
+  readiness:
+    httpGet:
+      path: /health/ready
+      port: http
+    initialDelaySeconds: 5
+    periodSeconds: 10
+  liveness:
+    httpGet:
+      path: /health/live
+      port: http
+    initialDelaySeconds: 15
+    periodSeconds: 20
+
+vault:
+  # Connection defaults shared by every VaultStaticSecret of this subchart;
+  # each entry under secrets: may override them individually.
+  authRef: krypton-vault-auth
+  mount: kv-v2
+  refreshAfter: 60s
+
+  # One VaultStaticSecret per entry. The key becomes the instance suffix of
+  # the resource name: krypton-banking-release-vault-static-secret-<key>.
+  # Paths are rendered through tpl -> lane-aware by default, so every lane
+  # reads its own secrets (override per lane in the umbrella with a plain
+  # string if needed). envFrom: true wires the resulting Secret into the
+  # Deployment; false keeps it for other consumers (volumes, other pods).
+  # All entries share the type-level syncWaves.vaultStaticSecret wave and
+  # the global.syncPrune.vaultStaticSecret prune protection.
+  secrets:
+    app:
+      path: "krypton/{{ .Values.global.laneName }}/banking/app"
+      envFrom: true
+    database:
+      path: "krypton/{{ .Values.global.laneName }}/banking/database"
+      refreshAfter: 30s
+      envFrom: true
+
+# ---------------------------------------------------------------------------
+# Optional components - enabled-flag pattern, steered per lane from the
+# umbrella just like the subchart-level enabled flag.
+# ---------------------------------------------------------------------------
+
+# PodDisruptionBudget (component type podDisruptionBudget). The release
+# lane enables it from the umbrella; single-replica test lanes leave it off.
+podDisruptionBudget:
+  enabled: false
+  minAvailable: 1
+  # maxUnavailable: 1   # alternative to minAvailable
+
+# HorizontalPodAutoscaler (component type horizontalPodAutoscaler). While
+# enabled, the Deployment stops rendering spec.replicas so ArgoCD and the
+# HPA never fight over the replica count.
+autoscaling:
+  enabled: false
+  minReplicas: 2
+  maxReplicas: 6
+  targetCPUUtilizationPercentage: 75
+
+# NetworkPolicy (component type networkPolicy): allows same-namespace
+# traffic plus the OpenShift router on the container port.
+networkPolicy:
+  enabled: false
+
+# ---------------------------------------------------------------------------
+# Passthroughs - copied verbatim into the pod spec so app teams never need
+# to fork the template.
+# ---------------------------------------------------------------------------
+extraEnv: []
+#  - name: BANKING_TZ
+#    value: Europe/Berlin
+extraEnvFrom: []
+#  - secretRef:
+#      name: some-extra-secret
+podAnnotations: {}
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+# Default sync waves for this subchart's components. Keys are the component
+# types as passed to the krypton-lib helpers. Components not listed here fall
+# back to global.syncWaves. The umbrella may override any key under
+# krypton-banking.syncWaves - it bumps route to "3".
+syncWaves:
+  vaultStaticSecret: "-1"   # secrets first: the Deployment mounts the resulting Secret
+  route: "2"                # overridden to "3" by the umbrella values.yaml
+
+# Prune protection works the same way: syncPrune.<component>: false marks the
+# rendered resource with argocd.argoproj.io/sync-options: Prune=false.
+# Nothing is set here on purpose - vaultStaticSecret inherits the platform
+# default from global.syncPrune, and the umbrella adds route: false on top.

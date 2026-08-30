@@ -1,0 +1,26 @@
+{{- /*
+Mock of the OpenShift Route (route.openshift.io/v1). Wave "2" in the
+subchart defaults, overridden to "3" by the umbrella - either way it is the
+last component of this subchart to sync: the service is never exposed before
+Secret and Deployment are applied and healthy.
+*/ -}}
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  {{- include "krypton-lib.metadata" (dict "ctx" . "component" "route") | nindent 2 }}
+spec:
+  {{- with .Values.route.host }}
+  host: {{ tpl . $ }}
+  {{- end }}
+  to:
+    kind: Service
+    # Same helper and component type as service.yaml's metadata.name - the
+    # Route and the Service can never disagree.
+    name: {{ include "krypton-lib.componentName" (dict "ctx" . "component" "service") }}
+    weight: 100
+  port:
+    targetPort: {{ .Values.route.targetPort }}
+  tls:
+    termination: {{ .Values.route.tls.termination }}
+    insecureEdgeTerminationPolicy: {{ .Values.route.tls.insecureEdgeTerminationPolicy }}
+  wildcardPolicy: None

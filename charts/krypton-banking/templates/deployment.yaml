@@ -1,0 +1,78 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  {{- include "krypton-lib.metadata" (dict "ctx" . "component" "deployment") | nindent 2 }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "krypton-lib.selectorLabels" (dict "ctx" .) | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "krypton-lib.labels" (dict "ctx" . "component" "deployment") | nindent 8 }}
+      annotations:
+        # Rolls the pods whenever the ConfigMap content changes - envFrom
+        # alone never restarts anything.
+        checksum/config: {{ .Values.config | default dict | toYaml | sha256sum }}
+        {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      serviceAccountName: {{ include "krypton-lib.serviceAccountName" (dict "ctx" .) }}
+      containers:
+        - name: banking-service
+          image: "{{ include "krypton-lib.image" (dict "ctx" .) }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          {{- with .Values.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with (.Values.probes | default dict).readiness }}
+          readinessProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with (.Values.probes | default dict).liveness }}
+          livenessProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with (.Values.probes | default dict).startup }}
+          startupProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.extraEnv }}
+          env:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          envFrom:
+            - configMapRef:
+                name: {{ include "krypton-lib.componentName" (dict "ctx" . "component" "configmap") }}
+            # Secrets materialised by the VaultStaticSecrets (sync wave -1),
+            # so they already exist when this Deployment (wave 1) syncs.
+            {{- range $name, $secret := .Values.vault.secrets }}
+            {{- if $secret.envFrom }}
+            - secretRef:
+                name: {{ include "krypton-lib.componentName" (dict "ctx" $ "component" "vaultStaticSecret" "instance" $name) }}
+            {{- end }}
+            {{- end }}
+            {{- with .Values.extraEnvFrom }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

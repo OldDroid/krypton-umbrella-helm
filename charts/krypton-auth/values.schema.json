@@ -1,0 +1,112 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "krypton-auth values",
+  "description": "Validated against the coalesced values (subchart defaults + umbrella overrides + global), so typos in the umbrella's krypton-auth block fail the render here.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["image"],
+  "properties": {
+    "global": { "type": "object" },
+    "enabled": { "type": "boolean" },
+    "replicaCount": { "type": "integer", "minimum": 0 },
+    "image": { "$ref": "#/definitions/image" },
+    "resources": { "$ref": "#/definitions/resources" },
+    "serviceAccount": { "$ref": "#/definitions/serviceAccount" },
+    "probes": { "$ref": "#/definitions/probes" },
+    "extraEnv": { "type": ["array", "null"], "items": { "type": "object" } },
+    "extraEnvFrom": { "type": ["array", "null"], "items": { "type": "object" } },
+    "podAnnotations": {
+      "type": ["object", "null"],
+      "additionalProperties": { "type": "string" }
+    },
+    "nodeSelector": {
+      "type": ["object", "null"],
+      "additionalProperties": { "type": "string" }
+    },
+    "tolerations": { "type": ["array", "null"], "items": { "type": "object" } },
+    "affinity": { "type": ["object", "null"] },
+    "syncWaves": { "$ref": "#/definitions/syncWaves" },
+    "syncWaveOffset": { "$ref": "#/definitions/syncWaveOffset" },
+    "syncPrune": { "$ref": "#/definitions/syncPrune" }
+  },
+  "definitions": {
+    "syncWaveOffset": {
+      "oneOf": [
+        { "type": "integer" },
+        { "type": "string", "pattern": "^-?[0-9]+$" }
+      ],
+      "description": "Added to every resolved wave of this subchart (components without a configured wave count as 0), shifting the whole band relative to sibling subcharts."
+    },
+    "componentType": {
+      "type": "string",
+      "pattern": "^[a-zA-Z][a-zA-Z0-9]*$",
+      "description": "Component-type key. Membership in the platform catalog is enforced at render time by krypton-lib.componentCatalog; the schema only checks the shape."
+    },
+    "image": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["repository"],
+      "properties": {
+        "registry": {
+          "type": "string",
+          "description": "Registry host; overridden for all subcharts by global.imageRegistry when that is set."
+        },
+        "repository": { "type": "string", "minLength": 1 },
+        "tag": { "type": "string" },
+        "digest": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+        "pullPolicy": { "enum": ["Always", "IfNotPresent", "Never"] }
+      }
+    },
+    "resources": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "properties": {
+        "requests": { "$ref": "#/definitions/resourceList" },
+        "limits": { "$ref": "#/definitions/resourceList" }
+      }
+    },
+    "resourceList": {
+      "type": ["object", "null"],
+      "additionalProperties": {
+        "oneOf": [{ "type": "string" }, { "type": "number" }]
+      }
+    },
+    "serviceAccount": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "create": { "type": "boolean" },
+        "name": { "type": "string" }
+      }
+    },
+    "probes": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "properties": {
+        "readiness": { "type": ["object", "null"] },
+        "liveness": { "type": ["object", "null"] },
+        "startup": { "type": ["object", "null"] }
+      }
+    },
+    "syncWaves": {
+      "type": ["object", "null"],
+      "propertyNames": { "$ref": "#/definitions/componentType" },
+      "additionalProperties": {
+        "oneOf": [
+          { "type": "string", "pattern": "^-?[0-9]+$" },
+          { "type": "integer" }
+        ]
+      }
+    },
+    "syncPrune": {
+      "type": ["object", "null"],
+      "propertyNames": { "$ref": "#/definitions/componentType" },
+      "additionalProperties": {
+        "oneOf": [
+          { "type": "boolean" },
+          { "type": "string", "enum": ["true", "false"] }
+        ]
+      }
+    }
+  }
+}

@@ -1,0 +1,925 @@
+<!DOCTYPE html>
+<html lang="en" data-locale="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Krypton Umbrella Docs</title>
+<meta name="description" content="Helm umbrella chart platform for Kubernetes/OpenShift, deployed via ArgoCD - configuration reference with rendered outputs.">
+<script>
+(function(){try{
+  var t=localStorage.getItem('ku-theme'); if(t==='dark'||t==='light'){document.documentElement.dataset.theme=t;}
+  var l=localStorage.getItem('ku-lang'); if(l==='de'||l==='en'){document.documentElement.dataset.locale=l;document.documentElement.lang=l;}
+}catch(e){}})();
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ---------- tokens: light (default) ---------- */
+:root{
+  --bg:#fafafc; --surface:#f1f2f7; --surface-2:#e8eaf3; --border:#dde0eb; --border-strong:#c8ccdc;
+  --text:#232839; --muted:#5c637b; --faint:#8b91a8;
+  --accent:#5b55d6; --accent-ink:#4a45c0; --accent-soft:#ecebfb; --accent-border:#c9c6f2;
+  --band-b:#5b55d6; --band-a:#0e8c96; --band-a-soft:#e0f2f4; --band-a-border:#b5dfe3;
+  --err:#b3382f; --err-soft:#faecea; --err-border:#ecc7c2;
+  --code-bg:#161a2b; --code-border:#232a44; --code-text:#d7dbec; --code-comment:#69719083;
+  --code-comment-c:#7d85a6; --code-key:#a5a0ff; --code-str:#8fd0aa; --code-cap:#9aa2c4;
+  --shadow:0 1px 2px rgba(28,32,54,.05),0 8px 24px -18px rgba(28,32,54,.25);
+  color-scheme:light;
+}
+/* ---------- tokens: dark (system) ---------- */
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f1220; --surface:#161a2b; --surface-2:#1c2136; --border:#262c45; --border-strong:#343b5c;
+    --text:#e7e9f4; --muted:#9aa1bd; --faint:#6d7492;
+    --accent:#9d97ff; --accent-ink:#b3aeff; --accent-soft:#232047; --accent-border:#3a3670;
+    --band-b:#9d97ff; --band-a:#4cc3cd; --band-a-soft:#12333a; --band-a-border:#1e4f57;
+    --err:#e07a70; --err-soft:#361d1c; --err-border:#5c2f2b;
+    --code-bg:#131728; --code-border:#232a44; --code-text:#d7dbec;
+    --code-comment-c:#7d85a6; --code-key:#a5a0ff; --code-str:#8fd0aa; --code-cap:#9aa2c4;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px -18px rgba(0,0,0,.6);
+    color-scheme:dark;
+  }
+}
+/* ---------- tokens: dark (explicit toggle) ---------- */
+:root[data-theme="dark"]{
+  --bg:#0f1220; --surface:#161a2b; --surface-2:#1c2136; --border:#262c45; --border-strong:#343b5c;
+  --text:#e7e9f4; --muted:#9aa1bd; --faint:#6d7492;
+  --accent:#9d97ff; --accent-ink:#b3aeff; --accent-soft:#232047; --accent-border:#3a3670;
+  --band-b:#9d97ff; --band-a:#4cc3cd; --band-a-soft:#12333a; --band-a-border:#1e4f57;
+  --err:#e07a70; --err-soft:#361d1c; --err-border:#5c2f2b;
+  --code-bg:#131728; --code-border:#232a44; --code-text:#d7dbec;
+  --code-comment-c:#7d85a6; --code-key:#a5a0ff; --code-str:#8fd0aa; --code-cap:#9aa2c4;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px -18px rgba(0,0,0,.6);
+  color-scheme:dark;
+}
+
+/* ---------- language toggle ---------- */
+html[data-locale="en"] [data-lang="de"]{display:none !important;}
+html[data-locale="de"] [data-lang="en"]{display:none !important;}
+
+/* ---------- base ---------- */
+*{box-sizing:border-box;}
+html{scroll-behavior:smooth;scroll-padding-top:84px;}
+@media (prefers-reduced-motion: reduce){ html{scroll-behavior:auto;} *,*::before,*::after{transition:none !important;animation:none !important;} }
+body{
+  margin:0; background:var(--bg); color:var(--text);
+  font-family:'IBM Plex Sans',system-ui,'Segoe UI',sans-serif;
+  font-size:16px; line-height:1.65;
+  -webkit-font-smoothing:antialiased;
+}
+h1,h2,h3,h4{font-family:'Archivo',ui-sans-serif,system-ui,sans-serif;line-height:1.15;text-wrap:balance;margin:0;}
+p{margin:0;max-width:68ch;}
+a{color:var(--accent-ink);text-decoration:none;}
+a:hover{text-decoration:underline;}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px;}
+code{font-family:'IBM Plex Mono',ui-monospace,Consolas,monospace;font-size:.86em;background:var(--surface-2);border:1px solid var(--border);border-radius:5px;padding:.08em .35em;white-space:nowrap;}
+.eyebrow{font-family:'IBM Plex Mono',ui-monospace,Consolas,monospace;font-size:.72rem;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--accent-ink);}
+
+/* ---------- header ---------- */
+.site-head{
+  position:sticky;top:0;z-index:40;
+  display:flex;align-items:center;gap:14px;
+  padding:10px clamp(16px,4vw,32px);
+  background:color-mix(in srgb,var(--bg) 86%,transparent);
+  backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--border);
+}
+.kr-tile{
+  width:38px;height:38px;flex:none;border:1.5px solid var(--accent);border-radius:8px;
+  display:grid;place-items:center;position:relative;color:var(--accent-ink);
+  font-family:'Archivo',sans-serif;font-weight:700;font-size:1.05rem;background:var(--accent-soft);
+}
+.kr-tile small{position:absolute;top:2px;right:4px;font-size:.5rem;font-weight:600;font-family:'IBM Plex Mono',monospace;color:var(--muted);}
+.site-title{font-family:'Archivo',sans-serif;font-weight:600;font-size:1.02rem;letter-spacing:-.01em;}
+.site-title span{color:var(--muted);font-weight:500;}
+.head-spacer{flex:1;}
+.seg{display:inline-flex;border:1px solid var(--border-strong);border-radius:8px;overflow:hidden;background:var(--surface);}
+.seg button{
+  appearance:none;border:0;background:transparent;color:var(--muted);cursor:pointer;
+  font-family:'IBM Plex Mono',monospace;font-size:.78rem;font-weight:600;letter-spacing:.06em;
+  padding:6px 12px;transition:background .15s,color .15s;
+}
+.seg button[aria-pressed="true"]{background:var(--accent);color:#fff;}
+:root[data-theme="dark"] .seg button[aria-pressed="true"]{color:#14122e;}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .seg button[aria-pressed="true"]{color:#14122e;} }
+.theme-btn{
+  appearance:none;cursor:pointer;border:1px solid var(--border-strong);border-radius:8px;
+  background:var(--surface);color:var(--text);width:36px;height:33px;display:grid;place-items:center;
+  font-size:.95rem;transition:background .15s;
+}
+.theme-btn:hover,.seg button:hover:not([aria-pressed="true"]){background:var(--surface-2);}
+.icon-sun{display:none;}
+@media (prefers-color-scheme: dark){
+  html:not([data-theme="light"]) .icon-sun{display:inline;}
+  html:not([data-theme="light"]) .icon-moon{display:none;}
+}
+html[data-theme="dark"] .icon-sun{display:inline;}
+html[data-theme="dark"] .icon-moon{display:none;}
+html[data-theme="light"] .icon-sun{display:none;}
+html[data-theme="light"] .icon-moon{display:inline;}
+
+/* ---------- hero ---------- */
+.hero{padding:clamp(36px,7vw,72px) clamp(16px,4vw,32px) clamp(24px,4vw,40px);max-width:1200px;margin:0 auto;}
+.hero h1{font-size:clamp(2rem,5vw,3.1rem);font-weight:700;letter-spacing:-.025em;margin:.45rem 0 .9rem;}
+.hero .lead{font-size:1.06rem;color:var(--muted);max-width:62ch;}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:1.2rem;}
+.chip{
+  font-family:'IBM Plex Mono',monospace;font-size:.74rem;font-weight:500;color:var(--muted);
+  border:1px solid var(--border);border-radius:999px;padding:4px 12px;background:var(--surface);
+}
+.chip b{color:var(--text);font-weight:600;}
+
+/* ---------- layout ---------- */
+.shell{display:grid;grid-template-columns:230px minmax(0,1fr);gap:clamp(20px,3vw,44px);max-width:1200px;margin:0 auto;padding:0 clamp(16px,4vw,32px) 80px;}
+.toc{position:sticky;top:76px;align-self:start;font-size:.87rem;padding-top:8px;}
+.toc .eyebrow{color:var(--faint);display:block;margin-bottom:10px;}
+.toc a{display:block;color:var(--muted);padding:5px 10px;border-left:2px solid var(--border);transition:color .12s,border-color .12s;}
+.toc a:hover{color:var(--text);text-decoration:none;}
+.toc a.active{color:var(--accent-ink);border-left-color:var(--accent);font-weight:500;}
+main{min-width:0;}
+section{padding-top:2.6rem;}
+section+section{margin-top:1.6rem;border-top:1px solid var(--border);}
+section>h2{font-size:1.55rem;font-weight:700;letter-spacing:-.02em;margin:.4rem 0 1rem;}
+section>p{color:var(--muted);margin-bottom:1rem;}
+@media (max-width: 920px){ .shell{grid-template-columns:1fr;} .toc{display:none;} }
+
+/* ---------- code ---------- */
+figure.code{margin:0;border:1px solid var(--code-border);border-radius:10px;overflow:hidden;background:var(--code-bg);box-shadow:var(--shadow);}
+figure.code figcaption{
+  display:flex;align-items:center;gap:10px;
+  padding:7px 12px;border-bottom:1px solid var(--code-border);
+  font-family:'IBM Plex Mono',monospace;font-size:.72rem;color:var(--code-cap);letter-spacing:.04em;
+}
+figure.code figcaption .dot{width:8px;height:8px;border-radius:50%;flex:none;}
+.dot-in{background:var(--band-a);}
+.dot-out{background:var(--band-b);}
+.dot-err{background:var(--err);}
+figure.code .copy{
+  margin-left:auto;appearance:none;border:1px solid var(--code-border);background:transparent;color:var(--code-cap);
+  border-radius:6px;font-family:'IBM Plex Mono',monospace;font-size:.68rem;padding:2px 9px;cursor:pointer;
+}
+figure.code .copy:hover{color:var(--code-text);border-color:var(--code-comment-c);}
+figure.code pre{margin:0;padding:13px 16px;overflow-x:auto;font-family:'IBM Plex Mono',ui-monospace,Consolas,monospace;font-size:.8rem;line-height:1.62;color:var(--code-text);tab-size:2;}
+pre .k{color:var(--code-key);}
+pre .s{color:var(--code-str);}
+pre .c{color:var(--code-comment-c);font-style:italic;}
+.cmd{
+  font-family:'IBM Plex Mono',monospace;font-size:.76rem;color:var(--muted);
+  background:var(--surface);border:1px solid var(--border);border-radius:8px;
+  padding:7px 12px;overflow-x:auto;white-space:nowrap;
+}
+.cmd::before{content:"$";color:var(--accent-ink);margin-right:8px;font-weight:600;}
+
+/* ---------- example cards ---------- */
+.example{border:1px solid var(--border);border-radius:14px;background:var(--surface);padding:clamp(16px,2.5vw,26px);margin-top:1.4rem;box-shadow:var(--shadow);}
+.example h3{font-size:1.13rem;font-weight:650;letter-spacing:-.01em;margin-bottom:.35rem;}
+.example>p{color:var(--muted);font-size:.94rem;margin-bottom:1.1rem;max-width:75ch;}
+.io{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px;align-items:start;}
+.io .stack{display:grid;gap:10px;min-width:0;}
+@media (max-width: 1020px){ .io{grid-template-columns:1fr;} }
+.note{
+  margin-top:12px;padding:10px 14px;border:1px solid var(--accent-border);border-left-width:3px;
+  background:var(--accent-soft);border-radius:8px;font-size:.88rem;color:var(--text);max-width:none;
+}
+.note b{color:var(--accent-ink);}
+
+/* ---------- wave band diagram ---------- */
+.waveband-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:12px;background:var(--surface);padding:18px 16px 12px;margin-top:1.2rem;}
+.waveband{display:grid;grid-template-columns:110px repeat(14,minmax(46px,1fr));gap:6px 4px;min-width:820px;align-items:stretch;font-family:'IBM Plex Mono',monospace;font-size:.68rem;}
+.wb-rowlabel{grid-column:1;display:flex;align-items:center;font-weight:600;color:var(--muted);font-size:.7rem;}
+.wb-cell{border-radius:6px;border:1px dashed var(--border);min-height:34px;}
+.wb-block{display:grid;place-items:center;text-align:center;border-radius:6px;font-weight:600;padding:4px 2px;min-height:34px;line-height:1.25;}
+.wb-b{background:var(--accent-soft);border:1px solid var(--accent-border);color:var(--accent-ink);}
+.wb-a{background:var(--band-a-soft);border:1px solid var(--band-a-border);color:var(--band-a);}
+.wb-axis{display:grid;place-items:center;color:var(--faint);padding-top:4px;font-size:.68rem;}
+.wb-axis.hl{color:var(--text);font-weight:600;}
+.wb-legend{display:flex;gap:16px;margin-top:10px;font-size:.74rem;color:var(--muted);font-family:'IBM Plex Mono',monospace;}
+.wb-legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;vertical-align:-1px;}
+
+/* ---------- misc ---------- */
+.err-fig pre{color:var(--err);}
+.err-fig{border-color:var(--err-border);}
+footer{border-top:1px solid var(--border);color:var(--faint);font-size:.82rem;padding:26px clamp(16px,4vw,32px);text-align:center;}
+footer .eyebrow{color:var(--faint);}
+</style>
+</head>
+<body>
+
+<header class="site-head">
+  <div class="kr-tile" aria-hidden="true">Kr<small>36</small></div>
+  <div class="site-title">krypton-umbrella <span>/ docs</span></div>
+  <div class="head-spacer"></div>
+  <div class="seg" role="group" aria-label="Language">
+    <button type="button" id="lang-en" aria-pressed="true">EN</button>
+    <button type="button" id="lang-de" aria-pressed="false">DE</button>
+  </div>
+  <button type="button" class="theme-btn" id="theme-toggle" aria-label="Toggle color theme">
+    <span class="icon-moon" aria-hidden="true">&#9789;</span>
+    <span class="icon-sun" aria-hidden="true">&#9728;</span>
+  </button>
+</header>
+
+<div class="hero">
+  <span class="eyebrow" data-lang="en">Platform documentation</span>
+  <span class="eyebrow" data-lang="de">Plattform-Dokumentation</span>
+  <h1>krypton-umbrella</h1>
+  <p class="lead" data-lang="en">A Helm umbrella chart for Kubernetes/OpenShift, deployed by ArgoCD. One library chart drives naming, labels, merged annotations, dynamic sync waves and prune protection for every subchart &mdash; this page shows exactly which configuration produces which rendered manifest.</p>
+  <p class="lead" data-lang="de">Ein Helm-Umbrella-Chart f&uuml;r Kubernetes/OpenShift, deployt via ArgoCD. Ein Library-Chart steuert Naming, Labels, zusammengef&uuml;hrte Annotations, dynamische Sync-Waves und Prune-Schutz f&uuml;r jedes Subchart &mdash; diese Seite zeigt exakt, welche Konfiguration welches gerenderte Manifest erzeugt.</p>
+  <div class="chips">
+    <div class="chip"><b>Helm</b> &ge;3 &middot; <span data-lang="en">verified with</span><span data-lang="de">verifiziert mit</span> v4.2.4</div>
+    <div class="chip"><b>ArgoCD</b> sync waves</div>
+    <div class="chip"><b>OpenShift</b> Routes</div>
+    <div class="chip"><b>Vault</b> Secrets Operator</div>
+    <div class="chip" data-lang="en">All outputs below are real <code style="border:0;background:transparent;padding:0">helm template</code> output</div>
+    <div class="chip" data-lang="de">Alle Ausgaben unten sind echte <code style="border:0;background:transparent;padding:0">helm template</code>-Ausgaben</div>
+  </div>
+</div>
+
+<div class="shell">
+<aside class="toc" aria-label="Table of contents">
+  <span class="eyebrow" data-lang="en">On this page</span>
+  <span class="eyebrow" data-lang="de">Auf dieser Seite</span>
+  <a href="#overview"><span data-lang="en">Overview</span><span data-lang="de">&Uuml;berblick</span></a>
+  <a href="#commands"><span data-lang="en">Getting started</span><span data-lang="de">Loslegen</span></a>
+  <a href="#waves"><span data-lang="en">Sync order</span><span data-lang="de">Sync-Reihenfolge</span></a>
+  <a href="#examples"><span data-lang="en">Config examples</span><span data-lang="de">Konfig-Beispiele</span></a>
+  <a href="#guardrails"><span data-lang="en">Guardrails</span><span data-lang="de">Leitplanken</span></a>
+  <a href="#argocd">ArgoCD</a>
+</aside>
+
+<main>
+
+<!-- ============================ OVERVIEW ============================ -->
+<section id="overview">
+  <span class="eyebrow" data-lang="en">Structure</span><span class="eyebrow" data-lang="de">Struktur</span>
+  <h2 data-lang="en">Overview</h2><h2 data-lang="de">&Uuml;berblick</h2>
+  <p data-lang="en">Subcharts live as plain directories under <code>charts/</code> and declare the library as a local dependency (<code>file://../krypton-lib</code>). When the umbrella renders, Helm loads every chart&rsquo;s templates into one shared namespace, so the <code>krypton-lib.*</code> helpers resolve without vendoring.</p>
+  <p data-lang="de">Subcharts liegen als einfache Verzeichnisse unter <code>charts/</code> und deklarieren das Library-Chart als lokale Abh&auml;ngigkeit (<code>file://../krypton-lib</code>). Beim Rendern l&auml;dt Helm die Templates aller Charts in einen gemeinsamen Namensraum &mdash; die <code>krypton-lib.*</code>-Helper sind daher ohne Vendoring aufl&ouml;sbar.</p>
+  <figure class="code">
+    <figcaption><span class="dot dot-in"></span>krypton-umbrella/</figcaption>
+    <pre data-hl="none">krypton-umbrella/
+├── Chart.yaml                  # declares all charts under charts/ (required by Helm 4)
+├── values.yaml                 # global: lane, labels/annotations, sync waves, prune, registry
+├── values.schema.json          # validates the umbrella keys, esp. global
+└── charts/
+    ├── krypton-lib/            # type: library — renders nothing, provides the helpers
+    │   └── templates/_helpers.tpl
+    ├── krypton-banking/        # Deployment, Service, ConfigMap, VaultStaticSecrets, Route,
+    │                           # ServiceAccount (+ optional PDB / HPA / NetworkPolicy)
+    └── krypton-auth/           # Deployment, ServiceAccount</pre>
+  </figure>
+  <div class="note">
+    <span data-lang="en"><b>Hosting this page:</b> this file is <code>docs/index.html</code>. In the GitHub repository, enable <i>Settings &rarr; Pages &rarr; Deploy from a branch</i> and pick the <code>/docs</code> folder &mdash; the page then serves at <code>https://&lt;org&gt;.github.io/&lt;repo&gt;/</code>.</span>
+    <span data-lang="de"><b>Hosting dieser Seite:</b> diese Datei ist <code>docs/index.html</code>. Im GitHub-Repository <i>Settings &rarr; Pages &rarr; Deploy from a branch</i> aktivieren und den Ordner <code>/docs</code> w&auml;hlen &mdash; die Seite ist dann unter <code>https://&lt;org&gt;.github.io/&lt;repo&gt;/</code> erreichbar.</span>
+  </div>
+</section>
+
+<!-- ============================ COMMANDS ============================ -->
+<section id="commands">
+  <span class="eyebrow" data-lang="en">CLI</span><span class="eyebrow" data-lang="de">CLI</span>
+  <h2 data-lang="en">Getting started</h2><h2 data-lang="de">Loslegen</h2>
+  <p data-lang="en">Everything on this page can be reproduced with three commands. Standalone subchart work additionally needs the library vendored in.</p>
+  <p data-lang="de">Alles auf dieser Seite l&auml;sst sich mit drei Kommandos reproduzieren. Eigenst&auml;ndige Subchart-Arbeit braucht zus&auml;tzlich das gevendorte Library-Chart.</p>
+  <figure class="code">
+    <figcaption><span class="dot dot-in"></span>shell</figcaption>
+    <pre data-hl="bash">helm lint krypton-umbrella
+helm template krypton krypton-umbrella                                # render the release lane
+helm template krypton krypton-umbrella --set global.laneName=test     # render another lane
+
+# work on a single subchart (vendors krypton-lib via file://../krypton-lib)
+helm dependency build krypton-umbrella/charts/krypton-banking
+helm template t krypton-umbrella/charts/krypton-banking --set global.laneName=dev</pre>
+  </figure>
+</section>
+
+<!-- ============================ WAVES ============================ -->
+<section id="waves">
+  <span class="eyebrow" data-lang="en">Ordering</span><span class="eyebrow" data-lang="de">Reihenfolge</span>
+  <h2 data-lang="en">Sync order at a glance</h2><h2 data-lang="de">Sync-Reihenfolge auf einen Blick</h2>
+  <p data-lang="en">ArgoCD applies resources wave by wave and waits for health in between. Component waves resolve per type (subchart value first, then <code>global.syncWaves</code>), and <code>syncWaveOffset</code> shifts a whole subchart&rsquo;s band &mdash; krypton-auth runs at offset&nbsp;+10, entirely after krypton-banking.</p>
+  <p data-lang="de">ArgoCD wendet Ressourcen Wave f&uuml;r Wave an und wartet dazwischen auf Health. Komponenten-Waves l&ouml;sen pro Typ auf (Subchart-Wert zuerst, dann <code>global.syncWaves</code>), und <code>syncWaveOffset</code> verschiebt das gesamte Band eines Subcharts &mdash; krypton-auth l&auml;uft mit Offset&nbsp;+10 vollst&auml;ndig nach krypton-banking.</p>
+  <div class="waveband-wrap">
+    <div class="waveband">
+      <div class="wb-rowlabel">krypton-banking</div>
+      <div class="wb-block wb-b" style="grid-column:2">SA</div>
+      <div class="wb-block wb-b" style="grid-column:3">VSS &times;2</div>
+      <div class="wb-block wb-b" style="grid-column:4">CM&middot;NP</div>
+      <div class="wb-block wb-b" style="grid-column:5">Deploy&middot;Svc&middot;PDB</div>
+      <div class="wb-cell" style="grid-column:6"></div>
+      <div class="wb-block wb-b" style="grid-column:7">Route</div>
+      <div class="wb-cell" style="grid-column:8"></div><div class="wb-cell" style="grid-column:9"></div><div class="wb-cell" style="grid-column:10"></div><div class="wb-cell" style="grid-column:11"></div><div class="wb-cell" style="grid-column:12"></div><div class="wb-cell" style="grid-column:13"></div><div class="wb-cell" style="grid-column:14"></div><div class="wb-cell" style="grid-column:15"></div>
+      <div class="wb-rowlabel">krypton-auth<br>(offset +10)</div>
+      <div class="wb-cell" style="grid-column:2"></div><div class="wb-cell" style="grid-column:3"></div><div class="wb-cell" style="grid-column:4"></div><div class="wb-cell" style="grid-column:5"></div><div class="wb-cell" style="grid-column:6"></div><div class="wb-cell" style="grid-column:7"></div><div class="wb-cell" style="grid-column:8"></div><div class="wb-cell" style="grid-column:9"></div><div class="wb-cell" style="grid-column:10"></div><div class="wb-cell" style="grid-column:11"></div>
+      <div class="wb-block wb-a" style="grid-column:12">SA</div>
+      <div class="wb-cell" style="grid-column:13"></div><div class="wb-cell" style="grid-column:14"></div>
+      <div class="wb-block wb-a" style="grid-column:15">Deploy</div>
+      <div class="wb-rowlabel" aria-hidden="true"></div>
+      <div class="wb-axis" style="grid-column:2">-2</div><div class="wb-axis" style="grid-column:3">-1</div><div class="wb-axis hl" style="grid-column:4">0</div><div class="wb-axis" style="grid-column:5">1</div><div class="wb-axis" style="grid-column:6">2</div><div class="wb-axis" style="grid-column:7">3</div><div class="wb-axis" style="grid-column:8">4</div><div class="wb-axis" style="grid-column:9">5</div><div class="wb-axis" style="grid-column:10">6</div><div class="wb-axis" style="grid-column:11">7</div><div class="wb-axis" style="grid-column:12">8</div><div class="wb-axis" style="grid-column:13">9</div><div class="wb-axis" style="grid-column:14">10</div><div class="wb-axis" style="grid-column:15">11</div>
+    </div>
+    <div class="wb-legend">
+      <span><i style="background:var(--accent-soft);border:1px solid var(--accent-border)"></i>krypton-banking (offset 0)</span>
+      <span><i style="background:var(--band-a-soft);border:1px solid var(--band-a-border)"></i>krypton-auth (offset +10)</span>
+      <span data-lang="en">SA=ServiceAccount &middot; VSS=VaultStaticSecret &middot; CM=ConfigMap &middot; NP=NetworkPolicy</span>
+      <span data-lang="de">SA=ServiceAccount &middot; VSS=VaultStaticSecret &middot; CM=ConfigMap &middot; NP=NetworkPolicy</span>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ EXAMPLES ============================ -->
+<section id="examples">
+  <span class="eyebrow" data-lang="en">Config &rarr; outcome</span><span class="eyebrow" data-lang="de">Konfig &rarr; Ergebnis</span>
+  <h2 data-lang="en">Configuration examples</h2><h2 data-lang="de">Konfigurationsbeispiele</h2>
+  <p data-lang="en">Each card pairs a configuration with the manifest it renders. Every output block was captured verbatim from <code>helm template krypton krypton-umbrella</code> (v4.2.4) &mdash; nothing is hand-written.</p>
+  <p data-lang="de">Jede Karte stellt einer Konfiguration das gerenderte Manifest gegen&uuml;ber. Jeder Output-Block wurde w&ouml;rtlich aus <code>helm template krypton krypton-umbrella</code> (v4.2.4) &uuml;bernommen &mdash; nichts ist handgeschrieben.</p>
+
+  <!-- E1 naming -->
+  <article class="example" id="ex-naming">
+    <h3 data-lang="en">Resource naming &amp; lanes</h3><h3 data-lang="de">Ressourcennamen &amp; Lanes</h3>
+    <p data-lang="en">Every resource is named <code>&lt;subchart&gt;-&lt;laneName&gt;-&lt;component&gt;</code>. Component types are kebab-cased, multiple resources of one type get an instance suffix. Switching the lane renames everything consistently.</p>
+    <p data-lang="de">Jede Ressource hei&szlig;t <code>&lt;subchart&gt;-&lt;laneName&gt;-&lt;komponente&gt;</code>. Komponententypen werden gekebab-cased, mehrere Ressourcen eines Typs erhalten einen Instance-Suffix. Ein Lane-Wechsel benennt alles konsistent um.</p>
+    <div class="io">
+      <div class="stack">
+        <figure class="code">
+          <figcaption><span class="dot dot-in"></span>values.yaml &middot; umbrella</figcaption>
+          <pre data-hl="yaml">global:
+  laneName: release   # release, test, dev, ...</pre>
+        </figure>
+        <div class="cmd">helm template krypton krypton-umbrella --set global.laneName=test</div>
+        <figure class="code">
+          <figcaption><span class="dot dot-out"></span><span data-lang="en">rendered names &middot; lane test</span><span data-lang="de">gerenderte Namen &middot; Lane test</span></figcaption>
+          <pre data-hl="yaml">name: krypton-banking-test-service-account
+name: krypton-banking-test-configmap
+name: krypton-banking-test-deployment
+name: krypton-auth-test-deployment
+# ... every resource follows the lane</pre>
+        </figure>
+      </div>
+      <figure class="code">
+        <figcaption><span class="dot dot-out"></span><span data-lang="en">rendered names &middot; lane release</span><span data-lang="de">gerenderte Namen &middot; Lane release</span></figcaption>
+        <pre data-hl="yaml">name: krypton-banking-release-pod-disruption-budget
+name: krypton-auth-release-service-account
+name: krypton-banking-release-service-account
+name: krypton-banking-release-configmap
+name: krypton-banking-release-service
+name: krypton-auth-release-deployment
+name: krypton-banking-release-deployment
+name: krypton-banking-release-route
+name: krypton-banking-release-vault-static-secret-app
+name: krypton-banking-release-vault-static-secret-database</pre>
+      </figure>
+    </div>
+    <div class="note"><span data-lang="en"><b>Guard:</b> an unset or empty <code>global.laneName</code> fails the render loudly &mdash; no resource can ever be created without a lane in its name.</span><span data-lang="de"><b>Absicherung:</b> ein fehlendes oder leeres <code>global.laneName</code> l&auml;sst das Rendern laut fehlschlagen &mdash; keine Ressource entsteht je ohne Lane im Namen.</span></div>
+  </article>
+
+  <!-- E2 metadata -->
+  <article class="example" id="ex-metadata">
+    <h3 data-lang="en">Labels &amp; annotations merge</h3><h3 data-lang="de">Labels- &amp; Annotations-Merge</h3>
+    <p data-lang="en">Chart-generated standard keys merge with the static <code>global.labels</code> / <code>global.annotations</code>; the ArgoCD keys are applied last so they can never be shadowed. One <code>krypton-lib.metadata</code> include produces the whole block.</p>
+    <p data-lang="de">Chart-generierte Standard-Keys verschmelzen mit den statischen <code>global.labels</code> / <code>global.annotations</code>; die ArgoCD-Keys kommen zuletzt und k&ouml;nnen nie &uuml;berdeckt werden. Ein einziges <code>krypton-lib.metadata</code>-Include erzeugt den ganzen Block.</p>
+    <div class="io">
+      <figure class="code">
+        <figcaption><span class="dot dot-in"></span>values.yaml &middot; umbrella</figcaption>
+        <pre data-hl="yaml">global:
+  labelDomain: krypton.io      # prefix of generated keys
+  labels:
+    krypton.io/platform: krypton
+    krypton.io/cost-center: "cc-4711"
+  annotations:
+    krypton.io/owner: platform-team
+    krypton.io/git-repository: https://git.example.com/krypton/krypton-umbrella</pre>
+      </figure>
+      <figure class="code">
+        <figcaption><span class="dot dot-out"></span><span data-lang="en">rendered &middot; ConfigMap metadata</span><span data-lang="de">gerendert &middot; ConfigMap-Metadata</span></figcaption>
+        <pre data-hl="yaml">metadata:
+  name: krypton-banking-release-configmap
+  labels:
+    app.kubernetes.io/component: configmap
+    app.kubernetes.io/instance: krypton
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: krypton-banking
+    app.kubernetes.io/version: 1.4.2
+    helm.sh/chart: krypton-banking-0.1.0
+    krypton.io/cost-center: cc-4711
+    krypton.io/lane: release
+    krypton.io/platform: krypton
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+    krypton.io/component: configmap
+    krypton.io/git-repository: https://git.example.com/krypton/krypton-umbrella
+    krypton.io/owner: platform-team
+    krypton.io/source-chart: krypton-banking-0.1.0</pre>
+      </figure>
+    </div>
+  </article>
+
+  <!-- E3 waves -->
+  <article class="example" id="ex-waves">
+    <h3 data-lang="en">Sync waves: three-layer resolution</h3><h3 data-lang="de">Sync-Waves: drei Aufl&ouml;sungsebenen</h3>
+    <p data-lang="en">First hit wins: the subchart&rsquo;s <code>syncWaves.&lt;component&gt;</code> (which already contains any umbrella override thanks to Helm coalescing), then <code>global.syncWaves.&lt;component&gt;</code>. Unconfigured components get no annotation.</p>
+    <p data-lang="de">Der erste Treffer gewinnt: <code>syncWaves.&lt;komponente&gt;</code> des Subcharts (enth&auml;lt dank Helm-Coalescing bereits jedes Umbrella-Override), danach <code>global.syncWaves.&lt;komponente&gt;</code>. Unkonfigurierte Komponenten bekommen keine Annotation.</p>
+    <div class="io">
+      <figure class="code">
+        <figcaption><span class="dot dot-in"></span><span data-lang="en">three layers of values</span><span data-lang="de">drei Werte-Ebenen</span></figcaption>
+        <pre data-hl="yaml"># 1 - umbrella: platform defaults
+global:
+  syncWaves:
+    serviceAccount: "-2"
+    networkPolicy: "0"
+    configmap: "0"
+    deployment: "1"
+    service: "1"
+    podDisruptionBudget: "1"
+
+# 2 - subchart krypton-banking/values.yaml
+syncWaves:
+  vaultStaticSecret: "-1"
+  route: "2"              # subchart default ...
+
+# 3 - umbrella block: override wins
+krypton-banking:
+  syncWaves:
+    route: "3"</pre>
+      </figure>
+      <figure class="code">
+        <figcaption><span class="dot dot-out"></span><span data-lang="en">rendered annotations per resource</span><span data-lang="de">gerenderte Annotations je Ressource</span></figcaption>
+        <pre data-hl="yaml"># ConfigMap                       <- global default
+argocd.argoproj.io/sync-wave: "0"
+
+# Deployment / Service / PDB      <- global default
+argocd.argoproj.io/sync-wave: "1"
+
+# VaultStaticSecret (both)        <- subchart default
+argocd.argoproj.io/sync-wave: "-1"
+
+# Route                           <- umbrella override beats "2"
+argocd.argoproj.io/sync-wave: "3"</pre>
+      </figure>
+    </div>
+  </article>
+
+  <!-- E4 offset -->
+  <article class="example" id="ex-offset">
+    <h3 data-lang="en">Cross-subchart ordering with syncWaveOffset</h3><h3 data-lang="de">Subchart-&uuml;bergreifende Reihenfolge mit syncWaveOffset</h3>
+    <p data-lang="en">The offset is added to every resolved wave of the subchart, shifting its whole band behind (or before) its siblings while keeping the internal order. Components without a configured wave &mdash; implicitly wave 0 &mdash; are annotated with the bare offset, so they move with the block.</p>
+    <p data-lang="de">Der Offset wird auf jede aufgel&ouml;ste Wave des Subcharts addiert und verschiebt das gesamte Band hinter (oder vor) seine Geschwister, bei unver&auml;nderter innerer Reihenfolge. Komponenten ohne konfigurierte Wave &mdash; implizit Wave 0 &mdash; erhalten den nackten Offset und wandern mit dem Block.</p>
+    <div class="io">
+      <figure class="code">
+        <figcaption><span class="dot dot-in"></span>values.yaml &middot; umbrella</figcaption>
+        <pre data-hl="yaml">krypton-auth:
+  # banking spans -2..3 -> shift auth entirely behind it
+  syncWaveOffset: 10</pre>
+      </figure>
+      <figure class="code">
+        <figcaption><span class="dot dot-out"></span><span data-lang="en">rendered &middot; krypton-auth</span><span data-lang="de">gerendert &middot; krypton-auth</span></figcaption>
+        <pre data-hl="yaml"># ServiceAccount        (-2 + 10)
+argocd.argoproj.io/sync-wave: "8"
+
+# Deployment            ( 1 + 10)
+argocd.argoproj.io/sync-wave: "11"</pre>
+      </figure>
+    </div>
+    <div class="note"><span data-lang="en"><b>Implicit wave 0:</b> with <code>krypton-banking.syncWaveOffset=100</code>, the HPA &mdash; which has no configured wave anywhere &mdash; renders <code>sync-wave: "100"</code> instead of escaping to wave 0. Convention: component waves stay within -9..9, offsets go in steps of 10, so bands never overlap.</span><span data-lang="de"><b>Implizite Wave 0:</b> mit <code>krypton-banking.syncWaveOffset=100</code> rendert der HPA &mdash; der nirgendwo eine Wave konfiguriert hat &mdash; <code>sync-wave: "100"</code>, statt auf Wave 0 auszubrechen. Konvention: Komponenten-Waves bleiben in -9..9, Offsets in 10er-Schritten &mdash; B&auml;nder &uuml;berlappen nie.</span></div>
+  </article>
+
+  <!-- E5 prune -->
+  <article class="example" id="ex-prune">
+    <h3 data-lang="en">Per-component prune protection</h3><h3 data-lang="de">Prune-Schutz je Komponente</h3>
+    <p data-lang="en"><code>syncPrune.&lt;component&gt;: false</code> (same resolution chain as the waves) stamps <code>Prune=false</code>: the resource survives app-level pruning even when its manifest disappears or the subchart is disabled. Setting a key to <code>true</code> re-enables pruning over a global <code>false</code>.</p>
+    <p data-lang="de"><code>syncPrune.&lt;komponente&gt;: false</code> (gleiche Aufl&ouml;sungskette wie die Waves) stempelt <code>Prune=false</code>: die Ressource &uuml;berlebt das Pruning der App, selbst wenn ihr Manifest verschwindet oder das Subchart deaktiviert wird. Ein <code>true</code> reaktiviert das Pruning gegen ein globales <code>false</code>.</p>
+    <div class="io">
+      <figure class="code">
+        <figcaption><span class="dot dot-in"></span>values.yaml &middot; umbrella</figcaption>
+        <pre data-hl="yaml">global:
+  syncPrune:
+    vaultStaticSecret: false   # platform rule: never auto-prune Vault secrets
+
+krypton-banking:
+  syncPrune:
+    route: false               # keep the public Route of this subchart</pre>
+      </figure>
+      <figure class="code">
+        <figcaption><span class="dot dot-out"></span><span data-lang="en">rendered annotations</span><span data-lang="de">gerenderte Annotations</span></figcaption>
+        <pre data-hl="yaml"># Route
+argocd.argoproj.io/sync-options: Prune=false
+argocd.argoproj.io/sync-wave: "3"
+
+# VaultStaticSecret (app + database)
+argocd.argoproj.io/sync-options: Prune=false
+argocd.argoproj.io/sync-wave: "-1"
+
+# Deployment / Service / ConfigMap / SA: no sync-options
+# -> normal pruning</pre>
+      </figure>
+    </div>
+  </article>
+
+  <!-- E6 switches -->
+  <article class="example" id="ex-switch">
+    <h3 data-lang="en">Deploy switches per subchart</h3><h3 data-lang="de">Deploy-Schalter je Subchart</h3>
+    <p data-lang="en">Every application subchart hangs on a <code>condition</code> flag in the umbrella <code>Chart.yaml</code>. Disabling removes all of its manifests from the release; ArgoCD prunes the live resources &mdash; except those protected via <code>syncPrune</code>.</p>
+    <p data-lang="de">Jedes Anwendungs-Subchart h&auml;ngt an einem <code>condition</code>-Flag in der Umbrella-<code>Chart.yaml</code>. Deaktivieren entfernt alle seine Manifeste aus dem Release; ArgoCD pruned die Live-Ressourcen &mdash; au&szlig;er den per <code>syncPrune</code> gesch&uuml;tzten.</p>
+    <div class="io">
+      <figure class="code">
+        <figcaption><span class="dot dot-in"></span>Chart.yaml + values.yaml &middot; umbrella</figcaption>
+        <pre data-hl="yaml"># Chart.yaml
+dependencies:
+  - name: krypton-banking
+    version: 0.1.0
+    condition: krypton-banking.enabled
+
+# values.yaml (explicit - a missing flag counts as enabled)
+krypton-banking:
+  enabled: true</pre>
+      </figure>
+      <div class="stack">
+        <div class="cmd">helm template krypton krypton-umbrella --set krypton-banking.enabled=false</div>
+        <figure class="code">
+          <figcaption><span class="dot dot-out"></span><span data-lang="en">rendered kinds</span><span data-lang="de">gerenderte Kinds</span></figcaption>
+          <pre data-hl="yaml"># only krypton-auth remains:
+kind: ServiceAccount     # krypton-auth-release-service-account
+kind: Deployment         # krypton-auth-release-deployment</pre>
+        </figure>
+      </div>
+    </div>
+  </article>
+
+  <!-- E7 image -->
+  <article class="example" id="ex-image">
+    <h3 data-lang="en">Images &amp; the per-lane registry switch</h3><h3 data-lang="de">Images &amp; der Registry-Schalter pro Lane</h3>
+    <p data-lang="en"><code>krypton-lib.image</code> joins <code>registry/repository:tag</code> (a <code>digest</code> beats the tag). One umbrella key, <code>global.imageRegistry</code>, repoints every subchart at a proxy or air-gapped registry.</p>
+    <p data-lang="de"><code>krypton-lib.image</code> setzt <code>registry/repository:tag</code> zusammen (ein <code>digest</code> schl&auml;gt den Tag). Ein einziger Umbrella-Key, <code>global.imageRegistry</code>, biegt alle Subcharts auf eine Proxy- oder Air-Gapped-Registry um.</p>
+    <div class="io">
+      <figure class="code">
+        <figcaption><span class="dot dot-in"></span>values.yaml &middot; subchart + umbrella</figcaption>
+        <pre data-hl="yaml"># charts/krypton-banking/values.yaml
+image:
+  registry: registry.example.com
+  repository: krypton/banking-service
+  tag: "1.4.2"
+  pullPolicy: IfNotPresent
+
+# umbrella: empty = keep each subchart's registry
+global:
+  imageRegistry: ""</pre>
+      </figure>
+      <div class="stack">
+        <figure class="code">
+          <figcaption><span class="dot dot-out"></span><span data-lang="en">rendered &middot; default</span><span data-lang="de">gerendert &middot; Default</span></figcaption>
+          <pre data-hl="yaml">image: "registry.example.com/krypton/banking-service:1.4.2"
+image: "registry.example.com/krypton/auth-service:0.9.0"</pre>
+        </figure>
+        <div class="cmd">helm template krypton krypton-umbrella --set global.imageRegistry=proxy.bank.internal:5000</div>
+        <figure class="code">
+          <figcaption><span class="dot dot-out"></span><span data-lang="en">rendered &middot; proxied lane</span><span data-lang="de">gerendert &middot; Proxy-Lane</span></figcaption>
+          <pre data-hl="yaml">image: "proxy.bank.internal:5000/krypton/banking-service:1.4.2"
+image: "proxy.bank.internal:5000/krypton/auth-service:0.9.0"</pre>
+        </figure>
+      </div>
+    </div>
+  </article>
+
+  <!-- E8 vault -->
+  <article class="example" id="ex-vault">
+    <h3 data-lang="en">Multiple VaultStaticSecrets, lane-aware paths</h3><h3 data-lang="de">Mehrere VaultStaticSecrets, Lane-abh&auml;ngige Pfade</h3>
+    <p data-lang="en">One VaultStaticSecret per entry under <code>vault.secrets</code>; the key becomes the instance suffix. Paths run through <code>tpl</code>, so the lane is templated in &mdash; release and test never read the same secrets. <code>envFrom: true</code> wires the materialised Secret into the Deployment.</p>
+    <p data-lang="de">Ein VaultStaticSecret je Eintrag unter <code>vault.secrets</code>; der Key wird zum Instance-Suffix. Pfade laufen durch <code>tpl</code>, die Lane wird also hineintemplatet &mdash; release und test lesen nie dieselben Secrets. <code>envFrom: true</code> verdrahtet das materialisierte Secret ins Deployment.</p>
+    <div class="io">
+      <figure class="code">
+        <figcaption><span class="dot dot-in"></span>charts/krypton-banking/values.yaml</figcaption>
+        <pre data-hl="yaml">vault:
+  authRef: krypton-vault-auth      # shared defaults ...
+  mount: kv-v2
+  refreshAfter: 60s
+  secrets:
+    app:
+      path: "krypton/{{ .Values.global.laneName }}/banking/app"
+      envFrom: true
+    database:
+      path: "krypton/{{ .Values.global.laneName }}/banking/database"
+      refreshAfter: 30s            # ... with per-secret overrides
+      envFrom: true</pre>
+      </figure>
+      <figure class="code">
+        <figcaption><span class="dot dot-out"></span><span data-lang="en">rendered &middot; lane release</span><span data-lang="de">gerendert &middot; Lane release</span></figcaption>
+        <pre data-hl="yaml"># VaultStaticSecret ...vault-static-secret-app
+  path: krypton/release/banking/app
+  refreshAfter: 60s
+  destination:
+    name: krypton-banking-release-vault-static-secret-app
+
+# VaultStaticSecret ...vault-static-secret-database
+  path: krypton/release/banking/database
+  refreshAfter: 30s
+
+# Deployment -> both Secrets via envFrom
+- secretRef:
+    name: krypton-banking-release-vault-static-secret-app
+- secretRef:
+    name: krypton-banking-release-vault-static-secret-database</pre>
+      </figure>
+    </div>
+  </article>
+
+  <!-- E9 SA -->
+  <article class="example" id="ex-sa">
+    <h3 data-lang="en">ServiceAccount: created or referenced</h3><h3 data-lang="de">ServiceAccount: erzeugt oder referenziert</h3>
+    <p data-lang="en">Each subchart runs under a dedicated SA at wave -2 &mdash; before the Vault objects that authenticate with it. Bind the VaultAuth Kubernetes role to exactly this name. <code>create: false</code> plus <code>name:</code> references an existing SA instead.</p>
+    <p data-lang="de">Jedes Subchart l&auml;uft unter einem eigenen SA in Wave -2 &mdash; vor den Vault-Objekten, die sich damit authentifizieren. Die VaultAuth-Kubernetes-Rolle an genau diesen Namen binden. <code>create: false</code> plus <code>name:</code> referenziert stattdessen einen bestehenden SA.</p>
+    <div class="io">
+      <figure class="code">
+        <figcaption><span class="dot dot-in"></span>charts/krypton-banking/values.yaml</figcaption>
+        <pre data-hl="yaml">serviceAccount:
+  create: true
+  name: ""       # empty -> platform name</pre>
+      </figure>
+      <figure class="code">
+        <figcaption><span class="dot dot-out"></span><span data-lang="en">rendered</span><span data-lang="de">gerendert</span></figcaption>
+        <pre data-hl="yaml">kind: ServiceAccount
+metadata:
+  name: krypton-banking-release-service-account
+  annotations:
+    argocd.argoproj.io/sync-wave: "-2"
+# ...
+# Deployment pod spec:
+      serviceAccountName: krypton-banking-release-service-account</pre>
+      </figure>
+    </div>
+    <div class="cmd" style="margin-top:12px">helm template krypton krypton-umbrella --set krypton-banking.serviceAccount.create=false --set krypton-banking.serviceAccount.name=legacy-vault-sa</div>
+    <figure class="code" style="margin-top:10px">
+      <figcaption><span class="dot dot-out"></span><span data-lang="en">rendered &middot; reference an existing SA</span><span data-lang="de">gerendert &middot; bestehenden SA referenzieren</span></figcaption>
+      <pre data-hl="yaml"># no ServiceAccount manifest for krypton-banking is rendered
+      serviceAccountName: legacy-vault-sa</pre>
+    </figure>
+  </article>
+
+  <!-- E10 resources -->
+  <article class="example" id="ex-resources">
+    <h3 data-lang="en">Resources sized per lane</h3><h3 data-lang="de">Resources pro Lane dimensioniert</h3>
+    <p data-lang="en">Subcharts ship sensible defaults; the umbrella deep-merges lane sizing over them &mdash; the classic override on OpenShift with ResourceQuotas and LimitRanges.</p>
+    <p data-lang="de">Subcharts bringen sinnvolle Defaults mit; das Umbrella-Chart merged die Lane-Dimensionierung dar&uuml;ber &mdash; das klassische Override auf OpenShift mit ResourceQuotas und LimitRanges.</p>
+    <div class="io">
+      <figure class="code">
+        <figcaption><span class="dot dot-in"></span><span data-lang="en">subchart default + umbrella override</span><span data-lang="de">Subchart-Default + Umbrella-Override</span></figcaption>
+        <pre data-hl="yaml"># charts/krypton-banking/values.yaml
+resources:
+  requests: { cpu: 100m, memory: 256Mi }
+  limits:   { cpu: 500m, memory: 512Mi }
+
+# umbrella values.yaml - release lane sizes up
+krypton-banking:
+  resources:
+    requests: { cpu: 250m, memory: 512Mi }
+    limits:   { cpu: "1",  memory: 1Gi }</pre>
+      </figure>
+      <figure class="code">
+        <figcaption><span class="dot dot-out"></span><span data-lang="en">rendered &middot; banking container</span><span data-lang="de">gerendert &middot; banking-Container</span></figcaption>
+        <pre data-hl="yaml">resources:
+  limits:
+    cpu: "1"
+    memory: 1Gi
+  requests:
+    cpu: 250m
+    memory: 512Mi</pre>
+      </figure>
+    </div>
+  </article>
+
+  <!-- E11 optional -->
+  <article class="example" id="ex-optional">
+    <h3 data-lang="en">Optional components: PDB, HPA, NetworkPolicy</h3><h3 data-lang="de">Optionale Komponenten: PDB, HPA, NetworkPolicy</h3>
+    <p data-lang="en">Each follows the enabled-flag pattern and is steered per lane. While <code>autoscaling.enabled</code> is true, the Deployment stops rendering <code>spec.replicas</code>, so ArgoCD and the HPA never fight over the replica count.</p>
+    <p data-lang="de">Jede folgt dem Enabled-Flag-Muster und wird pro Lane gesteuert. Solange <code>autoscaling.enabled</code> aktiv ist, rendert das Deployment kein <code>spec.replicas</code> mehr &mdash; ArgoCD und HPA streiten nie um die Replikazahl.</p>
+    <div class="io">
+      <figure class="code">
+        <figcaption><span class="dot dot-in"></span>values.yaml</figcaption>
+        <pre data-hl="yaml"># umbrella - release lane protects banking
+krypton-banking:
+  podDisruptionBudget:
+    enabled: true
+
+# subchart defaults (off; enable per lane)
+autoscaling:
+  enabled: false
+  minReplicas: 2
+  maxReplicas: 6
+  targetCPUUtilizationPercentage: 75
+networkPolicy:
+  enabled: false</pre>
+      </figure>
+      <figure class="code">
+        <figcaption><span class="dot dot-out"></span><span data-lang="en">rendered &middot; PDB (on) and HPA (when enabled)</span><span data-lang="de">gerendert &middot; PDB (an) und HPA (falls aktiviert)</span></figcaption>
+        <pre data-hl="yaml">kind: PodDisruptionBudget
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: krypton-banking
+      app.kubernetes.io/instance: krypton
+---
+kind: HorizontalPodAutoscaler
+spec:
+  scaleTargetRef:
+    kind: Deployment
+    name: krypton-banking-release-deployment
+  minReplicas: 2
+  maxReplicas: 6
+# Deployment: spec.replicas is omitted while HPA is on</pre>
+      </figure>
+    </div>
+  </article>
+
+  <!-- E12 labelDomain -->
+  <article class="example" id="ex-domain">
+    <h3 data-lang="en">Rebranding the label domain</h3><h3 data-lang="de">Label-Domain umbenennen</h3>
+    <p data-lang="en">The generated label/annotation keys take their prefix from <code>global.labelDomain</code>, so the scaffold is reusable for other platforms with one values key &mdash; the library needs no edits.</p>
+    <p data-lang="de">Die generierten Label-/Annotation-Keys beziehen ihr Pr&auml;fix aus <code>global.labelDomain</code> &mdash; das Ger&uuml;st ist damit &uuml;ber einen einzigen Values-Key f&uuml;r andere Plattformen wiederverwendbar, ohne Änderung am Library-Chart.</p>
+    <div class="io">
+      <div class="stack">
+        <figure class="code">
+          <figcaption><span class="dot dot-in"></span>values.yaml &middot; umbrella</figcaption>
+          <pre data-hl="yaml">global:
+  labelDomain: acme.dev</pre>
+        </figure>
+        <div class="cmd">helm template krypton krypton-umbrella --set global.labelDomain=acme.dev</div>
+      </div>
+      <figure class="code">
+        <figcaption><span class="dot dot-out"></span><span data-lang="en">rendered keys</span><span data-lang="de">gerenderte Keys</span></figcaption>
+        <pre data-hl="yaml">acme.dev/lane: release
+acme.dev/component: pod-disruption-budget
+acme.dev/source-chart: krypton-banking-0.1.0</pre>
+      </figure>
+    </div>
+  </article>
+</section>
+
+<!-- ============================ GUARDRAILS ============================ -->
+<section id="guardrails">
+  <span class="eyebrow" data-lang="en">Fail loudly</span><span class="eyebrow" data-lang="de">Laut fehlschlagen</span>
+  <h2 data-lang="en">Guardrails</h2><h2 data-lang="de">Leitplanken</h2>
+  <p data-lang="en">Misconfiguration never degrades silently. The component catalog in the library validates every component key at render time; the per-chart <code>values.schema.json</code> validates structure and value shapes against the <em>coalesced</em> values &mdash; a typo made in the umbrella block fails in the subchart&rsquo;s schema.</p>
+  <p data-lang="de">Fehlkonfiguration degradiert nie still. Der Komponentenkatalog im Library-Chart validiert jeden Komponenten-Key beim Rendern; die <code>values.schema.json</code> je Chart validiert Struktur und Wertformen gegen die <em>koaleszierten</em> Values &mdash; ein Tippfehler im Umbrella-Block schl&auml;gt im Schema des Subcharts fehl.</p>
+
+  <div class="stack" style="display:grid;gap:14px;margin-top:1.2rem">
+    <div class="cmd">helm template krypton krypton-umbrella --set krypton-banking.syncWaves.rout=9</div>
+    <figure class="code err-fig">
+      <figcaption><span class="dot dot-err"></span><span data-lang="en">render error &middot; component catalog</span><span data-lang="de">Render-Fehler &middot; Komponentenkatalog</span></figcaption>
+      <pre data-hl="none">Error: execution error at (krypton-umbrella/charts/krypton-banking/templates/vaultstaticsecret.yaml:15:6):
+krypton-lib: unknown component type "rout" (chart "krypton-banking", syncWaves key).
+Known types: buildConfig,clusterRole,clusterRoleBinding,configmap,cronJob,daemonSet,deployment,
+horizontalPodAutoscaler,imageStream,ingress,job,networkPolicy,persistentVolumeClaim,
+podDisruptionBudget,podMonitor,prometheusRule,role,roleBinding,route,secret,service,
+serviceAccount,serviceMonitor,statefulSet,vaultAuth,vaultConnection,vaultDynamicSecret,
+vaultStaticSecret.
+Genuinely new kinds are added to krypton-lib.componentCatalog in krypton-lib/templates/_helpers.tpl.</pre>
+    </figure>
+
+    <div class="cmd">helm template krypton krypton-umbrella --set krypton-banking.syncWaves.route=abc</div>
+    <figure class="code err-fig">
+      <figcaption><span class="dot dot-err"></span><span data-lang="en">schema error &middot; wave shape</span><span data-lang="de">Schema-Fehler &middot; Wave-Format</span></figcaption>
+      <pre data-hl="none">Error: values don't meet the specifications of the schema(s) in the following chart(s):
+krypton-banking:
+- at '/syncWaves/route': 'oneOf' failed, none matched
+  - at '/syncWaves/route': 'abc' does not match pattern '^-?[0-9]+$'
+  - at '/syncWaves/route': got string, want integer</pre>
+    </figure>
+
+    <div class="cmd">helm template krypton krypton-umbrella --set krypton-banking.vault.secrets.app.pth=x</div>
+    <figure class="code err-fig">
+      <figcaption><span class="dot dot-err"></span><span data-lang="en">schema error &middot; unknown key</span><span data-lang="de">Schema-Fehler &middot; unbekannter Key</span></figcaption>
+      <pre data-hl="none">Error: values don't meet the specifications of the schema(s) in the following chart(s):
+krypton-banking:
+- at '/vault/secrets/app': additional properties 'pth' not allowed</pre>
+    </figure>
+  </div>
+
+  <div class="note"><span data-lang="en"><b>Deliberately tolerated:</b> configuring a <em>catalogued</em> type that a subchart does not (yet) render is allowed and has no effect &mdash; waves and prune flags can be staged before the manifest exists.</span><span data-lang="de"><b>Bewusst toleriert:</b> einen <em>katalogisierten</em> Typ zu konfigurieren, den ein Subchart (noch) nicht rendert, ist erlaubt und wirkungslos &mdash; Waves und Prune-Flags lassen sich vor dem Manifest anlegen.</span></div>
+</section>
+
+<!-- ============================ ARGOCD ============================ -->
+<section id="argocd">
+  <span class="eyebrow">GitOps</span>
+  <h2>ArgoCD</h2>
+  <p data-lang="en">Point one Application per lane at the chart directory. Waves order resources within each sync; the lane is set via a values file or a Helm parameter.</p>
+  <p data-lang="de">Pro Lane zeigt eine Application auf das Chart-Verzeichnis. Die Waves ordnen die Ressourcen innerhalb jedes Syncs; die Lane kommt aus einer Values-Datei oder einem Helm-Parameter.</p>
+  <figure class="code">
+    <figcaption><span class="dot dot-in"></span>application.yaml</figcaption>
+    <pre data-hl="yaml">apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: krypton-release
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://git.example.com/krypton/krypton-umbrella.git
+    targetRevision: main
+    path: krypton-umbrella
+    helm:
+      parameters:
+        - name: global.laneName
+          value: release
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: krypton-release
+  syncPolicy:
+    automated:
+      prune: true        # honours the per-component Prune=false annotations
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true</pre>
+  </figure>
+</section>
+
+</main>
+</div>
+
+<footer>
+  <span class="eyebrow">Kr &middot; 36</span><br>
+  <span data-lang="en">krypton-umbrella platform docs &middot; all rendered outputs captured from <code style="border:0;background:transparent;padding:0">helm template</code> v4.2.4 &middot; chart is Helm&nbsp;3 compatible &middot; see README.md / README.de.md in the repository</span>
+  <span data-lang="de">krypton-umbrella Plattform-Doku &middot; alle gerenderten Ausgaben stammen aus <code style="border:0;background:transparent;padding:0">helm template</code> v4.2.4 &middot; das Chart ist Helm-3-kompatibel &middot; siehe README.md / README.de.md im Repository</span>
+</footer>
+
+<script>
+(function(){
+  var root=document.documentElement;
+
+  /* ---- language toggle ---- */
+  var bEn=document.getElementById('lang-en'), bDe=document.getElementById('lang-de');
+  function setLang(l){
+    root.dataset.locale=l; root.lang=l;
+    bEn.setAttribute('aria-pressed', l==='en');
+    bDe.setAttribute('aria-pressed', l==='de');
+    try{localStorage.setItem('ku-lang',l);}catch(e){}
+  }
+  bEn.addEventListener('click',function(){setLang('en');});
+  bDe.addEventListener('click',function(){setLang('de');});
+  setLang(root.dataset.locale==='de'?'de':'en');
+
+  /* ---- theme toggle ---- */
+  document.getElementById('theme-toggle').addEventListener('click',function(){
+    var cur=root.dataset.theme;
+    if(cur!=='dark'&&cur!=='light'){
+      cur=(window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light';
+    }
+    var next=cur==='dark'?'light':'dark';
+    root.dataset.theme=next;
+    try{localStorage.setItem('ku-theme',next);}catch(e){}
+  });
+
+  /* ---- tiny yaml/bash highlighter (display only) ---- */
+  document.querySelectorAll('pre[data-hl]').forEach(function(pre){
+    var lang=pre.getAttribute('data-hl');
+    if(lang==='none') return;
+    var esc=pre.innerHTML;
+    pre.innerHTML=esc.split('\n').map(function(line){
+      if(lang==='bash'){
+        if(/^\s*#/.test(line)) return '<span class="c">'+line+'</span>';
+        return line.replace(/^(\s*)(helm|kubectl|oc|git|mkdir)(\s|$)/,'$1<span class="k">$2</span>$3');
+      }
+      /* yaml */
+      var ci=-1;
+      for(var i=0;i<line.length;i++){
+        if(line[i]==='#'&&(i===0||/\s/.test(line[i-1]))){ci=i;break;}
+      }
+      var head=ci>-1?line.slice(0,ci):line, comment=ci>-1?line.slice(ci):'';
+      /* strings first, keys second - the key span's own class="k" attribute
+         must never be visible to the string regex */
+      head=head.replace(/"([^"]*)"/g,'<span class="s">"$1"</span>');
+      head=head.replace(/^(\s*(?:- )?)([A-Za-z0-9_.\/{}-]+)(:)(?=\s|$)/,'$1<span class="k">$2</span>$3');
+      return head+(comment?'<span class="c">'+comment+'</span>':'');
+    }).join('\n');
+  });
+
+  /* ---- copy buttons ---- */
+  document.querySelectorAll('figure.code').forEach(function(fig){
+    var cap=fig.querySelector('figcaption'), pre=fig.querySelector('pre');
+    if(!cap||!pre) return;
+    var btn=document.createElement('button');
+    btn.className='copy'; btn.type='button';
+    btn.innerHTML='<span data-lang="en">copy</span><span data-lang="de">kopieren</span>';
+    btn.addEventListener('click',function(){
+      var ok=function(){btn.innerHTML='<span data-lang="en">copied</span><span data-lang="de">kopiert</span>';setTimeout(function(){btn.innerHTML='<span data-lang="en">copy</span><span data-lang="de">kopieren</span>';},1400);};
+      if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(pre.textContent).then(ok,function(){});}
+    });
+    cap.appendChild(btn);
+  });
+
+  /* ---- active TOC link ---- */
+  var links=[].slice.call(document.querySelectorAll('.toc a'));
+  var secs=links.map(function(a){return document.querySelector(a.getAttribute('href'));}).filter(Boolean);
+  if('IntersectionObserver' in window){
+    var active=null;
+    var io=new IntersectionObserver(function(entries){
+      entries.forEach(function(en){
+        if(en.isIntersecting){
+          links.forEach(function(a){a.classList.toggle('active',a.getAttribute('href')==='#'+en.target.id);});
+        }
+      });
+    },{rootMargin:'-20% 0px -70% 0px'});
+    secs.forEach(function(s){io.observe(s);});
+  }
+})();
+</script>
+</body>
+</html>

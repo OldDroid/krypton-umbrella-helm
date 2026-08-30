@@ -1,0 +1,1 @@
+Krypton umbrella deployed to lane "{{ .Values.global.laneName }}" as release "{{ .Release.Name }}".

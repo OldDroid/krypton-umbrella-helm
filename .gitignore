@@ -1,0 +1,7 @@
+# Local helm dependency artifacts - regenerate on demand with:
+#   helm dependency build charts/<subchart>
+# They stay out of git so a stale vendored copy of krypton-lib can never
+# shadow the live one under charts/krypton-lib at render time.
+charts/*/charts/
+charts/*/Chart.lock
+*.tgz

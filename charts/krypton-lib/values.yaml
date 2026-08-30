@@ -1,0 +1,4 @@
+# krypton-lib is a library chart: it renders nothing, and its values are NOT
+# inherited by charts that depend on it. This file exists only so tooling that
+# expects a values.yaml does not complain. Shared configuration lives in the
+# umbrella's `global:` block instead.

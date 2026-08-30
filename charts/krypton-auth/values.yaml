@@ -1,0 +1,57 @@
+replicaCount: 1
+
+image:
+  # Registry host. global.imageRegistry in the umbrella overrides it for ALL
+  # subcharts at once - the per-lane proxy / air-gapped registry switch.
+  registry: registry.example.com
+  repository: krypton/auth-service
+  tag: "0.9.0"
+  # digest: "sha256:..."   # takes precedence over tag when set
+  pullPolicy: IfNotPresent
+
+# Compute sizing; lanes override this from the umbrella.
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 250m
+    memory: 256Mi
+
+# ServiceAccount the workload pods run as - see krypton-banking for the
+# create/name semantics. Dedicated SA per subchart so Vault roles and future
+# RBAC bind to a stable, predictable identity.
+serviceAccount:
+  create: true
+  name: ""
+
+# Probe specs are passed through verbatim to the container; readiness gates
+# ArgoCD's wave-to-wave health checks. Overridable per lane via the umbrella.
+probes:
+  readiness:
+    httpGet:
+      path: /health/ready
+      port: http
+    initialDelaySeconds: 5
+    periodSeconds: 10
+  liveness:
+    httpGet:
+      path: /health/live
+      port: http
+    initialDelaySeconds: 15
+    periodSeconds: 20
+
+# Passthroughs - copied verbatim into the pod spec so app teams never need
+# to fork the template.
+extraEnv: []
+extraEnvFrom: []
+podAnnotations: {}
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+# No syncWaves block here - on purpose: every component falls back to
+# global.syncWaves (serviceAccount "-2", deployment "1"). The umbrella
+# additionally sets syncWaveOffset: 10 for this subchart, shifting the
+# whole band behind krypton-banking: the ServiceAccount renders as wave
+# "8", the Deployment as "11".

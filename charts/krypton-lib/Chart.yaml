@@ -1,0 +1,8 @@
+apiVersion: v2
+name: krypton-lib
+description: >-
+  Krypton library chart. Provides the shared named templates (naming
+  convention, standard labels, merged annotations, dynamic ArgoCD sync waves)
+  for all Krypton subcharts. Renders no manifests of its own.
+type: library
+version: 0.1.0

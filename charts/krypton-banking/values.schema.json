@@ -1,0 +1,211 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "krypton-banking values",
+  "description": "Validated against the coalesced values (subchart defaults + umbrella overrides + global), so typos in the umbrella's krypton-banking block fail the render here.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["image", "service", "route", "vault"],
+  "properties": {
+    "global": { "type": "object" },
+    "enabled": { "type": "boolean" },
+    "replicaCount": { "type": "integer", "minimum": 0 },
+    "image": { "$ref": "#/definitions/image" },
+    "resources": { "$ref": "#/definitions/resources" },
+    "serviceAccount": { "$ref": "#/definitions/serviceAccount" },
+    "config": {
+      "type": ["object", "null"],
+      "propertyNames": { "pattern": "^[A-Za-z_][A-Za-z0-9_]*$" },
+      "additionalProperties": { "type": "string" },
+      "description": "Rendered 1:1 into the ConfigMap and exposed via envFrom - keys must be env-var names, values must be strings."
+    },
+    "service": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "type": { "enum": ["ClusterIP", "NodePort", "LoadBalancer"] },
+        "port": { "type": "integer", "minimum": 1, "maximum": 65535 }
+      }
+    },
+    "route": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "host": { "type": "string" },
+        "targetPort": {
+          "oneOf": [{ "type": "string" }, { "type": "integer" }]
+        },
+        "tls": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "termination": { "enum": ["edge", "passthrough", "reencrypt"] },
+            "insecureEdgeTerminationPolicy": { "enum": ["None", "Allow", "Redirect"] }
+          }
+        }
+      }
+    },
+    "probes": { "$ref": "#/definitions/probes" },
+    "vault": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["authRef", "mount", "secrets"],
+      "properties": {
+        "authRef": { "type": "string", "minLength": 1 },
+        "mount": { "type": "string", "minLength": 1 },
+        "refreshAfter": { "type": "string", "pattern": "^[0-9]+(ms|s|m|h)$" },
+        "secrets": {
+          "type": "object",
+          "minProperties": 1,
+          "propertyNames": { "pattern": "^[a-zA-Z][a-zA-Z0-9]*$" },
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["path"],
+            "properties": {
+              "path": {
+                "type": "string",
+                "minLength": 1,
+                "description": "May contain Go template syntax; rendered via tpl (lane-aware by default)."
+              },
+              "authRef": { "type": "string", "minLength": 1 },
+              "mount": { "type": "string", "minLength": 1 },
+              "refreshAfter": { "type": "string", "pattern": "^[0-9]+(ms|s|m|h)$" },
+              "envFrom": {
+                "type": "boolean",
+                "description": "true wires the materialised Secret into the Deployment via envFrom."
+              }
+            }
+          },
+          "description": "One VaultStaticSecret per entry; the key becomes the instance suffix of the resource name."
+        }
+      }
+    },
+    "podDisruptionBudget": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "minAvailable": { "$ref": "#/definitions/intOrPercent" },
+        "maxUnavailable": { "$ref": "#/definitions/intOrPercent" }
+      }
+    },
+    "autoscaling": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "minReplicas": { "type": "integer", "minimum": 1 },
+        "maxReplicas": { "type": "integer", "minimum": 1 },
+        "targetCPUUtilizationPercentage": { "type": "integer", "minimum": 1, "maximum": 100 }
+      }
+    },
+    "networkPolicy": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "properties": {
+        "enabled": { "type": "boolean" }
+      }
+    },
+    "extraEnv": { "type": ["array", "null"], "items": { "type": "object" } },
+    "extraEnvFrom": { "type": ["array", "null"], "items": { "type": "object" } },
+    "podAnnotations": {
+      "type": ["object", "null"],
+      "additionalProperties": { "type": "string" }
+    },
+    "nodeSelector": {
+      "type": ["object", "null"],
+      "additionalProperties": { "type": "string" }
+    },
+    "tolerations": { "type": ["array", "null"], "items": { "type": "object" } },
+    "affinity": { "type": ["object", "null"] },
+    "syncWaves": { "$ref": "#/definitions/syncWaves" },
+    "syncWaveOffset": { "$ref": "#/definitions/syncWaveOffset" },
+    "syncPrune": { "$ref": "#/definitions/syncPrune" }
+  },
+  "definitions": {
+    "syncWaveOffset": {
+      "oneOf": [
+        { "type": "integer" },
+        { "type": "string", "pattern": "^-?[0-9]+$" }
+      ],
+      "description": "Added to every resolved wave of this subchart (components without a configured wave count as 0), shifting the whole band relative to sibling subcharts."
+    },
+    "componentType": {
+      "type": "string",
+      "pattern": "^[a-zA-Z][a-zA-Z0-9]*$",
+      "description": "Component-type key. Membership in the platform catalog is enforced at render time by krypton-lib.componentCatalog; the schema only checks the shape."
+    },
+    "image": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["repository"],
+      "properties": {
+        "registry": {
+          "type": "string",
+          "description": "Registry host; overridden for all subcharts by global.imageRegistry when that is set."
+        },
+        "repository": { "type": "string", "minLength": 1 },
+        "tag": { "type": "string" },
+        "digest": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+        "pullPolicy": { "enum": ["Always", "IfNotPresent", "Never"] }
+      }
+    },
+    "resources": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "properties": {
+        "requests": { "$ref": "#/definitions/resourceList" },
+        "limits": { "$ref": "#/definitions/resourceList" }
+      }
+    },
+    "resourceList": {
+      "type": ["object", "null"],
+      "additionalProperties": {
+        "oneOf": [{ "type": "string" }, { "type": "number" }]
+      }
+    },
+    "serviceAccount": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "create": { "type": "boolean" },
+        "name": { "type": "string" }
+      }
+    },
+    "probes": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "properties": {
+        "readiness": { "type": ["object", "null"] },
+        "liveness": { "type": ["object", "null"] },
+        "startup": { "type": ["object", "null"] }
+      }
+    },
+    "intOrPercent": {
+      "oneOf": [
+        { "type": "integer", "minimum": 0 },
+        { "type": "string", "pattern": "^[0-9]+%$" }
+      ]
+    },
+    "syncWaves": {
+      "type": ["object", "null"],
+      "propertyNames": { "$ref": "#/definitions/componentType" },
+      "additionalProperties": {
+        "oneOf": [
+          { "type": "string", "pattern": "^-?[0-9]+$" },
+          { "type": "integer" }
+        ]
+      }
+    },
+    "syncPrune": {
+      "type": ["object", "null"],
+      "propertyNames": { "$ref": "#/definitions/componentType" },
+      "additionalProperties": {
+        "oneOf": [
+          { "type": "boolean" },
+          { "type": "string", "enum": ["true", "false"] }
+        ]
+      }
+    }
+  }
+}

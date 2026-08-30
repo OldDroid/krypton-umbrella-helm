@@ -1,0 +1,114 @@
+# =============================================================================
+# Krypton umbrella values
+#
+# Everything under `global:` is visible to every subchart as .Values.global.*
+# A block named after a subchart (krypton-banking:, krypton-auth:) is merged
+# over that subchart's own values.yaml - the umbrella wins per key.
+# =============================================================================
+
+global:
+  # Lane / environment this instance of the umbrella is deployed to
+  # (e.g. release, test). Consumed by krypton-lib for resource naming:
+  #   <subchart-name>-<laneName>-<component-type>
+  laneName: release
+
+  # Domain prefix for every platform-generated label/annotation key:
+  # <labelDomain>/lane, <labelDomain>/component, <labelDomain>/source-chart.
+  # When reusing this scaffold for another platform, change it here (and
+  # adjust the static keys under labels:/annotations: below) - the library
+  # chart needs no edits. Defaults to krypton.io when omitted.
+  labelDomain: krypton.io
+
+  # When set, repoints the images of EVERY subchart at this registry host -
+  # the per-lane proxy / air-gapped registry switch. Empty keeps each
+  # subchart's own image.registry.
+  imageRegistry: ""
+
+  # Static labels stamped onto every resource of every subchart.
+  # Merged by krypton-lib.labels; these win over the chart-generated
+  # standard labels on key collisions.
+  labels:
+    krypton.io/platform: krypton
+    krypton.io/cost-center: "cc-4711"
+
+  # Static annotations stamped onto every resource of every subchart.
+  # Merged by krypton-lib.annotations.
+  annotations:
+    krypton.io/owner: platform-team
+    krypton.io/git-repository: https://git.example.com/krypton/krypton-umbrella
+
+  # Platform-wide default sync waves per component type. Any subchart (or a
+  # subchart block right here in the umbrella) can override any key.
+  # Resolution order in krypton-lib.syncWave - first hit wins:
+  #   1. subchart .Values.syncWaves.<component>   (includes umbrella overrides)
+  #   2. global.syncWaves.<component>             (these defaults)
+  syncWaves:
+    serviceAccount: "-2"      # before the Vault objects that authenticate with it
+    networkPolicy: "0"
+    configmap: "0"
+    deployment: "1"
+    service: "1"
+    podDisruptionBudget: "1"
+
+  # Per-component prune protection, same precedence chain as syncWaves:
+  #   1. subchart .Values.syncPrune.<component>   (includes umbrella overrides)
+  #   2. global.syncPrune.<component>             (these defaults)
+  # false -> the resource is annotated argocd.argoproj.io/sync-options:
+  # Prune=false and survives app-level pruning; true (or unset) -> normal
+  # prune behaviour. Platform rule: never auto-prune Vault-sourced secrets.
+  syncPrune:
+    vaultStaticSecret: false
+
+# -----------------------------------------------------------------------------
+# Subchart: krypton-banking
+# -----------------------------------------------------------------------------
+krypton-banking:
+  # Deploy switch, evaluated by the condition flag in the umbrella Chart.yaml.
+  # Set to false (here, in a lane values file, or via ArgoCD helm parameters)
+  # to exclude the entire subchart from the rendered release.
+  enabled: true
+
+  replicaCount: 2
+
+  # Release-lane sizing - deep-merged over the subchart's resources
+  # defaults. Test lanes can shrink these the same way.
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: "1"
+      memory: 1Gi
+
+  # Release lane runs 2 replicas -> keep one alive through voluntary
+  # disruptions (node drains etc.). Test lanes leave the subchart default
+  # (disabled).
+  podDisruptionBudget:
+    enabled: true
+
+  # Component-specific sync-wave overrides for this subchart. route is bumped
+  # from the subchart default "2" to "3" here to prove that umbrella-level
+  # overrides win over the subchart's own values.yaml.
+  syncWaves:
+    route: "3"
+
+  # Per-component prune protection for this subchart. Overrides
+  # global.syncPrune per key; set a key to true to re-enable pruning of a
+  # globally protected component. The public Route is kept even if its
+  # manifest disappears from git.
+  syncPrune:
+    route: false
+
+# -----------------------------------------------------------------------------
+# Subchart: krypton-auth
+# -----------------------------------------------------------------------------
+krypton-auth:
+  # Deploy switch - see krypton-banking.enabled above.
+  enabled: true
+
+  # Shift auth's ENTIRE wave band behind krypton-banking (which spans
+  # -2..3): every resolved component wave gets +10, and components without
+  # a configured wave (implicitly 0) are annotated with the bare offset -
+  # the subchart moves as one block, internal order preserved. Use offset
+  # steps of 10 per subchart so bands never overlap.
+  syncWaveOffset: 10

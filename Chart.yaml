@@ -1,0 +1,30 @@
+apiVersion: v2
+name: krypton-umbrella
+description: >-
+  Umbrella chart for the Krypton platform. Aggregates all Krypton subcharts
+  and distributes shared configuration (lane, labels, annotations, sync waves)
+  to them via the global values block. Deployed by ArgoCD.
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+
+# The subcharts live as plain directories underneath charts/, so the entries
+# deliberately have NO repository field: Helm then resolves them in place
+# ("assuming it exists in the charts directory") instead of downloading or
+# re-packaging anything. Helm 4 requires every chart found in charts/ to be
+# declared here; Helm 3 merely tolerates it.
+dependencies:
+  # krypton-lib is deliberately unconditional: disabling it would drop the
+  # shared helper templates from the render namespace and break every
+  # enabled subchart.
+  - name: krypton-lib
+    version: 0.1.0
+  # Application subcharts are steered from the umbrella values.yaml via
+  # <subchart-name>.enabled. A missing flag counts as enabled - the flags
+  # are therefore set explicitly in values.yaml so every lane can flip them.
+  - name: krypton-banking
+    version: 0.1.0
+    condition: krypton-banking.enabled
+  - name: krypton-auth
+    version: 0.1.0
+    condition: krypton-auth.enabled
