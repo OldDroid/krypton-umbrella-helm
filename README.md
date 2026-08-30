@@ -68,7 +68,12 @@ are shared defaults with per-secret overrides, and `envFrom: true` wires
 the materialised Secret into the Deployment); all instances share the
 type-level sync wave and prune protection. Secret paths and `route.host`
 are rendered through `tpl`, and the default paths template the lane in, so
-every lane reads its own secrets. `resources:` ship per subchart and are sized per lane from the
+every lane reads its own secrets. ConfigMap delivery is steered by the
+`config` block: `data` holds the keys, `envFrom` exposes them as env vars,
+`mountPath` additionally mounts them as kubelet-refreshed files, and
+`rollPodsOnChange` gates the checksum rollout &mdash; disable it only for
+services that hot-reload their mounted config file themselves, since env
+vars never update inside a running container. `resources:` ship per subchart and are sized per lane from the
 umbrella. Pod-level passthroughs (`extraEnv`, `extraEnvFrom`,
 `podAnnotations`, `nodeSelector`, `tolerations`, `affinity`) go verbatim
 into the pod spec, so app teams never fork a template. Optional components
@@ -93,8 +98,8 @@ krypton-banking: VaultStaticSecret `-1` → ConfigMap `0` → Deployment/Service
 Deployment mounts it, and the Route goes live last. The waves only gate on
 real application health because the Deployments carry configurable
 readiness/liveness probes (`probes:` in each subchart, overridable per
-lane); the banking pod template additionally carries a `checksum/config`
-annotation so ConfigMap changes roll the pods.
+lane); by default the banking pod template additionally carries a
+`checksum/config` annotation so ConfigMap changes roll the pods.
 
 **Cross-subchart ordering** - when one subchart must sync after another,
 shift its whole band with `syncWaveOffset` (per subchart, steered from the

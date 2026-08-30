@@ -1,3 +1,4 @@
+{{- $config := .Values.config | default dict -}}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -13,13 +14,19 @@ spec:
     metadata:
       labels:
         {{- include "krypton-lib.labels" (dict "ctx" . "component" "deployment") | nindent 8 }}
+      {{- if or $config.rollPodsOnChange .Values.podAnnotations }}
       annotations:
-        # Rolls the pods whenever the ConfigMap content changes - envFrom
-        # alone never restarts anything.
-        checksum/config: {{ .Values.config | default dict | toYaml | sha256sum }}
+        {{- if $config.rollPodsOnChange }}
+        # Rolls the pods whenever the ConfigMap content changes - required
+        # for envFrom consumers (env vars never update in a running
+        # container). Disabled via config.rollPodsOnChange only for
+        # services that watch their mounted config file themselves.
+        checksum/config: {{ $config.data | default dict | toYaml | sha256sum }}
+        {{- end }}
         {{- with .Values.podAnnotations }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
+      {{- end }}
     spec:
       serviceAccountName: {{ include "krypton-lib.serviceAccountName" (dict "ctx" .) }}
       containers:
@@ -50,9 +57,14 @@ spec:
           env:
             {{- toYaml . | nindent 12 }}
           {{- end }}
+          {{- $vaultEnvFrom := false }}
+          {{- range $n, $s := .Values.vault.secrets }}{{- if $s.envFrom }}{{- $vaultEnvFrom = true }}{{- end }}{{- end }}
+          {{- if or $config.envFrom $vaultEnvFrom .Values.extraEnvFrom }}
           envFrom:
+            {{- if $config.envFrom }}
             - configMapRef:
                 name: {{ include "krypton-lib.componentName" (dict "ctx" . "component" "configmap") }}
+            {{- end }}
             # Secrets materialised by the VaultStaticSecrets (sync wave -1),
             # so they already exist when this Deployment (wave 1) syncs.
             {{- range $name, $secret := .Values.vault.secrets }}
@@ -64,6 +76,22 @@ spec:
             {{- with .Values.extraEnvFrom }}
             {{- toYaml . | nindent 12 }}
             {{- end }}
+          {{- end }}
+          {{- with $config.mountPath }}
+          volumeMounts:
+            # Whole-directory ConfigMap mount: the kubelet refreshes these
+            # files after config changes (a subPath mount never would) -
+            # the prerequisite for in-process hot reload.
+            - name: config
+              mountPath: {{ . }}
+              readOnly: true
+          {{- end }}
+      {{- with $config.mountPath }}
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "krypton-lib.componentName" (dict "ctx" $ "component" "configmap") }}
+      {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}

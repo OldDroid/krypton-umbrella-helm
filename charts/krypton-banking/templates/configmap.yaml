@@ -3,4 +3,4 @@ kind: ConfigMap
 metadata:
   {{- include "krypton-lib.metadata" (dict "ctx" . "component" "configmap") | nindent 2 }}
 data:
-  {{- .Values.config | default dict | toYaml | nindent 2 }}
+  {{- (.Values.config | default dict).data | default dict | toYaml | nindent 2 }}

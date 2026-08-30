@@ -72,7 +72,12 @@ Secret, und `envFrom: true` verdrahtet das materialisierte Secret ins
 Deployment); alle Instanzen teilen sich Sync-Wave und Prune-Schutz des
 Komponententyps. Secret-Pfade und `route.host` laufen durch `tpl`; die
 Default-Pfade templaten die Lane hinein, jede Lane liest also ihre eigenen
-Secrets. `resources:` liegen je Subchart vor
+Secrets. Die ConfigMap-Zustellung steuert der `config`-Block: `data` hält
+die Keys, `envFrom` exponiert sie als Env-Variablen, `mountPath` mountet
+sie zusätzlich als vom Kubelet aktualisierte Dateien, und
+`rollPodsOnChange` schaltet den Checksum-Rollout &mdash; nur für Services
+deaktivieren, die ihre gemountete Config-Datei selbst nachladen, denn
+Env-Variablen aktualisieren sich in laufenden Containern nie. `resources:` liegen je Subchart vor
 und werden pro Lane aus dem Umbrella-Chart dimensioniert. Pod-Passthroughs
 (`extraEnv`, `extraEnvFrom`, `podAnnotations`, `nodeSelector`,
 `tolerations`, `affinity`) wandern unverändert in die Pod-Spec – App-Teams
@@ -100,8 +105,8 @@ materialisierte Secret existiert also, bevor das Deployment es einbindet,
 und die Route geht zuletzt live. Die Waves orientieren sich nur deshalb an
 echter Anwendungsgesundheit, weil die Deployments konfigurierbare
 Readiness-/Liveness-Probes tragen (`probes:` je Subchart, pro Lane
-überschreibbar); das Pod-Template von banking trägt zusätzlich eine
-`checksum/config`-Annotation, damit ConfigMap-Änderungen die Pods neu
+überschreibbar); das Pod-Template von banking trägt per Default zusätzlich
+eine `checksum/config`-Annotation, damit ConfigMap-Änderungen die Pods neu
 ausrollen.
 
 **Subchart-übergreifende Reihenfolge** – soll ein Subchart erst nach einem

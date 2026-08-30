@@ -30,11 +30,31 @@ serviceAccount:
   create: true
   name: ""
 
-# Plain key/value pairs rendered into the ConfigMap (and exposed to the
-# Deployment via envFrom).
+# ConfigMap delivery. data is rendered 1:1 into the ConfigMap; the flags
+# control how it reaches the pods and what happens when it changes.
 config:
-  BANKING_LOG_LEVEL: info
-  BANKING_FEATURE_INSTANT_PAYMENTS: "true"
+  data:
+    BANKING_LOG_LEVEL: info
+    BANKING_FEATURE_INSTANT_PAYMENTS: "true"
+
+  # Expose the keys to the container as environment variables (envFrom).
+  # Env vars NEVER update inside a running container - envFrom consumers
+  # need rollPodsOnChange: true to pick up changes at all.
+  envFrom: true
+
+  # true  -> the pod template carries a checksum/config annotation, so every
+  #          config change rolls the pods (the safe default).
+  # false -> pods keep running through config changes. Only sensible when
+  #          the service watches its mounted config file itself (set
+  #          mountPath): the kubelet refreshes mounted ConfigMap files,
+  #          typically within a minute.
+  rollPodsOnChange: true
+
+  # Non-empty -> additionally mounts the ConfigMap as files (one file per
+  # key) at this absolute path, e.g. /etc/krypton/config - the prerequisite
+  # for in-process hot reload. Whole-directory mount on purpose: subPath
+  # mounts would never refresh.
+  mountPath: ""
 
 service:
   type: ClusterIP

@@ -13,10 +13,29 @@
     "resources": { "$ref": "#/definitions/resources" },
     "serviceAccount": { "$ref": "#/definitions/serviceAccount" },
     "config": {
-      "type": ["object", "null"],
-      "propertyNames": { "pattern": "^[A-Za-z_][A-Za-z0-9_]*$" },
-      "additionalProperties": { "type": "string" },
-      "description": "Rendered 1:1 into the ConfigMap and exposed via envFrom - keys must be env-var names, values must be strings."
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "data": {
+          "type": ["object", "null"],
+          "propertyNames": { "pattern": "^[A-Za-z_][A-Za-z0-9_]*$" },
+          "additionalProperties": { "type": "string" },
+          "description": "Rendered 1:1 into the ConfigMap - keys must be env-var names, values must be strings."
+        },
+        "envFrom": {
+          "type": "boolean",
+          "description": "Expose the keys as container env vars; requires rollPodsOnChange for changes to ever reach the process."
+        },
+        "rollPodsOnChange": {
+          "type": "boolean",
+          "description": "true stamps checksum/config on the pod template so config changes roll the pods; false leaves pods running (hot-reload services with mountPath only)."
+        },
+        "mountPath": {
+          "type": "string",
+          "pattern": "^(|/.*)$",
+          "description": "Empty, or an absolute path where the ConfigMap is mounted as kubelet-refreshed files."
+        }
+      }
     },
     "service": {
       "type": "object",

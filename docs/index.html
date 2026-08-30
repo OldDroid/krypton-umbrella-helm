@@ -413,6 +413,49 @@ name: krypton-banking-release-vault-static-secret-database</pre>
     </div>
   </article>
 
+  <!-- E2b config delivery -->
+  <article class="example" id="ex-config">
+    <h3 data-lang="en">ConfigMap delivery &amp; pod restarts</h3><h3 data-lang="de">ConfigMap-Zustellung &amp; Pod-Neustarts</h3>
+    <p data-lang="en"><code>config.data</code> renders into the ConfigMap; the flags define delivery. envFrom consumers need the checksum roll &mdash; env vars never update in a running container. A service that watches its config file instead mounts it (<code>mountPath</code>; the kubelet refreshes the files, typically within a minute &mdash; whole-directory on purpose, subPath mounts would never refresh) and disables the roll.</p>
+    <p data-lang="de"><code>config.data</code> rendert in die ConfigMap; die Flags definieren die Zustellung. envFrom-Konsumenten brauchen den Checksum-Roll &mdash; Env-Variablen aktualisieren sich in laufenden Containern nie. Ein Service, der seine Config-Datei selbst &uuml;berwacht, mountet sie stattdessen (<code>mountPath</code>; das Kubelet aktualisiert die Dateien, typischerweise binnen einer Minute &mdash; bewusst als ganzes Verzeichnis, subPath-Mounts w&uuml;rden nie aktualisieren) und deaktiviert den Roll.</p>
+    <div class="io">
+      <figure class="code">
+        <figcaption><span class="dot dot-in"></span>charts/krypton-banking/values.yaml</figcaption>
+        <pre data-hl="yaml">config:
+  data:
+    BANKING_LOG_LEVEL: info
+    BANKING_FEATURE_INSTANT_PAYMENTS: "true"
+  envFrom: true            # keys as env vars
+  rollPodsOnChange: true   # checksum annotation: change rolls pods
+  mountPath: ""            # non-empty: mount as refreshed files</pre>
+      </figure>
+      <div class="stack">
+        <figure class="code">
+          <figcaption><span class="dot dot-out"></span><span data-lang="en">rendered &middot; default (restart pattern)</span><span data-lang="de">gerendert &middot; Default (Restart-Muster)</span></figcaption>
+          <pre data-hl="yaml"># pod template annotations
+checksum/config: 07d4d0d518f66e13b9f9fce7b20e6a76f051dc42b6cf24abbaa41a5485f127fa
+# container
+envFrom:
+  - configMapRef:
+      name: krypton-banking-release-configmap</pre>
+        </figure>
+        <div class="cmd">helm template krypton krypton-umbrella --set krypton-banking.config.rollPodsOnChange=false --set krypton-banking.config.mountPath=/etc/krypton/config --set krypton-banking.config.envFrom=false</div>
+        <figure class="code">
+          <figcaption><span class="dot dot-out"></span><span data-lang="en">rendered &middot; hot-reload pattern</span><span data-lang="de">gerendert &middot; Hot-Reload-Muster</span></figcaption>
+          <pre data-hl="yaml"># no checksum annotation - pods keep running on config changes
+volumeMounts:
+  - name: config
+    mountPath: /etc/krypton/config
+    readOnly: true
+volumes:
+  - name: config
+    configMap:
+      name: krypton-banking-release-configmap</pre>
+        </figure>
+      </div>
+    </div>
+  </article>
+
   <!-- E3 waves -->
   <article class="example" id="ex-waves">
     <h3 data-lang="en">Sync waves: three-layer resolution</h3><h3 data-lang="de">Sync-Waves: drei Aufl&ouml;sungsebenen</h3>
