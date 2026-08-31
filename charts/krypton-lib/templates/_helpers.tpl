@@ -14,9 +14,7 @@
        component  the component type of the manifest, e.g. "deployment",
                   "configMap", "route", "vaultStaticSecret". Drives the name
                   suffix (the type's catalogued Kubernetes shortname, e.g.
-                  configMap -> cm) and the sync-wave lookup. In labels and
-                  annotations the type appears kebab-cased instead
-                  (config-map), never shortened.
+                  configMap -> cm) and the sync-wave lookup.
        instance   (optional) distinguishes multiple resources of the SAME
                   component type within one subchart (e.g. one
                   VaultStaticSecret per vault path); appended to the
@@ -46,7 +44,7 @@ or "test". Fails the render loudly when the umbrella forgot to set it.
 
 {{/*
 Domain prefix for all platform-generated label and annotation keys:
-<domain>/lane, <domain>/component, <domain>/source-chart. Configurable via
+<domain>/lane, <domain>/source-chart. Configurable via
 global.labelDomain so the scaffold can be reused for other platforms without
 touching the library; defaults to krypton.io.
 */}}
@@ -278,11 +276,10 @@ Standard labels merged with the umbrella's static labels.
 Merge order (later wins on key collisions):
   1. chart-generated standard labels (app.kubernetes.io/*, helm.sh/chart, lane)
   2. global.labels                  - static platform labels from the umbrella
-  3. app.kubernetes.io/component    - when 'component' was passed
 
 Usage:
     labels:
-      {{- include "krypton-lib.labels" (dict "ctx" . "component" "deployment") | nindent 4 }}
+      {{- include "krypton-lib.labels" (dict "ctx" .) | nindent 4 }}
 */}}
 {{- define "krypton-lib.labels" -}}
 {{- $ctx := .ctx -}}
@@ -299,9 +296,6 @@ Usage:
 {{- $_ := set $labels "app.kubernetes.io/version" (. | toString) -}}
 {{- end -}}
 {{- $labels = mergeOverwrite $labels (deepCopy ($global.labels | default dict)) -}}
-{{- with .component -}}
-{{- $_ := set $labels "app.kubernetes.io/component" (kebabcase .) -}}
-{{- end -}}
 {{- toYaml $labels -}}
 {{- end }}
 
@@ -419,8 +413,7 @@ The merged annotation block for a component.
 One flat dict is built with mergeOverwrite; later sources overwrite earlier
 ones on key collisions:
 
-  1. chart-generated standard annotations (<labelDomain>/component and
-     <labelDomain>/source-chart)
+  1. chart-generated standard annotations (<labelDomain>/source-chart)
   2. global.annotations              - static annotations from the umbrella
   3. extra                           - optional per-call additions
   4. argocd.argoproj.io/sync-wave    - resolved via krypton-lib.syncWave
@@ -448,7 +441,6 @@ Usage:
 {{- $global := $ctx.Values.global | default dict -}}
 {{- $domain := include "krypton-lib.labelDomain" . -}}
 {{- $standard := dict
-      (printf "%s/component" $domain)    (kebabcase $component)
       (printf "%s/source-chart" $domain) (include "krypton-lib.chart" .)
 -}}
 {{- $annotations := mergeOverwrite (dict)

@@ -41,9 +41,8 @@ Subchart eigenständig zu bauen und zu rendern (siehe unten).
 `krypton-banking-release-deploy`. Als Namens-Suffix dient der im Katalog
 hinterlegte Kubernetes-Shortname des Komponententyps (`configMap` → `cm`,
 `service` → `svc`); Typen ohne Shortname fallen auf den kebab-case-Typ
-zurück (`vaultStaticSecret` → `vault-static-secret`). Labels und
-Annotations behalten den vollen kebab-case-Typ (`config-map`) – nur Namen
-werden gekürzt. Rendert ein Subchart mehrere Ressourcen desselben
+zurück (`vaultStaticSecret` → `vault-static-secret`). Rendert ein Subchart
+mehrere Ressourcen desselben
 Komponententyps, wird ein optionales `instance`-Argument als weiterer
 kebab-case-Suffix angehängt
 (`krypton-banking-release-vault-static-secret-database`). Ist
@@ -51,7 +50,7 @@ kebab-case-Suffix angehängt
 Fehlermeldung fehl.
 
 **Label-Domain** – die plattformgenerierten Label-/Annotation-Keys
-(`<domain>/lane`, `<domain>/component`, `<domain>/source-chart`) beziehen
+(`<domain>/lane`, `<domain>/source-chart`) beziehen
 ihr Präfix aus `global.labelDomain` (Default `krypton.io`); das Gerüst lässt
 sich damit über einen einzigen Values-Key für andere Projekte umbenennen.
 Die statischen Keys unter `global.labels`/`global.annotations` sind

@@ -10,7 +10,7 @@ spec:
   template:
     metadata:
       labels:
-        {{- include "krypton-lib.labels" (dict "ctx" . "component" "deployment") | nindent 8 }}
+        {{- include "krypton-lib.labels" (dict "ctx" .) | nindent 8 }}
       {{- with .Values.podAnnotations }}
       annotations:
         {{- toYaml . | nindent 8 }}

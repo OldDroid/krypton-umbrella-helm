@@ -390,7 +390,6 @@ name: krypton-banking-release-vault-static-secret-database</pre>
         <pre data-hl="yaml">metadata:
   name: krypton-banking-release-cm
   labels:
-    app.kubernetes.io/component: config-map
     app.kubernetes.io/instance: krypton
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: krypton-banking
@@ -401,7 +400,6 @@ name: krypton-banking-release-vault-static-secret-database</pre>
     krypton.io/platform: krypton
   annotations:
     argocd.argoproj.io/sync-wave: "0"
-    krypton.io/component: config-map
     krypton.io/git-repository: https://git.example.com/krypton/krypton-umbrella
     krypton.io/owner: platform-team
     krypton.io/source-chart: krypton-banking-0.1.0</pre>
@@ -785,7 +783,6 @@ spec:
       <figure class="code">
         <figcaption><span class="dot dot-out"></span><span data-lang="en">rendered keys</span><span data-lang="de">gerenderte Keys</span></figcaption>
         <pre data-hl="yaml">acme.dev/lane: release
-acme.dev/component: pod-disruption-budget
 acme.dev/source-chart: krypton-banking-0.1.0</pre>
       </figure>
     </div>

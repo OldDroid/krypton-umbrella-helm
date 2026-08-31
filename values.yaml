@@ -13,7 +13,7 @@ global:
   laneName: release
 
   # Domain prefix for every platform-generated label/annotation key:
-  # <labelDomain>/lane, <labelDomain>/component, <labelDomain>/source-chart.
+  # <labelDomain>/lane, <labelDomain>/source-chart.
   # When reusing this scaffold for another platform, change it here (and
   # adjust the static keys under labels:/annotations: below) - the library
   # chart needs no edits. Defaults to krypton.io when omitted.

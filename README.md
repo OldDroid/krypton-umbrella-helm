@@ -41,15 +41,14 @@ standalone (see below).
 `krypton-banking-release-deploy`. The name suffix is the component type's
 Kubernetes shortname as registered in the catalog (`configMap` → `cm`,
 `service` → `svc`); types without an upstream shortname fall back to the
-kebab-cased type (`vaultStaticSecret` → `vault-static-secret`). Labels and
-annotations keep the full kebab-cased type (`config-map`) - only names are
-shortened. When a subchart renders several resources of the same component
-type, an optional `instance` argument is appended as one more kebab-cased
-suffix (`krypton-banking-release-vault-static-secret-database`). Rendering
-fails loudly if `global.laneName` is unset.
+kebab-cased type (`vaultStaticSecret` → `vault-static-secret`). When a
+subchart renders several resources of the same component type, an optional
+`instance` argument is appended as one more kebab-cased suffix
+(`krypton-banking-release-vault-static-secret-database`). Rendering fails
+loudly if `global.laneName` is unset.
 
 **Label domain** - the platform-generated label/annotation keys
-(`<domain>/lane`, `<domain>/component`, `<domain>/source-chart`) take their
+(`<domain>/lane`, `<domain>/source-chart`) take their
 prefix from `global.labelDomain` (default `krypton.io`), so the scaffold can
 be rebranded per project with one values key; the static keys under
 `global.labels`/`global.annotations` are plain values and are edited
