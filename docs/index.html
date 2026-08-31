@@ -332,8 +332,8 @@ helm template t krypton-umbrella/charts/krypton-banking --set global.laneName=de
   <!-- E1 naming -->
   <article class="example" id="ex-naming">
     <h3 data-lang="en">Resource naming &amp; lanes</h3><h3 data-lang="de">Ressourcennamen &amp; Lanes</h3>
-    <p data-lang="en">Every resource is named <code>&lt;subchart&gt;-&lt;laneName&gt;-&lt;component&gt;</code>. Component types are kebab-cased, multiple resources of one type get an instance suffix. Switching the lane renames everything consistently.</p>
-    <p data-lang="de">Jede Ressource hei&szlig;t <code>&lt;subchart&gt;-&lt;laneName&gt;-&lt;komponente&gt;</code>. Komponententypen werden gekebab-cased, mehrere Ressourcen eines Typs erhalten einen Instance-Suffix. Ein Lane-Wechsel benennt alles konsistent um.</p>
+    <p data-lang="en">Every resource is named <code>&lt;subchart&gt;-&lt;laneName&gt;-&lt;component-shortname&gt;</code>. The suffix is the component type&rsquo;s Kubernetes shortname from the catalog (configMap &rarr; cm); types without one are kebab-cased, and multiple resources of one type get an instance suffix. Switching the lane renames everything consistently.</p>
+    <p data-lang="de">Jede Ressource hei&szlig;t <code>&lt;subchart&gt;-&lt;laneName&gt;-&lt;komponenten-shortname&gt;</code>. Als Suffix dient der Kubernetes-Shortname des Komponententyps aus dem Katalog (configMap &rarr; cm); Typen ohne Shortname werden gekebab-cased, mehrere Ressourcen eines Typs erhalten einen Instance-Suffix. Ein Lane-Wechsel benennt alles konsistent um.</p>
     <div class="io">
       <div class="stack">
         <figure class="code">
@@ -344,22 +344,22 @@ helm template t krypton-umbrella/charts/krypton-banking --set global.laneName=de
         <div class="cmd">helm template krypton krypton-umbrella --set global.laneName=test</div>
         <figure class="code">
           <figcaption><span class="dot dot-out"></span><span data-lang="en">rendered names &middot; lane test</span><span data-lang="de">gerenderte Namen &middot; Lane test</span></figcaption>
-          <pre data-hl="yaml">name: krypton-banking-test-service-account
-name: krypton-banking-test-configmap
-name: krypton-banking-test-deployment
-name: krypton-auth-test-deployment
+          <pre data-hl="yaml">name: krypton-banking-test-sa
+name: krypton-banking-test-cm
+name: krypton-banking-test-deploy
+name: krypton-auth-test-deploy
 # ... every resource follows the lane</pre>
         </figure>
       </div>
       <figure class="code">
         <figcaption><span class="dot dot-out"></span><span data-lang="en">rendered names &middot; lane release</span><span data-lang="de">gerenderte Namen &middot; Lane release</span></figcaption>
-        <pre data-hl="yaml">name: krypton-banking-release-pod-disruption-budget
-name: krypton-auth-release-service-account
-name: krypton-banking-release-service-account
-name: krypton-banking-release-configmap
-name: krypton-banking-release-service
-name: krypton-auth-release-deployment
-name: krypton-banking-release-deployment
+        <pre data-hl="yaml">name: krypton-banking-release-pdb
+name: krypton-auth-release-sa
+name: krypton-banking-release-sa
+name: krypton-banking-release-cm
+name: krypton-banking-release-svc
+name: krypton-auth-release-deploy
+name: krypton-banking-release-deploy
 name: krypton-banking-release-route
 name: krypton-banking-release-vault-static-secret-app
 name: krypton-banking-release-vault-static-secret-database</pre>
@@ -388,9 +388,9 @@ name: krypton-banking-release-vault-static-secret-database</pre>
       <figure class="code">
         <figcaption><span class="dot dot-out"></span><span data-lang="en">rendered &middot; ConfigMap metadata</span><span data-lang="de">gerendert &middot; ConfigMap-Metadata</span></figcaption>
         <pre data-hl="yaml">metadata:
-  name: krypton-banking-release-configmap
+  name: krypton-banking-release-cm
   labels:
-    app.kubernetes.io/component: configmap
+    app.kubernetes.io/component: config-map
     app.kubernetes.io/instance: krypton
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: krypton-banking
@@ -401,7 +401,7 @@ name: krypton-banking-release-vault-static-secret-database</pre>
     krypton.io/platform: krypton
   annotations:
     argocd.argoproj.io/sync-wave: "0"
-    krypton.io/component: configmap
+    krypton.io/component: config-map
     krypton.io/git-repository: https://git.example.com/krypton/krypton-umbrella
     krypton.io/owner: platform-team
     krypton.io/source-chart: krypton-banking-0.1.0</pre>
@@ -433,7 +433,7 @@ checksum/config: 07d4d0d518f66e13b9f9fce7b20e6a76f051dc42b6cf24abbaa41a5485f127f
 # container
 envFrom:
   - configMapRef:
-      name: krypton-banking-release-configmap</pre>
+      name: krypton-banking-release-cm</pre>
         </figure>
         <div class="cmd">helm template krypton krypton-umbrella --set krypton-banking.config.rollPodsOnChange=false --set krypton-banking.config.mountPath=/etc/krypton/config --set krypton-banking.config.envFrom=false</div>
         <figure class="code">
@@ -446,7 +446,7 @@ volumeMounts:
 volumes:
   - name: config
     configMap:
-      name: krypton-banking-release-configmap</pre>
+      name: krypton-banking-release-cm</pre>
         </figure>
       </div>
     </div>
@@ -465,7 +465,7 @@ global:
   syncWaves:
     serviceAccount: "-2"
     networkPolicy: "0"
-    configmap: "0"
+    configMap: "0"
     deployment: "1"
     service: "1"
     podDisruptionBudget: "1"
@@ -576,8 +576,8 @@ krypton-banking:
         <figure class="code">
           <figcaption><span class="dot dot-out"></span><span data-lang="en">rendered kinds</span><span data-lang="de">gerenderte Kinds</span></figcaption>
           <pre data-hl="yaml"># only krypton-auth remains:
-kind: ServiceAccount     # krypton-auth-release-service-account
-kind: Deployment         # krypton-auth-release-deployment</pre>
+kind: ServiceAccount     # krypton-auth-release-sa
+kind: Deployment         # krypton-auth-release-deploy</pre>
         </figure>
       </div>
     </div>
@@ -676,12 +676,12 @@ image: "proxy.bank.internal:5000/krypton/auth-service:0.9.0"</pre>
         <figcaption><span class="dot dot-out"></span><span data-lang="en">rendered</span><span data-lang="de">gerendert</span></figcaption>
         <pre data-hl="yaml">kind: ServiceAccount
 metadata:
-  name: krypton-banking-release-service-account
+  name: krypton-banking-release-sa
   annotations:
     argocd.argoproj.io/sync-wave: "-2"
 # ...
 # Deployment pod spec:
-      serviceAccountName: krypton-banking-release-service-account</pre>
+      serviceAccountName: krypton-banking-release-sa</pre>
       </figure>
     </div>
     <div class="cmd" style="margin-top:12px">helm template krypton krypton-umbrella --set krypton-banking.serviceAccount.create=false --set krypton-banking.serviceAccount.name=legacy-vault-sa</div>
@@ -760,7 +760,7 @@ kind: HorizontalPodAutoscaler
 spec:
   scaleTargetRef:
     kind: Deployment
-    name: krypton-banking-release-deployment
+    name: krypton-banking-release-deploy
   minReplicas: 2
   maxReplicas: 6
 # Deployment: spec.replicas is omitted while HPA is on</pre>
@@ -805,7 +805,7 @@ acme.dev/source-chart: krypton-banking-0.1.0</pre>
       <figcaption><span class="dot dot-err"></span><span data-lang="en">render error &middot; component catalog</span><span data-lang="de">Render-Fehler &middot; Komponentenkatalog</span></figcaption>
       <pre data-hl="none">Error: execution error at (krypton-umbrella/charts/krypton-banking/templates/vaultstaticsecret.yaml:15:6):
 krypton-lib: unknown component type "rout" (chart "krypton-banking", syncWaves key).
-Known types: buildConfig,clusterRole,clusterRoleBinding,configmap,cronJob,daemonSet,deployment,
+Known types: buildConfig,clusterRole,clusterRoleBinding,configMap,cronJob,daemonSet,deployment,
 horizontalPodAutoscaler,imageStream,ingress,job,networkPolicy,persistentVolumeClaim,
 podDisruptionBudget,podMonitor,prometheusRule,role,roleBinding,route,secret,service,
 serviceAccount,serviceMonitor,statefulSet,vaultAuth,vaultConnection,vaultDynamicSecret,

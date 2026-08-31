@@ -23,7 +23,7 @@ resources:
 # ServiceAccount the workload pods run as. create=true renders a dedicated
 # SA (component type serviceAccount, sync wave -2, so it exists before the
 # Vault objects that authenticate with it) named
-# <subchart>-<lane>-service-account - bind the VaultAuth Kubernetes role to
+# <subchart>-<lane>-sa - bind the VaultAuth Kubernetes role to
 # exactly that name. create=false references an existing SA instead
 # (name empty -> the namespace "default" SA).
 serviceAccount:

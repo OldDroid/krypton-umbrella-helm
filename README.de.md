@@ -37,10 +37,13 @@ Subchart eigenständig zu bauen und zu rendern (siehe unten).
 ## Konventionen
 
 **Ressourcennamen** – `krypton-lib.componentName` erzeugt
-`<subchart-name>-<global.laneName>-<komponententyp>`, z. B.
-`krypton-banking-release-deployment`. Komponententypen in camelCase werden
-für den Namen automatisch nach kebab-case umgesetzt (`vaultStaticSecret` →
-`vault-static-secret`). Rendert ein Subchart mehrere Ressourcen desselben
+`<subchart-name>-<global.laneName>-<komponenten-shortname>`, z. B.
+`krypton-banking-release-deploy`. Als Namens-Suffix dient der im Katalog
+hinterlegte Kubernetes-Shortname des Komponententyps (`configMap` → `cm`,
+`service` → `svc`); Typen ohne Shortname fallen auf den kebab-case-Typ
+zurück (`vaultStaticSecret` → `vault-static-secret`). Labels und
+Annotations behalten den vollen kebab-case-Typ (`config-map`) – nur Namen
+werden gekürzt. Rendert ein Subchart mehrere Ressourcen desselben
 Komponententyps, wird ein optionales `instance`-Argument als weiterer
 kebab-case-Suffix angehängt
 (`krypton-banking-release-vault-static-secret-database`). Ist
@@ -119,7 +122,9 @@ belegt). Komponenten-Waves innerhalb von `-9..9` halten und Offsets in
 10er-Schritten vergeben, dann überlappen sich die Bänder nie.
 
 **Komponentenkatalog** – `krypton-lib.componentCatalog` (in `_helpers.tpl`)
-ist die einzige Quelle der Wahrheit für Komponententyp-Strings. Jedes
+ist die einzige Quelle der Wahrheit für Komponententyp-Strings und ordnet
+jedem Typ den Kubernetes-Shortname für die Ressourcennamen zu (leer =
+kein Shortname, es wird der kebab-case-Typ verwendet). Jedes
 `component`-Argument und jeder konfigurierte `syncWaves`-/`syncPrune`-Key
 (auf Subchart- wie auf global-Ebene) wird beim Rendern dagegen geprüft; ein
 unbekannter String wie `syncWaves.rout` lässt das Rendern fehlschlagen, mit
@@ -128,7 +133,8 @@ konfigurieren, den ein Subchart (noch) nicht rendert, ist erlaubt und
 bleibt schlicht wirkungslos — Waves und Prune-Flags lassen sich also schon
 vor dem Manifest anlegen. Der Katalog deckt die gängigen
 Kubernetes-/OpenShift-/VSO-Kinds ab; ein wirklich neuer Typ ist eine
-zusätzliche Zeile, ohne Schema-Änderungen.
+zusätzliche Zeile (Typ plus Shortname, leer für keinen), ohne
+Schema-Änderungen.
 
 **Values-Schemas** – jedes Chart bringt eine `values.schema.json` mit, die
 Helm bei jedem lint/template/install gegen die *koaleszierten* Values des
@@ -204,11 +210,13 @@ aktive Kopie unter `charts/krypton-lib` verdecken.
      {{- include "krypton-lib.metadata" (dict "ctx" . "component" "networkPolicy") | nindent 2 }}
    ```
 
-   camelCase ist in Ordnung — Ressourcennamen werden automatisch nach
-   kebab-case umgesetzt (`krypton-banking-release-network-policy`).
+   Der Namens-Suffix kommt aus dem Shortname im Katalog
+   (`krypton-banking-release-netpol`); Typen ohne Shortname werden
+   automatisch nach kebab-case umgesetzt.
 2. Nur wenn der Typ für die Plattform wirklich neu ist: in
    `krypton-lib.componentCatalog` in `_helpers.tpl` eintragen — eine Zeile,
-   keine Schema-Änderungen. Bereits katalogisierte Typen (networkPolicy ist
+   die den Typ auf seinen Shortname abbildet (leer für keinen), keine
+   Schema-Änderungen. Bereits katalogisierte Typen (networkPolicy ist
    es) brauchen nirgendwo eine Registrierung; ihre
    `syncWaves`-/`syncPrune`-Einträge dürfen sogar schon vor dem Manifest
    existieren.

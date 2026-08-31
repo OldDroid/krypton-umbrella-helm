@@ -9,7 +9,7 @@
 global:
   # Lane / environment this instance of the umbrella is deployed to
   # (e.g. release, test). Consumed by krypton-lib for resource naming:
-  #   <subchart-name>-<laneName>-<component-type>
+  #   <subchart-name>-<laneName>-<component-shortname>
   laneName: release
 
   # Domain prefix for every platform-generated label/annotation key:
@@ -45,7 +45,7 @@ global:
   syncWaves:
     serviceAccount: "-2"      # before the Vault objects that authenticate with it
     networkPolicy: "0"
-    configmap: "0"
+    configMap: "0"
     deployment: "1"
     service: "1"
     podDisruptionBudget: "1"

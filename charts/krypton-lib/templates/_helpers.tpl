@@ -12,10 +12,11 @@
                   coalesced .Values (subchart defaults + umbrella overrides +
                   global), its .Chart and the .Release.
        component  the component type of the manifest, e.g. "deployment",
-                  "configmap", "route", "vaultStaticSecret". Drives the name
-                  suffix and the sync-wave lookup. camelCase keys are
-                  kebab-cased automatically wherever they end up in a
-                  DNS-1123 name or label.
+                  "configMap", "route", "vaultStaticSecret". Drives the name
+                  suffix (the type's catalogued Kubernetes shortname, e.g.
+                  configMap -> cm) and the sync-wave lookup. In labels and
+                  annotations the type appears kebab-cased instead
+                  (config-map), never shortened.
        instance   (optional) distinguishes multiple resources of the SAME
                   component type within one subchart (e.g. one
                   VaultStaticSecret per vault path); appended to the
@@ -62,19 +63,49 @@ touching the library; defaults to krypton.io.
 {{/*
 Catalog of component types known to the platform - the single source of
 truth for what may be passed as a "component" argument and what may appear
-as a key under syncWaves / syncPrune.
+as a key under syncWaves / syncPrune - and of the Kubernetes shortname
+(kubectl api-resources) each type is abbreviated to in resource names:
+configMap -> cm, deployment -> deploy. An empty shortname means the kind
+has none upstream (Route, Secret, the VSO kinds, ...); those names fall
+back to the kebab-cased type.
 
 Configuring a catalogued type that a subchart does not (yet) render is
 allowed and simply has no effect - manifests pull their own settings, so
 waves/prune flags can be staged ahead of the manifest. An uncatalogued key
 fails the render instead of being silently ignored.
 
-Extend this list - one line, no schema edits - when a genuinely new kind
-enters the platform. Keep entries camelCase (kebab-cased automatically in
-resource names); "configmap" is grandfathered lowercase.
+Extend this map - one camelCase line, no schema edits - when a genuinely
+new kind enters the platform.
 */}}
 {{- define "krypton-lib.componentCatalog" -}}
-buildConfig,clusterRole,clusterRoleBinding,configmap,cronJob,daemonSet,deployment,horizontalPodAutoscaler,imageStream,ingress,job,networkPolicy,persistentVolumeClaim,podDisruptionBudget,podMonitor,prometheusRule,role,roleBinding,route,secret,service,serviceAccount,serviceMonitor,statefulSet,vaultAuth,vaultConnection,vaultDynamicSecret,vaultStaticSecret
+buildConfig: bc
+clusterRole: ""
+clusterRoleBinding: ""
+configMap: cm
+cronJob: cj
+daemonSet: ds
+deployment: deploy
+horizontalPodAutoscaler: hpa
+imageStream: "is"
+ingress: ing
+job: ""
+networkPolicy: netpol
+persistentVolumeClaim: pvc
+podDisruptionBudget: pdb
+podMonitor: pmon
+prometheusRule: promrule
+role: ""
+roleBinding: ""
+route: ""
+secret: ""
+service: svc
+serviceAccount: sa
+serviceMonitor: smon
+statefulSet: sts
+vaultAuth: ""
+vaultConnection: ""
+vaultDynamicSecret: ""
+vaultStaticSecret: ""
 {{- end }}
 
 {{/*
@@ -84,9 +115,9 @@ Fails the render when a component string is not in the catalog.
   origin     optional, names the source in the error (e.g. "syncWaves key")
 */}}
 {{- define "krypton-lib.assertComponent" -}}
-{{- $catalog := splitList "," (include "krypton-lib.componentCatalog" .) -}}
-{{- if not (has .component $catalog) -}}
-{{- fail (printf "krypton-lib: unknown component type %q (chart %q, %s). Known types: %s. Genuinely new kinds are added to krypton-lib.componentCatalog in krypton-lib/templates/_helpers.tpl." .component .ctx.Chart.Name (.origin | default "component argument") (include "krypton-lib.componentCatalog" .)) -}}
+{{- $catalog := fromYaml (include "krypton-lib.componentCatalog" .) -}}
+{{- if not (hasKey $catalog .component) -}}
+{{- fail (printf "krypton-lib: unknown component type %q (chart %q, %s). Known types: %s. Genuinely new kinds are added to krypton-lib.componentCatalog in krypton-lib/templates/_helpers.tpl." .component .ctx.Chart.Name (.origin | default "component argument") (keys $catalog | sortAlpha | join ",")) -}}
 {{- end -}}
 {{- end }}
 
@@ -129,14 +160,16 @@ helm.sh/chart label value: <chart-name>-<chart-version>.
 {{/*
 The one sanctioned resource-name format:
 
-    <subchart-name>-<global-lane-name>-<component-type>
-    e.g. krypton-banking-release-deployment
+    <subchart-name>-<global-lane-name>-<component-shortname>
+    e.g. krypton-banking-release-deploy
 
-  subchart-name   dynamic, from .Chart.Name of the calling subchart
-  lane-name       from the umbrella's global.laneName
-  component-type  passed by the caller; camelCase is normalised to kebab-case
-                  ("vaultStaticSecret" -> "vault-static-secret") so the name
-                  stays a valid DNS-1123 label
+  subchart-name        dynamic, from .Chart.Name of the calling subchart
+  lane-name            from the umbrella's global.laneName
+  component-shortname  the Kubernetes shortname the catalog maps the
+                       caller's component type to ("configMap" -> "cm");
+                       types without one fall back to the kebab-cased type
+                       ("vaultStaticSecret" -> "vault-static-secret"), so
+                       the name always stays a valid DNS-1123 label
 
 An optional "instance" is appended kebab-cased as one more suffix when a
 subchart renders several resources of the same component type:
@@ -153,7 +186,8 @@ Usage:
 {{- $component := required "krypton-lib.componentName: 'component' is required" .component -}}
 {{- include "krypton-lib.assertComponent" (dict "ctx" $ctx "component" $component) -}}
 {{- $lane := include "krypton-lib.laneName" . -}}
-{{- $name := printf "%s-%s-%s" $ctx.Chart.Name $lane (kebabcase $component) -}}
+{{- $short := get (fromYaml (include "krypton-lib.componentCatalog" .)) $component | default (kebabcase $component) -}}
+{{- $name := printf "%s-%s-%s" $ctx.Chart.Name $lane $short -}}
 {{- with .instance -}}
 {{- $name = printf "%s-%s" $name (kebabcase .) -}}
 {{- end -}}
@@ -200,7 +234,7 @@ Name of the ServiceAccount the workload runs as:
   serviceAccount.create=true  -> serviceAccount.name, defaulting to the
                                  platform name (componentName of type
                                  serviceAccount, e.g.
-                                 krypton-banking-release-service-account)
+                                 krypton-banking-release-sa)
   serviceAccount.create=false -> serviceAccount.name, defaulting to "default"
                                  (reference an existing SA)
 
@@ -443,7 +477,7 @@ Complete metadata block - name, labels and annotations - in one include.
 
 Usage:
     metadata:
-      {{- include "krypton-lib.metadata" (dict "ctx" . "component" "configmap") | nindent 2 }}
+      {{- include "krypton-lib.metadata" (dict "ctx" . "component" "configMap") | nindent 2 }}
 */}}
 {{- define "krypton-lib.metadata" -}}
 name: {{ include "krypton-lib.componentName" . }}

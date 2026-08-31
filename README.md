@@ -37,13 +37,16 @@ standalone (see below).
 ## Conventions
 
 **Resource names** - `krypton-lib.componentName` produces
-`<subchart-name>-<global.laneName>-<component-type>`, e.g.
-`krypton-banking-release-deployment`. camelCase component types are
-kebab-cased for the name (`vaultStaticSecret` → `vault-static-secret`).
-When a subchart renders several resources of the same component type, an
-optional `instance` argument is appended as one more kebab-cased suffix
-(`krypton-banking-release-vault-static-secret-database`). Rendering fails
-loudly if `global.laneName` is unset.
+`<subchart-name>-<global.laneName>-<component-shortname>`, e.g.
+`krypton-banking-release-deploy`. The name suffix is the component type's
+Kubernetes shortname as registered in the catalog (`configMap` → `cm`,
+`service` → `svc`); types without an upstream shortname fall back to the
+kebab-cased type (`vaultStaticSecret` → `vault-static-secret`). Labels and
+annotations keep the full kebab-cased type (`config-map`) - only names are
+shortened. When a subchart renders several resources of the same component
+type, an optional `instance` argument is appended as one more kebab-cased
+suffix (`krypton-banking-release-vault-static-secret-database`). Rendering
+fails loudly if `global.laneName` is unset.
 
 **Label domain** - the platform-generated label/annotation keys
 (`<domain>/lane`, `<domain>/component`, `<domain>/source-chart`) take their
@@ -110,15 +113,17 @@ spans `-2..3`). Keep component waves inside `-9..9` and use offset steps of
 10 per subchart, then bands never overlap.
 
 **Component catalog** - `krypton-lib.componentCatalog` (in `_helpers.tpl`)
-is the single source of truth for component-type strings. Every `component`
+is the single source of truth for component-type strings, and maps each
+type to the Kubernetes shortname used in resource names (empty = no
+shortname, the kebab-cased type is used instead). Every `component`
 argument and every configured `syncWaves`/`syncPrune` key (subchart-level
 and global) is checked against it at render time; an unknown string like
 `syncWaves.rout` fails the render with the catalog in the error message.
 Configuring a catalogued type that a subchart does not (yet) render is
 allowed and simply has no effect - waves and prune flags can be staged
 before the manifest exists. The catalog covers the common
-Kubernetes/OpenShift/VSO kinds; a genuinely new kind is one added line, no
-schema edits.
+Kubernetes/OpenShift/VSO kinds; a genuinely new kind is one added line
+(type plus shortname, empty for none), no schema edits.
 
 **Value schemas** - every chart ships a `values.schema.json`, validated by
 Helm on each lint/template/install against the chart's *coalesced* values.
@@ -189,10 +194,12 @@ under `charts/krypton-lib` when the umbrella renders.
      {{- include "krypton-lib.metadata" (dict "ctx" . "component" "networkPolicy") | nindent 2 }}
    ```
 
-   camelCase is fine — resource names kebab-case automatically
-   (`krypton-banking-release-network-policy`).
+   The name suffix comes from the type's catalogued shortname
+   (`krypton-banking-release-netpol`); types without one are kebab-cased
+   automatically.
 2. If (and only if) the kind is genuinely new to the platform, add it to
-   `krypton-lib.componentCatalog` in `_helpers.tpl` - one line, no schema
+   `krypton-lib.componentCatalog` in `_helpers.tpl` - one line mapping the
+   type to its shortname (empty for none), no schema
    edits. Kinds already in the catalog (networkPolicy is) need no
    registration anywhere, and their `syncWaves`/`syncPrune` entries may even
    be staged before the manifest exists.

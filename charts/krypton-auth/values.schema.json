@@ -7,6 +7,10 @@
   "required": ["image"],
   "properties": {
     "global": { "type": "object" },
+    "krypton-lib": {
+      "type": ["object", "null"],
+      "description": "Injected by Helm for the declared library dependency; carries no values."
+    },
     "enabled": { "type": "boolean" },
     "replicaCount": { "type": "integer", "minimum": 0 },
     "image": { "$ref": "#/definitions/image" },
