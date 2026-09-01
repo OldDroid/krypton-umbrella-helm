@@ -1,12 +1,13 @@
 apiVersion: v2
-name: krypton-umbrella
+name: krypton-lib-slim
 description: >-
-  Umbrella chart for the Krypton platform. Aggregates all Krypton subcharts
-  and distributes shared configuration (lane, labels, annotations, sync waves)
-  to them via the global values block. Deployed by ArgoCD.
-type: application
+  Slim Krypton library chart. Generates the metadata block of a manifest and
+  nothing else: unified resource names (with an optional instance identifier
+  for several resources of the same kind), merged labels and annotations
+  (platform + umbrella + subchart + call site), ArgoCD sync waves and ArgoCD
+  sync options. Renders no manifests of its own.
+type: library
 version: 0.1.0
-appVersion: "1.0.0"
 # Chart icon, embedded as a data URI so nothing is fetched from a remote at any point.
 # It is logo.svg (repository root, light-theme mark) base64-encoded and wrapped with YAML
 # line escapes; regenerate after a logo change with:  base64 -w0 logo.svg | fold -w 76
@@ -210,24 +211,3 @@ icon: "data:image/svg+xml;base64,\
   OSAxMTYgLTEwIDE5NyAzNCAyNTQgMTM5IDIxIDM4IDM5CjU2IDc1IDc0IDI2IDEzIDQ4IDMxIDQ4\
   IDM4IDAgMjAgLTkyIDEwMCAtMTQzIDEyNCAtNDEgMjAgLTE0NCA0MyAtMTc2IDQxIC05Ci0xIC00\
   MSAtNSAtNzEgLTEweiIvPgo8L2c+Cjwvc3ZnPgo="
-
-# The subcharts live as plain directories underneath charts/, so the entries
-# deliberately have NO repository field: Helm then resolves them in place
-# ("assuming it exists in the charts directory") instead of downloading or
-# re-packaging anything. Helm 4 requires every chart found in charts/ to be
-# declared here; Helm 3 merely tolerates it.
-dependencies:
-  # krypton-lib is deliberately unconditional: disabling it would drop the
-  # shared helper templates from the render namespace and break every
-  # enabled subchart.
-  - name: krypton-lib
-    version: 0.1.0
-  # Application subcharts are steered from the umbrella values.yaml via
-  # <subchart-name>.enabled. A missing flag counts as enabled - the flags
-  # are therefore set explicitly in values.yaml so every lane can flip them.
-  - name: krypton-banking
-    version: 0.1.0
-    condition: krypton-banking.enabled
-  - name: krypton-auth
-    version: 0.1.0
-    condition: krypton-auth.enabled

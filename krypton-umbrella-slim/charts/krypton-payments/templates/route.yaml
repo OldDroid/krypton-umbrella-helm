@@ -1,0 +1,27 @@
+{{- /*
+OpenShift Route (route.openshift.io/v1). Wave "2" in the subchart defaults,
+overridden to "3" by the umbrella - either way the last component of this
+subchart to sync. The route-specific annotations from values go in as
+extraAnnotations: merged above global/subchart annotations, below the two
+ArgoCD annotations.
+*/ -}}
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  {{- include "krypton-lib-slim.metadata" (dict "ctx" . "component" "route" "extraAnnotations" .Values.route.annotations) | nindent 2 }}
+spec:
+  {{- with .Values.route.host }}
+  host: {{ tpl . $ | quote }}
+  {{- end }}
+  to:
+    kind: Service
+    # Same helper and component type as service.yaml's metadata.name - the
+    # Route and the Service can never disagree.
+    name: {{ include "krypton-lib-slim.componentName" (dict "ctx" . "component" "service") }}
+    weight: 100
+  port:
+    targetPort: http
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+  wildcardPolicy: None

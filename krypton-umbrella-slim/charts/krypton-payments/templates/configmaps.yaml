@@ -1,0 +1,16 @@
+{{- /*
+One ConfigMap per entry in .Values.configMaps. The entry key is passed as
+"instance", so every ConfigMap gets its own name
+(krypton-payments-<lane>-cm-<key>) while all of them share the configMap
+sync wave. Inside the range, $root (not .) is the context for the library.
+*/ -}}
+{{- $root := . -}}
+{{- range $name, $data := .Values.configMaps }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  {{- include "krypton-lib-slim.metadata" (dict "ctx" $root "component" "configMap" "instance" $name) | nindent 2 }}
+data:
+  {{- $data | default dict | toYaml | nindent 2 }}
+{{- end }}

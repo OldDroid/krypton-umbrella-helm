@@ -1,0 +1,100 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "krypton-umbrella-slim values",
+  "description": "Validates the slim umbrella's own keys, most importantly the global block that krypton-lib-slim reads. The krypton-* blocks are left permissive on purpose: the slim variant ships no per-subchart schemas; unknown component keys under syncWaves/syncOptions are still caught at render time by the library's component catalog.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["global"],
+  "properties": {
+    "global": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["laneName"],
+      "properties": {
+        "laneName": {
+          "type": "string",
+          "pattern": "^[a-z0-9]([a-z0-9-]{0,30}[a-z0-9])?$",
+          "description": "Lane/environment name; part of every resource name: <subchart>-<lane>-<component-shortname>[-<instance>]."
+        },
+        "labelDomain": {
+          "type": "string",
+          "pattern": "^[a-z0-9]([a-z0-9.-]{0,251}[a-z0-9])?$",
+          "description": "Domain prefix for generated label/annotation keys; defaults to krypton.io."
+        },
+        "labels": { "$ref": "#/definitions/stringMap" },
+        "annotations": { "$ref": "#/definitions/stringMap" },
+        "syncWaves": { "$ref": "#/definitions/syncWaves" },
+        "syncOptions": { "$ref": "#/definitions/syncOptions" }
+      }
+    },
+    "krypton-lib-slim": {
+      "type": ["object", "null"],
+      "description": "Injected by Helm for the declared library dependency; carries no values."
+    },
+    "krypton-payments": { "$ref": "#/definitions/subchartBlock" },
+    "krypton-notifier": { "$ref": "#/definitions/subchartBlock" }
+  },
+  "definitions": {
+    "stringMap": {
+      "type": ["object", "null"],
+      "additionalProperties": { "type": "string" },
+      "description": "Label/annotation map; values must be strings."
+    },
+    "componentType": {
+      "type": "string",
+      "pattern": "^[a-zA-Z][a-zA-Z0-9]*$",
+      "description": "Component-type key. Membership in the platform catalog is enforced at render time by krypton-lib-slim.componentCatalog; the schema only checks the shape."
+    },
+    "wave": {
+      "oneOf": [
+        { "type": "string", "pattern": "^-?[0-9]+$" },
+        { "type": "integer" }
+      ]
+    },
+    "syncWaves": {
+      "type": ["object", "null"],
+      "propertyNames": { "$ref": "#/definitions/componentType" },
+      "additionalProperties": { "$ref": "#/definitions/wave" }
+    },
+    "syncOption": {
+      "type": "string",
+      "pattern": "^[A-Za-z]+=[A-Za-z0-9-]+$",
+      "description": "One ArgoCD resource-level sync option, e.g. Prune=false, Delete=false, Replace=true, SkipDryRunOnMissingResource=true."
+    },
+    "syncOptions": {
+      "type": ["object", "null"],
+      "propertyNames": { "$ref": "#/definitions/componentType" },
+      "additionalProperties": {
+        "oneOf": [
+          { "type": "array", "items": { "$ref": "#/definitions/syncOption" } },
+          { "type": "string", "pattern": "^([A-Za-z]+=[A-Za-z0-9-]+(,[A-Za-z]+=[A-Za-z0-9-]+)*)?$" }
+        ]
+      }
+    },
+    "subchartBlock": {
+      "type": "object",
+      "description": "Only the keys the slim library reads are typed here; everything else belongs to the subchart and passes through.",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "labels": { "$ref": "#/definitions/stringMap" },
+        "annotations": { "$ref": "#/definitions/stringMap" },
+        "jenkins": {
+          "type": ["object", "null"],
+          "description": "CI-injected block. jenkins.annotations is merged into every resource's annotations of this subchart when present; other keys are left to the pipeline.",
+          "properties": {
+            "annotations": {
+              "type": ["object", "null"],
+              "additionalProperties": {
+                "oneOf": [{ "type": "string" }, { "type": "number" }, { "type": "boolean" }]
+              },
+              "description": "Annotation map; scalar values are stringified at render time, so a numeric build id from --set is fine."
+            }
+          }
+        },
+        "syncWaves": { "$ref": "#/definitions/syncWaves" },
+        "syncWaveOffset": { "$ref": "#/definitions/wave" },
+        "syncOptions": { "$ref": "#/definitions/syncOptions" }
+      }
+    }
+  }
+}

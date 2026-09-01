@@ -1,9 +1,11 @@
 apiVersion: v2
-name: krypton-umbrella
+name: krypton-umbrella-slim
 description: >-
-  Umbrella chart for the Krypton platform. Aggregates all Krypton subcharts
-  and distributes shared configuration (lane, labels, annotations, sync waves)
-  to them via the global values block. Deployed by ArgoCD.
+  Slim umbrella chart for the Krypton platform. Aggregates the Krypton
+  subcharts and distributes shared configuration (lane, labels, annotations,
+  ArgoCD sync waves and sync options) to them via the global values block.
+  The subcharts own their manifests entirely; the library only generates
+  metadata. Deployed by ArgoCD (Helm 3).
 type: application
 version: 0.1.0
 appVersion: "1.0.0"
@@ -212,22 +214,23 @@ icon: "data:image/svg+xml;base64,\
   MSAtNSAtNzEgLTEweiIvPgo8L2c+Cjwvc3ZnPgo="
 
 # The subcharts live as plain directories underneath charts/, so the entries
-# deliberately have NO repository field: Helm then resolves them in place
-# ("assuming it exists in the charts directory") instead of downloading or
-# re-packaging anything. Helm 4 requires every chart found in charts/ to be
-# declared here; Helm 3 merely tolerates it.
+# deliberately have NO repository field: Helm (3 and 4) then resolves them in
+# place ("assuming it exists in the charts directory") instead of downloading
+# or re-packaging anything. Helm 4 requires every chart found in charts/ to
+# be declared here; Helm 3 merely tolerates it - declaring them keeps the
+# chart valid for both.
 dependencies:
-  # krypton-lib is deliberately unconditional: disabling it would drop the
-  # shared helper templates from the render namespace and break every
+  # krypton-lib-slim is deliberately unconditional: disabling it would drop
+  # the shared helper templates from the render namespace and break every
   # enabled subchart.
-  - name: krypton-lib
+  - name: krypton-lib-slim
     version: 0.1.0
   # Application subcharts are steered from the umbrella values.yaml via
   # <subchart-name>.enabled. A missing flag counts as enabled - the flags
   # are therefore set explicitly in values.yaml so every lane can flip them.
-  - name: krypton-banking
+  - name: krypton-payments
     version: 0.1.0
-    condition: krypton-banking.enabled
-  - name: krypton-auth
+    condition: krypton-payments.enabled
+  - name: krypton-notifier
     version: 0.1.0
-    condition: krypton-auth.enabled
+    condition: krypton-notifier.enabled

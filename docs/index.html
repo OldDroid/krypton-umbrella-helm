@@ -231,6 +231,7 @@ footer .eyebrow{color:var(--faint);}
     <div class="chip"><b>ArgoCD</b> sync waves</div>
     <div class="chip"><b>OpenShift</b> Routes</div>
     <div class="chip"><b>Vault</b> Secrets Operator</div>
+    <div class="chip"><b>Slim</b> <span data-lang="en">variant</span><span data-lang="de">Variante</span> &middot; <a href="#slim" style="color:inherit">krypton-umbrella-slim/</a></div>
     <div class="chip" data-lang="en">All outputs below are real <code style="border:0;background:transparent;padding:0">helm template</code> output</div>
     <div class="chip" data-lang="de">Alle Ausgaben unten sind echte <code style="border:0;background:transparent;padding:0">helm template</code>-Ausgaben</div>
   </div>
@@ -245,6 +246,7 @@ footer .eyebrow{color:var(--faint);}
   <a href="#waves"><span data-lang="en">Sync order</span><span data-lang="de">Sync-Reihenfolge</span></a>
   <a href="#examples"><span data-lang="en">Config examples</span><span data-lang="de">Konfig-Beispiele</span></a>
   <a href="#guardrails"><span data-lang="en">Guardrails</span><span data-lang="de">Leitplanken</span></a>
+  <a href="#slim"><span data-lang="en">Slim variant</span><span data-lang="de">Schlanke Variante</span></a>
   <a href="#argocd">ArgoCD</a>
 </aside>
 
@@ -830,6 +832,72 @@ krypton-banking:
   </div>
 
   <div class="note"><span data-lang="en"><b>Deliberately tolerated:</b> configuring a <em>catalogued</em> type that a subchart does not (yet) render is allowed and has no effect &mdash; waves and prune flags can be staged before the manifest exists.</span><span data-lang="de"><b>Bewusst toleriert:</b> einen <em>katalogisierten</em> Typ zu konfigurieren, den ein Subchart (noch) nicht rendert, ist erlaubt und wirkungslos &mdash; Waves und Prune-Flags lassen sich vor dem Manifest anlegen.</span></div>
+</section>
+
+<!-- ============================ SLIM ============================ -->
+<section id="slim">
+  <span class="eyebrow" data-lang="en">Variant</span><span class="eyebrow" data-lang="de">Variante</span>
+  <h2 data-lang="en">Slim variant</h2><h2 data-lang="de">Schlanke Variante</h2>
+  <p data-lang="en"><code>krypton-umbrella-slim/</code> is a second, self-contained umbrella whose library <code>krypton-lib-slim</code> generates <em>metadata only</em>: unified names with an optional <b>instance identifier</b> for several ConfigMaps / Secrets / VaultStaticSecrets per subchart, merged labels and annotations (global &rarr; subchart &rarr; call site), ArgoCD sync waves with the offset mechanism, and generic ArgoCD sync options. Everything below <code>metadata:</code> is written by the subchart itself. Both variants share the component catalog, so the names are identical. Written for the Helm&nbsp;3 line ArgoCD runs.</p>
+  <p data-lang="de"><code>krypton-umbrella-slim/</code> ist ein zweites, eigenst&auml;ndiges Umbrella, dessen Library <code>krypton-lib-slim</code> <em>nur Metadata</em> erzeugt: einheitliche Namen mit optionalem <b>Instanz-Bezeichner</b> f&uuml;r mehrere ConfigMaps / Secrets / VaultStaticSecrets je Subchart, zusammengef&uuml;hrte Labels und Annotations (global &rarr; Subchart &rarr; Aufrufstelle), ArgoCD-Sync-Waves samt Offset-Mechanik und generische ArgoCD-Sync-Options. Alles unterhalb von <code>metadata:</code> schreibt das Subchart selbst. Beide Varianten teilen sich den Komponentenkatalog, die Namen sind identisch. Geschrieben f&uuml;r die Helm-3-Linie, die ArgoCD nutzt.</p>
+  <div class="stack" style="display:grid;gap:14px;margin-top:1.2rem">
+  <figure class="code">
+    <figcaption><span class="dot dot-in"></span>charts/krypton-payments/templates/configmaps.yaml</figcaption>
+    <pre data-hl="yaml">{{- $root := . -}}
+{{- range $name, $data := .Values.configMaps }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  {{- include "krypton-lib-slim.metadata" (dict "ctx" $root "component" "configMap" "instance" $name) | nindent 2 }}
+data:
+  {{- $data | toYaml | nindent 2 }}
+{{- end }}</pre>
+  </figure>
+  <figure class="code">
+    <figcaption><span class="dot dot-in"></span>values.yaml <span data-lang="en">(umbrella)</span><span data-lang="de">(Umbrella)</span></figcaption>
+    <pre data-hl="yaml">global:
+  syncOptions:
+    vaultStaticSecret: ["Prune=false"]           # platform rule, any ArgoCD sync option goes here
+krypton-payments:
+  syncWaves:
+    route: "3"
+  syncOptions:
+    route: ["Prune=false", "Delete=false"]
+  labels:
+    krypton.io/team: payments                     # subchart-wide custom labels</pre>
+  </figure>
+  <figure class="code">
+    <figcaption><span class="dot dot-out"></span>helm template krypton krypton-umbrella-slim</figcaption>
+    <pre data-hl="yaml">kind: ConfigMap
+metadata:
+  name: krypton-payments-release-cm-app          # instance "app"
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+---
+kind: ConfigMap
+metadata:
+  name: krypton-payments-release-cm-logging      # instance "logging"
+---
+kind: VaultStaticSecret
+metadata:
+  name: krypton-payments-release-vault-static-secret-database
+  annotations:
+    argocd.argoproj.io/sync-options: Prune=false
+    argocd.argoproj.io/sync-wave: "-1"
+---
+kind: Route
+metadata:
+  name: krypton-payments-release-route
+  labels:
+    krypton.io/team: payments
+  annotations:
+    argocd.argoproj.io/sync-options: Prune=false,Delete=false
+    argocd.argoproj.io/sync-wave: "3"
+    haproxy.router.openshift.io/timeout: 30s   # extraAnnotations from the Route template</pre>
+  </figure>
+  </div>
+  <div class="note"><span data-lang="en">Full reference: <code>krypton-umbrella-slim/README.md</code>. The slim umbrella is excluded from the full chart via <code>.helmignore</code> and deployed as its own ArgoCD Application (<code>path: krypton-umbrella-slim</code>).</span><span data-lang="de">Vollst&auml;ndige Referenz: <code>krypton-umbrella-slim/README.de.md</code>. Das schlanke Umbrella ist per <code>.helmignore</code> aus dem vollen Chart ausgenommen und wird als eigene ArgoCD-Application deployt (<code>path: krypton-umbrella-slim</code>).</span></div>
 </section>
 
 <!-- ============================ ARGOCD ============================ -->
