@@ -1,0 +1,65 @@
+{{- /*
+The Deployment is a plain manifest owned by this subchart. The library
+contributes metadata only: the metadata block, the pod labels, the selector
+identity and - via componentName - the names of the ConfigMaps / Secrets
+this pod consumes, so a reference can never drift from the resource it
+points to.
+*/ -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  {{- include "krypton-lib-slim.metadata" (dict "ctx" . "component" "deployment") | nindent 2 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "krypton-lib-slim.selectorLabels" (dict "ctx" .) | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "krypton-lib-slim.labels" (dict "ctx" .) | nindent 8 }}
+      annotations:
+        # Rolls the pods whenever any ConfigMap or plain Secret changes -
+        # env vars never update inside a running container.
+        checksum/config: {{ (dict "configMaps" .Values.configMaps "secrets" .Values.secrets) | toYaml | sha256sum }}
+    spec:
+      serviceAccountName: {{ include "krypton-lib-slim.componentName" (dict "ctx" . "component" "serviceAccount") }}
+      containers:
+        - name: payments-service
+          image: {{ .Values.image | quote }}
+          imagePullPolicy: {{ .Values.imagePullPolicy }}
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          {{- with .Values.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          envFrom:
+            {{- range $name, $_ := .Values.configMaps }}
+            - configMapRef:
+                name: {{ include "krypton-lib-slim.componentName" (dict "ctx" $ "component" "configMap" "instance" $name) }}
+            {{- end }}
+            {{- range $name, $_ := .Values.secrets }}
+            - secretRef:
+                name: {{ include "krypton-lib-slim.componentName" (dict "ctx" $ "component" "secret" "instance" $name) }}
+            {{- end }}
+            # Secrets materialised by the VaultStaticSecrets (wave -1), so
+            # they already exist when this Deployment (wave 1) syncs.
+            {{- range $name, $_ := .Values.vault.secrets }}
+            - secretRef:
+                name: {{ include "krypton-lib-slim.componentName" (dict "ctx" $ "component" "vaultStaticSecret" "instance" $name) }}
+            {{- end }}
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 20

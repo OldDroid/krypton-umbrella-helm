@@ -1,0 +1,18 @@
+replicaCount: 1
+
+image: registry.example.com/krypton/notifier-service:0.4.0
+imagePullPolicy: IfNotPresent
+
+# A single ConfigMap - no instance identifier, so the name is simply
+# krypton-notifier-<lane>-cm.
+config:
+  NOTIFIER_CHANNELS: "email,sms"
+  NOTIFIER_LOG_LEVEL: info
+
+service:
+  port: 8080
+
+# No syncWaves / syncOptions block here - on purpose: every component falls
+# back to global.syncWaves (configMap "0", deployment "1", service "1"). The
+# umbrella additionally sets syncWaveOffset: 10 for this subchart, so the
+# ConfigMap renders as wave "10" and Deployment/Service as "11".

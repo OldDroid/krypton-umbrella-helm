@@ -1,0 +1,87 @@
+replicaCount: 1
+
+# Plain image reference. The slim library never touches the spec, so the
+# subchart states it directly; lanes override it from the umbrella.
+image: registry.example.com/krypton/payments-service:2.3.0
+imagePullPolicy: IfNotPresent
+
+# Several ConfigMaps in ONE subchart: one ConfigMap per entry. The map key is
+# the instance identifier and becomes part of the resource name:
+#   krypton-payments-<lane>-cm-app
+#   krypton-payments-<lane>-cm-logging
+# All of them share the configMap sync wave (global.syncWaves.configMap).
+configMaps:
+  app:
+    PAYMENTS_LOG_LEVEL: info
+    PAYMENTS_FEATURE_INSTANT: "true"
+  logging:
+    LOG_FORMAT: json
+    LOG_SAMPLING: "0.1"
+
+# Several plain Secrets (type Opaque, stringData): one per entry, key =
+# instance identifier:
+#   krypton-payments-<lane>-secret-smtp
+#   krypton-payments-<lane>-secret-signing
+# Demo values only - production secrets come from Vault (below).
+secrets:
+  smtp:
+    SMTP_USER: payments
+    SMTP_PASSWORD: change-me
+  signing:
+    SIGNING_KEY_ID: demo-key
+
+# Vault Secrets Operator: one VaultStaticSecret per entry, key = instance:
+#   krypton-payments-<lane>-vault-static-secret-app
+#   krypton-payments-<lane>-vault-static-secret-database
+# Paths are rendered through tpl by the subchart template, so the defaults
+# template the lane in and every lane reads its own secrets. authRef / mount
+# / refreshAfter are shared defaults with per-entry overrides.
+vault:
+  authRef: krypton-vault-auth
+  mount: kv-v2
+  refreshAfter: 60s
+  secrets:
+    app:
+      path: "krypton/{{ .Values.global.laneName }}/payments/app"
+    database:
+      path: "krypton/{{ .Values.global.laneName }}/payments/database"
+      refreshAfter: 30s
+
+service:
+  port: 8080
+
+route:
+  host: ""            # empty -> OpenShift generates the host; may contain template syntax (rendered via tpl)
+  # Route-specific annotations - handed to the library as extraAnnotations,
+  # i.e. merged on top of global/subchart annotations, below the ArgoCD ones.
+  annotations:
+    haproxy.router.openshift.io/timeout: 30s
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+# Default sync waves for this subchart's components. Keys are the component
+# types as passed to the krypton-lib-slim helpers; components not listed
+# here fall back to global.syncWaves. The umbrella overrides route to "3".
+syncWaves:
+  route: "2"
+
+# Custom labels / annotations for every resource of this subchart. Both are
+# merged after the umbrella's global.* maps and can themselves be overridden
+# from the umbrella's krypton-payments block (which adds krypton.io/team).
+labels: {}
+annotations: {}
+
+# Optional CI block. When jenkins.annotations exists (usually injected from
+# the umbrella as krypton-payments.jenkins.annotations via ArgoCD helm
+# parameters), its entries are merged into every resource's annotations;
+# when absent, nothing is rendered. Deliberately not declared here, so the
+# default manifests carry no CI annotations.
+# jenkins:
+#   annotations:
+#     jenkins.io/build-number: "1234"

@@ -1,3 +1,8 @@
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="logo-dark.svg">
+  <img src="logo.svg" alt="Krypton-Logo" width="120">
+</picture>
+
 # krypton-umbrella
 
 Helm-Umbrella-Chart für die Krypton-Plattform, deployt via ArgoCD nach
@@ -12,12 +17,14 @@ krypton-umbrella/
 ├── Chart.yaml                  # deklariert alle Charts unter charts/ (von Helm 4 gefordert)
 ├── values.yaml                 # global: Lane, statische Labels/Annotations, Default-Sync-Waves
 ├── values.schema.json          # validiert die Umbrella-Keys, insb. global
-└── charts/
-    ├── krypton-lib/            # type: library - rendert nichts, stellt die Helper bereit
-    │   └── templates/_helpers.tpl
-    ├── krypton-banking/        # Deployment, Service, ConfigMap, VaultStaticSecret, Route,
-    │                           # ServiceAccount (+ optional PDB / HPA / NetworkPolicy)
-    └── krypton-auth/           # Deployment, ServiceAccount
+├── charts/
+│   ├── krypton-lib/            # type: library - rendert nichts, stellt die Helper bereit
+│   │   └── templates/_helpers.tpl
+│   ├── krypton-banking/        # Deployment, Service, ConfigMap, VaultStaticSecret, Route,
+│   │                           # ServiceAccount (+ optional PDB / HPA / NetworkPolicy)
+│   └── krypton-auth/           # Deployment, ServiceAccount
+└── krypton-umbrella-slim/      # schlanke Variante: reine Metadata-Library mit eigenem Umbrella und
+                                # Subcharts (siehe "Schlanke Variante"; per .helmignore aus diesem Chart ausgenommen)
 ```
 
 Jedes Subchart deklariert das Library-Chart als lokale Abhängigkeit:
@@ -244,6 +251,22 @@ Wave- und Prune-Auflösung hängen alle nur am Komponenten-String.
 4. Optional einen `krypton-<name>:`-Block in der Umbrella-`values.yaml`
    anlegen.
 
+## Schlanke Variante
+
+`krypton-umbrella-slim/` ist ein zweites, eigenständiges Umbrella, dessen
+Library (`krypton-lib-slim`) **nur Metadata** erzeugt: einheitliche Namen mit
+optionalem Instanz-Bezeichner (mehrere ConfigMaps / Secrets /
+VaultStaticSecrets je Subchart), zusammengeführte Labels und Annotations mit
+einer eigenen Subchart-Ebene, ArgoCD-Sync-Waves samt Offset-Mechanik und
+generische ArgoCD-Sync-Options (`syncOptions.<component>: ["Prune=false",
+"Delete=false"]` statt des `syncPrune`-Flags). Images, ServiceAccounts,
+Probes und alles Weitere unterhalb von `metadata:` bleiben in den Templates
+des Subcharts. Beide Varianten teilen sich den Komponentenkatalog, eine
+`configMap` heißt in beiden `-cm`. Sie ist per `.helmignore` aus diesem
+Chart ausgenommen und wird als eigene ArgoCD-Application deployt
+(`path: krypton-umbrella-slim`). Siehe
+[krypton-umbrella-slim/README.de.md](krypton-umbrella-slim/README.de.md).
+
 ## ArgoCD
 
 Eine Application auf dieses Verzeichnis zeigen lassen; die Sync-Waves
@@ -282,5 +305,14 @@ Pro Lane entweder je eine Values-Datei pflegen und in
           value: test
 ```
 
-Verifiziert mit Helm v4.2.4 (das Chart ist Helm-3-kompatibel; es werden
-keine Helm-4-exklusiven Features verwendet).
+Verifiziert mit Helm v4.2.4. Beide Umbrellas zielen ebenso auf die
+Helm-3-Linie (ArgoCD liefert derzeit Helm 3.21.x aus): keine
+Helm-4-exklusiven Features, die `charts/`-Verzeichnisse sind in der
+Repository-losen Form deklariert, die beide Major-Versionen akzeptieren, die
+Values-Schemas bleiben auf JSON Schema draft-07, und es wird keine
+`Chart.lock` committet (eine veraltete würde ArgoCDs `helm dependency build`
+scheitern lassen). Gegenprobe mit dem ArgoCD-Binary:
+
+```bash
+helm version && helm lint . && helm template krypton . > /dev/null && helm lint krypton-umbrella-slim && helm template krypton krypton-umbrella-slim > /dev/null
+```

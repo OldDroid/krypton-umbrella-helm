@@ -1,0 +1,7 @@
+# Keep the slim variant (a separate chart with its own charts/ tree) and the
+# repository plumbing out of the full umbrella's render and package.
+krypton-umbrella-slim/
+docs/
+.git/
+.gitignore
+*.tgz

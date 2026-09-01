@@ -1,0 +1,118 @@
+# =============================================================================
+# Krypton umbrella (slim) values
+#
+# Everything under `global:` is visible to every subchart as .Values.global.*
+# A block named after a subchart (krypton-payments:, krypton-notifier:) is
+# merged over that subchart's own values.yaml - the umbrella wins per key.
+#
+# The slim library reads exactly these keys and nothing else:
+#   global.laneName, global.labelDomain, global.labels, global.annotations,
+#   global.syncWaves, global.syncOptions
+# and per subchart:
+#   labels, annotations, jenkins.annotations (optional), syncWaves,
+#   syncWaveOffset, syncOptions
+# =============================================================================
+
+global:
+  # Lane / environment this instance of the umbrella is deployed to
+  # (e.g. release, test). Consumed by krypton-lib-slim for resource naming:
+  #   <subchart-name>-<laneName>-<component-shortname>[-<instance>]
+  laneName: release
+
+  # Domain prefix for every platform-generated label/annotation key:
+  # <labelDomain>/lane, <labelDomain>/source-chart. Defaults to krypton.io
+  # when omitted; the static keys under labels:/annotations: below are plain
+  # values and are edited alongside when rebranding.
+  labelDomain: krypton.io
+
+  # Static labels stamped onto every resource of every subchart.
+  # Merge order in krypton-lib-slim.labels (later wins):
+  #   standard labels -> global.labels -> <subchart>.labels -> extraLabels
+  labels:
+    krypton.io/platform: krypton
+    krypton.io/cost-center: "cc-4711"
+
+  # Static annotations stamped onto every resource of every subchart.
+  # Merge order in krypton-lib-slim.annotations (later wins):
+  #   standard -> global.annotations -> <subchart>.annotations
+  #   -> extraAnnotations -> sync-wave -> sync-options
+  annotations:
+    krypton.io/owner: platform-team
+    krypton.io/git-repository: https://git.example.com/krypton/krypton-umbrella
+
+  # Platform-wide default sync waves per component type. Any subchart (or a
+  # subchart block right here in the umbrella) can override any key.
+  # Resolution order in krypton-lib-slim.syncWave - first hit wins:
+  #   1. subchart .Values.syncWaves.<component>   (includes umbrella overrides)
+  #   2. global.syncWaves.<component>             (these defaults)
+  # Waves apply per component TYPE: every ConfigMap of a subchart shares
+  # configMap's wave, every VaultStaticSecret shares vaultStaticSecret's.
+  syncWaves:
+    serviceAccount: "-2"      # before the Vault objects that authenticate with it
+    vaultStaticSecret: "-1"   # Vault-materialised Secrets before the workloads
+    secret: "0"
+    configMap: "0"
+    deployment: "1"
+    service: "1"
+
+  # Platform-wide default ArgoCD sync options per component type, rendered
+  # as argocd.argoproj.io/sync-options: <opt>,<opt>. Same precedence chain
+  # as syncWaves (subchart list replaces the global one, no merging), so a
+  # subchart can switch an inherited protection off with `<component>: []`.
+  # Platform rule: never auto-prune Vault-sourced secrets.
+  syncOptions:
+    vaultStaticSecret: ["Prune=false"]
+
+# -----------------------------------------------------------------------------
+# Subchart: krypton-payments
+# -----------------------------------------------------------------------------
+krypton-payments:
+  # Deploy switch, evaluated by the condition flag in the umbrella Chart.yaml.
+  enabled: true
+
+  replicaCount: 2
+
+  # Component-specific sync-wave overrides for this subchart. route is bumped
+  # from the subchart default "2" to "3" here to prove that umbrella-level
+  # overrides win over the subchart's own values.yaml.
+  syncWaves:
+    route: "3"
+
+  # The public Route is kept even if its manifest disappears from git, and
+  # survives deletion of the ArgoCD Application.
+  syncOptions:
+    route: ["Prune=false", "Delete=false"]
+
+  # Custom labels for every resource of this subchart (merged after
+  # global.labels, before the call-site extraLabels).
+  labels:
+    krypton.io/team: payments
+
+  # CI-injected annotations, merged into every resource of this subchart
+  # right after the subchart's own annotations - ONLY when the block exists;
+  # nothing is rendered otherwise. Jenkins typically sets these per sync via
+  # ArgoCD helm parameters, e.g.
+  #   --set krypton-payments.jenkins.annotations.jenkins\.io/build-number=1234
+  #   --set krypton-payments.jenkins.annotations.jenkins\.io/git-commit=abc1234
+  # Scalar values are stringified at render time.
+  # jenkins:
+  #   annotations:
+  #     jenkins.io/build-number: "1234"
+  #     jenkins.io/job-url: https://jenkins.example.com/job/payments/1234/
+
+# -----------------------------------------------------------------------------
+# Subchart: krypton-notifier
+# -----------------------------------------------------------------------------
+krypton-notifier:
+  enabled: true
+
+  # Shift notifier's ENTIRE wave band behind krypton-payments (which spans
+  # -1..3): every resolved component wave gets +10, and components without
+  # a configured wave (implicitly 0) are annotated with the bare offset -
+  # the subchart moves as one block, internal order preserved. Use offset
+  # steps of 10 per subchart so bands never overlap.
+  syncWaveOffset: 10
+
+  # Custom annotations for every resource of this subchart.
+  annotations:
+    krypton.io/on-call: notifications-oncall@example.com
