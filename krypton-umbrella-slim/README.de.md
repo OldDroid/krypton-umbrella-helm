@@ -29,12 +29,14 @@ krypton-umbrella-slim/
 ├── Chart.yaml                  # deklariert alle Charts unter charts/ (Helm 3 toleriert, Helm 4 verlangt es)
 ├── values.yaml                 # global: Lane, Labels/Annotations, Default-Waves & Sync-Options
 ├── values.schema.json          # validiert global plus die lib-relevanten Keys jedes Subchart-Blocks
+├── values-shared-only.yaml     # Overlay für den shared-Eigentümer: krypton-shared an, Anwendungs-Subcharts aus
 └── charts/
     ├── krypton-lib-slim/       # type: library - rendert nichts, stellt die Metadata-Helper bereit
     │   └── templates/_helpers.tpl
     ├── krypton-payments/       # ServiceAccount, 2 ConfigMaps, 2 Secrets, 2 VaultStaticSecrets,
     │                           # Deployment, Service, Route - Instanz-Bezeichner in Aktion
-    └── krypton-notifier/       # ConfigMap, Deployment, Service - minimal, Wave-Offset 10
+    ├── krypton-notifier/       # ConfigMap, Deployment, Service - minimal, Wave-Offset 10
+    └── krypton-shared/         # lane-unabhängige ConfigMaps / Secrets / VaultStaticSecrets, ein Eigentümer je Namespace
 ```
 
 Jedes Subchart deklariert das Library-Chart als lokale Abhängigkeit, damit
@@ -134,11 +136,35 @@ krypton-payments-smtp                 # statt krypton-payments-release-smtp
 krypton-payments                      # ohne Instanz
 ```
 
-Derselbe Aufruf (mit `shared: true`) wird beim Erzeugen und beim
-Referenzieren verwendet. Erzeugt wird die Ressource von genau einem
-Deployment – ArgoCD darf ein Objekt nicht in zwei Applications sehen –,
-das erzeugende Template wird also über ein Values-Flag geschaltet, und
-alle anderen Lanes referenzieren nur den Namen.
+Plattformweit geteilte Objekte leben in einem eigenen Subchart,
+**`krypton-shared`**, das `configMaps`, `secrets` und `vault.secrets` als
+`krypton-shared-<key>` rendert. Genau eine ArgoCD-Application pro Namespace
+darf sie besitzen (ArgoCD meldet einen zweiten Eigentümer als Shared
+Resource, Helm verweigert fremde Eigentümerschaft), die Eigentümerschaft
+ist deshalb der gewöhnliche Deploy-Schalter `krypton-shared.enabled`:
+
+| Application | Values |
+| --- | --- |
+| Konsumenten-Lane (Default) | `krypton-shared.enabled: false` – Workloads referenzieren die Namen, nichts wird erzeugt |
+| Eigentümer-Lane | `krypton-shared.enabled: true` neben den aktivierten Anwendungs-Subcharts |
+| eigene shared-Application | `-f values-shared-only.yaml` – `krypton-shared` an, jedes Anwendungs-Subchart aus |
+
+krypton-payments referenziert sie über denselben Helper, der sie benennt,
+`chart` pinnt den Eigentümer – eine Referenz kann so nie abdriften:
+
+```yaml
+- secretRef:
+    name: {{ include "krypton-lib-slim.componentName" (dict "ctx" $ "chart" "krypton-shared" "component" "secret" "instance" "gateway" "shared" true) }}
+# -> krypton-shared-gateway, exakt das, was krypton-shared/templates/secrets.yaml rendert
+```
+
+angeboten als `sharedEnvFrom.configMaps` / `.secrets` (Instanz-Keys, als
+`envFrom` verdrahtet; der Umbrella verdrahtet `common` und `gateway`).
+
+```bash
+helm template krypton krypton-umbrella-slim -f krypton-umbrella-slim/values-shared-only.yaml   # nur krypton-shared-common / -gateway
+helm template krypton krypton-umbrella-slim --set krypton-shared.enabled=true                  # Eigentümer-Lane: alles
+```
 
 Der Katalog (`krypton-lib-slim.componentCatalog` in `_helpers.tpl`) ist die
 einzige Quelle für Komponenten-Strings; ein unbekanntes `component`-Argument

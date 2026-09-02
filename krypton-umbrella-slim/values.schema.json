@@ -32,7 +32,8 @@
       "description": "Injected by Helm for the declared library dependency; carries no values."
     },
     "krypton-payments": { "$ref": "#/definitions/subchartBlock" },
-    "krypton-notifier": { "$ref": "#/definitions/subchartBlock" }
+    "krypton-notifier": { "$ref": "#/definitions/subchartBlock" },
+    "krypton-shared": { "$ref": "#/definitions/subchartBlock" }
   },
   "definitions": {
     "stringMap": {

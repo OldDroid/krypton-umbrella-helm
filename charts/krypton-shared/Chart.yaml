@@ -1,14 +1,8 @@
 apiVersion: v2
-name: krypton-umbrella-slim
-description: >-
-  Slim umbrella chart for the Krypton platform. Aggregates the Krypton
-  subcharts and distributes shared configuration (lane, labels, annotations,
-  ArgoCD sync waves and sync options) to them via the global values block.
-  The subcharts own their manifests entirely; the library only generates
-  metadata. Deployed by ArgoCD (Helm 3).
+name: krypton-shared
+description: Lane-independent platform resources (ConfigMaps, Secrets, Vault secrets) consumed by every lane deployment in a namespace
 type: application
 version: 0.1.0
-appVersion: "1.0.0"
 # Chart icon, embedded as a data URI so nothing is fetched from a remote at any point.
 # It is logo.svg (repository root, light-theme mark) base64-encoded and wrapped with YAML
 # line escapes; regenerate after a logo change with:  base64 -w0 logo.svg | fold -w 76
@@ -213,31 +207,7 @@ icon: "data:image/svg+xml;base64,\
   IDM4IDAgMjAgLTkyIDEwMCAtMTQzIDEyNCAtNDEgMjAgLTE0NCA0MyAtMTc2IDQxIC05Ci0xIC00\
   MSAtNSAtNzEgLTEweiIvPgo8L2c+Cjwvc3ZnPgo="
 
-# The subcharts live as plain directories underneath charts/, so the entries
-# deliberately have NO repository field: Helm (3 and 4) then resolves them in
-# place ("assuming it exists in the charts directory") instead of downloading
-# or re-packaging anything. Helm 4 requires every chart found in charts/ to
-# be declared here; Helm 3 merely tolerates it - declaring them keeps the
-# chart valid for both.
 dependencies:
-  # krypton-lib-slim is deliberately unconditional: disabling it would drop
-  # the shared helper templates from the render namespace and break every
-  # enabled subchart.
-  - name: krypton-lib-slim
+  - name: krypton-lib
     version: 0.1.0
-  # Application subcharts are steered from the umbrella values.yaml via
-  # <subchart-name>.enabled. A missing flag counts as enabled - the flags
-  # are therefore set explicitly in values.yaml so every lane can flip them.
-  - name: krypton-payments
-    version: 0.1.0
-    condition: krypton-payments.enabled
-  - name: krypton-notifier
-    version: 0.1.0
-    condition: krypton-notifier.enabled
-  # krypton-shared renders the lane-independent resources (names without
-  # the lane segment). Disabled by default: exactly ONE Application per
-  # namespace enables it - the owning lane, or a dedicated shared
-  # Application via values-shared-only.yaml.
-  - name: krypton-shared
-    version: 0.1.0
-    condition: krypton-shared.enabled
+    repository: file://../krypton-lib

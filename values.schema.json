@@ -44,7 +44,8 @@
       "description": "Injected by Helm for the declared library dependency; carries no values."
     },
     "krypton-banking": { "type": "object" },
-    "krypton-auth": { "type": "object" }
+    "krypton-auth": { "type": "object" },
+    "krypton-shared": { "type": "object" }
   },
   "definitions": {
     "componentType": {

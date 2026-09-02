@@ -102,6 +102,14 @@ krypton-banking:
   syncPrune:
     route: false
 
+  # Lane-independent objects of the krypton-shared subchart this workload
+  # consumes (envFrom). Names are computed with the same helper that names
+  # them in krypton-shared, so they never drift; whether they EXIST is the
+  # shared owner's business (krypton-shared.enabled below).
+  sharedEnvFrom:
+    configMaps: [common]
+    secrets: [gateway]
+
   # CI-injected annotations, merged into every resource of this subchart
   # right after global.annotations - ONLY when the block exists; nothing is
   # rendered otherwise. Jenkins typically sets these per sync via ArgoCD
@@ -127,3 +135,31 @@ krypton-auth:
   # the subchart moves as one block, internal order preserved. Use offset
   # steps of 10 per subchart so bands never overlap.
   syncWaveOffset: 10
+
+# -----------------------------------------------------------------------------
+# Subchart: krypton-shared - lane-independent resources
+# -----------------------------------------------------------------------------
+krypton-shared:
+  # Ownership switch. false (default) = consumer lane: the application
+  # subcharts reference the shared names, nothing is created. Exactly ONE
+  # Application per namespace sets it to true - either the owning lane
+  # (everything enabled) or a dedicated shared Application that also
+  # disables every application subchart (values-shared-only.yaml).
+  # Two owners would make ArgoCD flag every shared object and Helm refuse
+  # the second release.
+  enabled: false
+
+  # Rendered as krypton-shared-common / krypton-shared-gateway - no lane in
+  # the name, no lane label. krypton-banking above wires both into its pods
+  # via sharedEnvFrom.
+  configMaps:
+    common:
+      PLATFORM_REGION: eu-central
+      PLATFORM_TIMEZONE: Europe/Berlin
+  secrets:
+    gateway:
+      GATEWAY_TOKEN: change-me   # demo value - production secrets come from vault.secrets
+  # vault:
+  #   secrets:
+  #     gateway:
+  #       path: "krypton/shared/gateway"   # no lane in the path on purpose

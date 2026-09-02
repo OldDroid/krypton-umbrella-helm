@@ -160,6 +160,16 @@ extraEnvFrom: []
 #  - secretRef:
 #      name: some-extra-secret
 podAnnotations: {}
+
+# Lane-independent objects of the krypton-shared subchart this workload
+# consumes as envFrom, by instance key. The names (krypton-shared-<key>) are
+# computed with the very helper krypton-shared uses, so a reference can
+# never drift; whether the objects exist is the shared owner's business
+# (krypton-shared.enabled in the umbrella). The umbrella wires common and
+# gateway in.
+sharedEnvFrom:
+  configMaps: []
+  secrets: []
 nodeSelector: {}
 tolerations: []
 affinity: {}

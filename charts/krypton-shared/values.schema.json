@@ -1,0 +1,95 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "krypton-shared values",
+  "description": "Validated against the coalesced values (subchart defaults + umbrella overrides + global), so typos in the umbrella's krypton-shared block fail the render here.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["vault"],
+  "properties": {
+    "global": { "type": "object" },
+    "krypton-lib": {
+      "type": ["object", "null"],
+      "description": "Injected by Helm for the declared library dependency; carries no values."
+    },
+    "enabled": {
+      "type": "boolean",
+      "description": "Ownership switch: true renders the shared resources (exactly one Application per namespace), false only lets the application subcharts reference them."
+    },
+    "configMaps": { "$ref": "#/definitions/dataMaps" },
+    "secrets": { "$ref": "#/definitions/dataMaps" },
+    "vault": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["authRef", "mount", "secrets"],
+      "properties": {
+        "authRef": { "type": "string", "minLength": 1 },
+        "mount": { "type": "string", "minLength": 1 },
+        "refreshAfter": { "$ref": "#/definitions/duration" },
+        "secrets": {
+          "type": ["object", "null"],
+          "propertyNames": { "$ref": "#/definitions/instanceKey" },
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["path"],
+            "properties": {
+              "path": { "type": "string", "minLength": 1 },
+              "authRef": { "type": "string" },
+              "mount": { "type": "string" },
+              "refreshAfter": { "$ref": "#/definitions/duration" }
+            }
+          }
+        }
+      }
+    },
+    "syncWaves": { "$ref": "#/definitions/syncWaves" },
+    "syncWaveOffset": { "$ref": "#/definitions/wave" },
+    "syncPrune": {
+      "type": ["object", "null"],
+      "propertyNames": { "$ref": "#/definitions/componentType" },
+      "additionalProperties": { "type": "boolean" }
+    },
+    "jenkins": {
+      "type": ["object", "null"],
+      "description": "CI-injected block. jenkins.annotations is merged into every resource's annotations of this subchart when present; other keys are left to the pipeline.",
+      "properties": {
+        "annotations": {
+          "type": ["object", "null"],
+          "additionalProperties": {
+            "oneOf": [{ "type": "string" }, { "type": "number" }, { "type": "boolean" }]
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "instanceKey": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]*$",
+      "description": "Instance identifier; becomes the name suffix after DNS-1123 normalisation."
+    },
+    "dataMaps": {
+      "type": ["object", "null"],
+      "propertyNames": { "$ref": "#/definitions/instanceKey" },
+      "additionalProperties": {
+        "type": ["object", "null"],
+        "propertyNames": { "pattern": "^[A-Za-z_][A-Za-z0-9_.-]*$" },
+        "additionalProperties": { "type": "string" }
+      },
+      "description": "One resource per entry; the entry's map is rendered 1:1, values must be strings."
+    },
+    "duration": { "type": "string", "pattern": "^[0-9]+(ms|s|m|h)$" },
+    "componentType": { "type": "string", "pattern": "^[a-zA-Z][a-zA-Z0-9]*$" },
+    "wave": {
+      "oneOf": [
+        { "type": "integer" },
+        { "type": "string", "pattern": "^-?[0-9]+$" }
+      ]
+    },
+    "syncWaves": {
+      "type": ["object", "null"],
+      "propertyNames": { "$ref": "#/definitions/componentType" },
+      "additionalProperties": { "$ref": "#/definitions/wave" }
+    }
+  }
+}

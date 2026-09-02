@@ -45,6 +45,18 @@ spec:
             - secretRef:
                 name: {{ include "krypton-lib-slim.componentName" (dict "ctx" $ "component" "secret" "instance" $name) }}
             {{- end }}
+            # Lane-independent objects owned by the krypton-shared subchart:
+            # the same helper krypton-shared names them with, "chart" pins
+            # the owner - the reference can never drift from the real name.
+            {{- $sharedEnvFrom := .Values.sharedEnvFrom | default dict }}
+            {{- range $sharedEnvFrom.configMaps }}
+            - configMapRef:
+                name: {{ include "krypton-lib-slim.componentName" (dict "ctx" $ "chart" "krypton-shared" "component" "configMap" "instance" . "shared" true) }}
+            {{- end }}
+            {{- range $sharedEnvFrom.secrets }}
+            - secretRef:
+                name: {{ include "krypton-lib-slim.componentName" (dict "ctx" $ "chart" "krypton-shared" "component" "secret" "instance" . "shared" true) }}
+            {{- end }}
             # Secrets materialised by the VaultStaticSecrets (wave -1), so
             # they already exist when this Deployment (wave 1) syncs.
             {{- range $name, $_ := .Values.vault.secrets }}

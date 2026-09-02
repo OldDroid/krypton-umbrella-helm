@@ -19,6 +19,15 @@
     "probes": { "$ref": "#/definitions/probes" },
     "extraEnv": { "type": ["array", "null"], "items": { "type": "object" } },
     "extraEnvFrom": { "type": ["array", "null"], "items": { "type": "object" } },
+    "sharedEnvFrom": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "description": "Instance keys of krypton-shared ConfigMaps / Secrets wired into the container as envFrom; names are computed as krypton-shared-<key>.",
+      "properties": {
+        "configMaps": { "type": ["array", "null"], "items": { "type": "string", "minLength": 1 } },
+        "secrets": { "type": ["array", "null"], "items": { "type": "string", "minLength": 1 } }
+      }
+    },
     "podAnnotations": {
       "type": ["object", "null"],
       "additionalProperties": { "type": "string" }
