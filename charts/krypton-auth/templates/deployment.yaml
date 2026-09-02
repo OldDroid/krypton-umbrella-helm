@@ -45,9 +45,23 @@ spec:
           env:
             {{- toYaml . | nindent 12 }}
           {{- end }}
-          {{- with .Values.extraEnvFrom }}
+          {{- $sharedEnvFrom := .Values.sharedEnvFrom | default dict }}
+          {{- if or $sharedEnvFrom.configMaps $sharedEnvFrom.secrets .Values.extraEnvFrom }}
           envFrom:
+            # Lane-independent objects owned by the krypton-shared subchart:
+            # the same helper krypton-shared names them with, "chart" pins
+            # the owner - the reference can never drift from the real name.
+            {{- range $sharedEnvFrom.configMaps }}
+            - configMapRef:
+                name: {{ include "krypton-lib.componentName" (dict "ctx" $ "chart" "krypton-shared" "component" "configMap" "instance" . "shared" true) }}
+            {{- end }}
+            {{- range $sharedEnvFrom.secrets }}
+            - secretRef:
+                name: {{ include "krypton-lib.componentName" (dict "ctx" $ "chart" "krypton-shared" "component" "secret" "instance" . "shared" true) }}
+            {{- end }}
+            {{- with .Values.extraEnvFrom }}
             {{- toYaml . | nindent 12 }}
+            {{- end }}
           {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:

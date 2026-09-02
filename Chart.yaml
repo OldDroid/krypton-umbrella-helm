@@ -231,3 +231,10 @@ dependencies:
   - name: krypton-auth
     version: 0.1.0
     condition: krypton-auth.enabled
+  # krypton-shared renders the lane-independent resources (names without
+  # the lane segment). Disabled by default: exactly ONE Application per
+  # namespace enables it - the owning lane, or a dedicated shared
+  # Application via values-shared-only.yaml.
+  - name: krypton-shared
+    version: 0.1.0
+    condition: krypton-shared.enabled

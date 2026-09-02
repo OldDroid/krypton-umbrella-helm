@@ -373,76 +373,94 @@ name: krypton-banking-release-database # VaultStaticSecret, instance "database"<
   <!-- E1b shared resources -->
   <article class="example" id="ex-shared">
     <h3 data-lang="en">Shared resources without the lane</h3><h3 data-lang="de">Geteilte Ressourcen ohne Lane</h3>
-    <p data-lang="en">A ConfigMap or Secret that several lane deployments consume only has to exist once. Passing <code>shared: true</code> to <code>componentName</code> / <code>metadata</code> drops the lane segment from the name and omits the <code>&lt;labelDomain&gt;/lane</code> label. The same call is used where the resource is created and where it is referenced; exactly one lane creates it, every other lane references the name. krypton-banking wires this to <code>config.shared</code> (name) and <code>config.create</code> (render or reference).</p>
-    <p data-lang="de">Eine ConfigMap oder ein Secret, das mehrere Lane-Deployments gemeinsam nutzen, muss nur einmal existieren. Mit <code>shared: true</code> an <code>componentName</code> / <code>metadata</code> entf&auml;llt das Lane-Segment im Namen, und das <code>&lt;labelDomain&gt;/lane</code>-Label wird nicht gesetzt. Derselbe Aufruf wird beim Erzeugen und beim Referenzieren verwendet; genau eine Lane erzeugt die Ressource, jede andere referenziert nur den Namen. krypton-banking verdrahtet das mit <code>config.shared</code> (Name) und <code>config.create</code> (rendern oder referenzieren).</p>
+    <p data-lang="en">ConfigMaps and Secrets that every lane deployment in a namespace consumes only have to exist once. They live in their own subchart, <code>krypton-shared</code>, whose templates pass <code>shared: true</code> to <code>metadata</code>: the name drops the lane segment (<code>krypton-shared-&lt;key&gt;</code>) and the <code>app.kubernetes.io/part-of</code> label is omitted. Exactly one ArgoCD Application per namespace may own them &mdash; ArgoCD flags a second owner as a shared resource, Helm refuses it &mdash; so ownership is the plain deploy switch <code>krypton-shared.enabled</code>. The application subcharts reference the objects with the <em>same</em> helper call plus <code>chart: krypton-shared</code>, so a reference can never drift from the rendered name.</p>
+    <p data-lang="de">ConfigMaps und Secrets, die jedes Lane-Deployment in einem Namespace nutzt, m&uuml;ssen nur einmal existieren. Sie leben in einem eigenen Subchart, <code>krypton-shared</code>, dessen Templates <code>shared: true</code> an <code>metadata</code> &uuml;bergeben: Der Name verliert das Lane-Segment (<code>krypton-shared-&lt;key&gt;</code>), das <code>app.kubernetes.io/part-of</code>-Label entf&auml;llt. Genau eine ArgoCD-Application pro Namespace darf sie besitzen &mdash; ArgoCD meldet einen zweiten Eigent&uuml;mer als Shared Resource, Helm verweigert ihn &mdash;, die Eigent&uuml;merschaft ist deshalb der gew&ouml;hnliche Deploy-Schalter <code>krypton-shared.enabled</code>. Die Anwendungs-Subcharts referenzieren die Objekte mit <em>demselben</em> Helper-Aufruf plus <code>chart: krypton-shared</code>, eine Referenz kann so nie vom gerenderten Namen abdriften.</p>
     <div class="io">
       <div class="stack">
         <figure class="code">
-          <figcaption><span class="dot dot-in"></span>charts/krypton-banking/templates/configmap.yaml</figcaption>
-          <pre data-hl="yaml">{{- $config := .Values.config | default dict -}}
-{{- if or (not (hasKey $config "create")) $config.create }}
+          <figcaption><span class="dot dot-in"></span>charts/krypton-shared/templates/configmaps.yaml &middot; <span data-lang="en">creates</span><span data-lang="de">erzeugt</span></figcaption>
+          <pre data-hl="yaml">{{- range $name, $data := .Values.configMaps }}
+---
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  {{- include "krypton-lib.metadata" (dict "ctx" . "component" "configMap" "shared" $config.shared) | nindent 2 }}
+  {{- include "krypton-lib.metadata" (dict "ctx" $root "component" "configMap" "instance" $name "shared" true) | nindent 2 }}
 data:
-  {{- $config.data | default dict | toYaml | nindent 2 }}
+  {{- $data | default dict | toYaml | nindent 2 }}
 {{- end }}</pre>
         </figure>
         <figure class="code">
-          <figcaption><span class="dot dot-in"></span>values.yaml &middot; <span data-lang="en">lane release (owner)</span><span data-lang="de">Lane release (Eigent&uuml;mer)</span></figcaption>
-          <pre data-hl="yaml">krypton-banking:
-  config:
-    shared: true     # name without the lane segment
-    create: true     # this lane creates the ConfigMap</pre>
+          <figcaption><span class="dot dot-in"></span>charts/krypton-banking/templates/deployment.yaml &middot; <span data-lang="en">references</span><span data-lang="de">referenziert</span></figcaption>
+          <pre data-hl="yaml">envFrom:
+  {{- range $sharedEnvFrom.configMaps }}
+  - configMapRef:
+      name: {{ include "krypton-lib.componentName" (dict "ctx" $ "chart" "krypton-shared" "component" "configMap" "instance" . "shared" true) }}
+  {{- end }}
+  {{- range $sharedEnvFrom.secrets }}
+  - secretRef:
+      name: {{ include "krypton-lib.componentName" (dict "ctx" $ "chart" "krypton-shared" "component" "secret" "instance" . "shared" true) }}
+  {{- end }}</pre>
         </figure>
         <figure class="code">
-          <figcaption><span class="dot dot-in"></span>values.yaml &middot; <span data-lang="en">lane test (consumer)</span><span data-lang="de">Lane test (Konsument)</span></figcaption>
+          <figcaption><span class="dot dot-in"></span>values.yaml &middot; umbrella</figcaption>
           <pre data-hl="yaml">krypton-banking:
-  config:
-    shared: true
-    create: false    # reference only - created by the release lane</pre>
+  sharedEnvFrom:
+    configMaps: [common]        # -> krypton-shared-common
+    secrets: [gateway]          # -> krypton-shared-gateway
+krypton-shared:
+  enabled: false                # consumer lane (default): reference only
+  configMaps:
+    common:
+      PLATFORM_REGION: eu-central
+  secrets:
+    gateway:
+      GATEWAY_TOKEN: change-me</pre>
         </figure>
       </div>
       <div class="stack">
-        <div class="cmd">helm template krypton krypton-umbrella --set krypton-banking.config.shared=true</div>
+        <div class="cmd">helm template krypton krypton-umbrella</div>
         <figure class="code">
-          <figcaption><span class="dot dot-out"></span><span data-lang="en">rendered &middot; lane release</span><span data-lang="de">gerendert &middot; Lane release</span></figcaption>
-          <pre data-hl="yaml">kind: ConfigMap
-metadata:
-  name: krypton-banking               # no lane segment
-  labels:
-    app.kubernetes.io/instance: krypton
-    app.kubernetes.io/managed-by: Helm
-    app.kubernetes.io/name: krypton-banking
-    app.kubernetes.io/version: 1.4.2  # no app.kubernetes.io/part-of label
-    helm.sh/chart: krypton-banking-0.1.0
-    krypton.io/cost-center: cc-4711
-    krypton.io/platform: krypton
----
+          <figcaption><span class="dot dot-out"></span><span data-lang="en">rendered &middot; consumer lane (default)</span><span data-lang="de">gerendert &middot; Konsumenten-Lane (Default)</span></figcaption>
+          <pre data-hl="yaml"># no krypton-shared object in the output - the Deployment references them
 kind: Deployment
 metadata:
   name: krypton-banking-release
 # ...
 envFrom:
   - configMapRef:
-      name: krypton-banking</pre>
+      name: krypton-shared-common
+  - secretRef:
+      name: krypton-shared-gateway</pre>
         </figure>
-        <div class="cmd">helm template krypton krypton-umbrella --set global.laneName=test --set krypton-banking.config.shared=true --set krypton-banking.config.create=false</div>
+        <div class="cmd">helm template krypton-shared krypton-umbrella -f values-shared-only.yaml</div>
         <figure class="code">
-          <figcaption><span class="dot dot-out"></span><span data-lang="en">rendered &middot; lane test</span><span data-lang="de">gerendert &middot; Lane test</span></figcaption>
-          <pre data-hl="yaml"># no ConfigMap in the output - the Deployment references the shared name
-kind: Deployment
+          <figcaption><span class="dot dot-out"></span><span data-lang="en">rendered &middot; dedicated shared Application (complete output)</span><span data-lang="de">gerendert &middot; eigene shared-Application (gesamte Ausgabe)</span></figcaption>
+          <pre data-hl="yaml">kind: Secret
 metadata:
-  name: krypton-banking-test
-# ...
-envFrom:
-  - configMapRef:
-      name: krypton-banking</pre>
+  name: krypton-shared-gateway
+---
+kind: ConfigMap
+metadata:
+  name: krypton-shared-common          # no lane segment
+  labels:
+    app.kubernetes.io/instance: krypton-shared
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: krypton-shared
+    helm.sh/chart: krypton-shared-0.1.0 # no app.kubernetes.io/part-of label
+    krypton.io/cost-center: cc-4711
+    krypton.io/platform: krypton</pre>
+        </figure>
+        <div class="cmd">helm template krypton krypton-umbrella --set krypton-shared.enabled=true</div>
+        <figure class="code">
+          <figcaption><span class="dot dot-out"></span><span data-lang="en">rendered &middot; owning lane</span><span data-lang="de">gerendert &middot; Eigent&uuml;mer-Lane</span></figcaption>
+          <pre data-hl="yaml"># the application plus both shared objects in one release
+kind: Secret       # krypton-shared-gateway
+kind: ConfigMap    # krypton-shared-common
+kind: Deployment   # krypton-banking-release, referencing both</pre>
         </figure>
       </div>
     </div>
-    <div class="note"><span data-lang="en"><b>Ownership:</b> ArgoCD must not see one object in two Applications &mdash; gate the creating template with a values flag so exactly one lane renders the shared resource. The slim library offers the same <code>shared</code> argument (see <a href="#slim">slim variant</a>).</span><span data-lang="de"><b>Eigent&uuml;merschaft:</b> ArgoCD darf ein Objekt nicht in zwei Applications sehen &mdash; das erzeugende Template wird &uuml;ber ein Values-Flag geschaltet, sodass genau eine Lane die geteilte Ressource rendert. Die schlanke Library bietet dasselbe <code>shared</code>-Argument (siehe <a href="#slim">schlanke Variante</a>).</span></div>
+    <div class="note"><span data-lang="en"><b>Ownership:</b> one Application per namespace enables <code>krypton-shared</code> &mdash; the owning lane, or a dedicated shared Application via <code>values-shared-only.yaml</code> (see <a href="#argocd">ArgoCD</a>); every other lane keeps the default. Service-scoped sharing still exists: krypton-banking's <code>config.shared</code> renders its own ConfigMap as <code>krypton-banking</code>, gated by <code>config.create</code>. The slim umbrella ships the same <code>krypton-shared</code> subchart (see <a href="#slim">slim variant</a>).</span><span data-lang="de"><b>Eigent&uuml;merschaft:</b> eine Application pro Namespace aktiviert <code>krypton-shared</code> &mdash; die Eigent&uuml;mer-Lane oder eine eigene shared-Application &uuml;ber <code>values-shared-only.yaml</code> (siehe <a href="#argocd">ArgoCD</a>); jede andere Lane beh&auml;lt den Default. Service-bezogenes Teilen gibt es weiterhin: <code>config.shared</code> von krypton-banking rendert dessen ConfigMap als <code>krypton-banking</code>, geschaltet &uuml;ber <code>config.create</code>. Das schlanke Umbrella bringt dasselbe <code>krypton-shared</code>-Subchart mit (siehe <a href="#slim">schlanke Variante</a>).</span></div>
   </article>
 
   <!-- E2 metadata -->
@@ -1027,28 +1045,31 @@ metadata:
     haproxy.router.openshift.io/timeout: 30s   # extraAnnotations from the Route template</pre>
   </figure>
   </div>
-  <p data-lang="en" style="margin-top:1.4rem">Shared resources and CI annotations work the same way here. <code>"shared" true</code> on the metadata include drops the lane from the name and the lane label, and <code>&lt;subchart&gt;.jenkins.annotations</code> is merged right after the subchart&rsquo;s own <code>annotations</code> block &mdash; only when it exists.</p>
-  <p data-lang="de" style="margin-top:1.4rem">Geteilte Ressourcen und CI-Annotations funktionieren hier genauso. <code>"shared" true</code> am Metadata-Include entfernt die Lane aus dem Namen und das Lane-Label, und <code>&lt;subchart&gt;.jenkins.annotations</code> wird direkt nach dem eigenen <code>annotations</code>-Block des Subcharts gemergt &mdash; nur, wenn er existiert.</p>
+  <p data-lang="en" style="margin-top:1.4rem">Shared resources and CI annotations work the same way here. The slim umbrella ships its own <code>krypton-shared</code> subchart (ConfigMaps, Secrets, VaultStaticSecrets rendered with <code>"shared" true</code>, owned by exactly one Application via <code>krypton-shared.enabled</code>); krypton-payments references them through <code>sharedEnvFrom</code> with the same helper plus <code>chart</code>. <code>&lt;subchart&gt;.jenkins.annotations</code> is merged right after the subchart&rsquo;s own <code>annotations</code> block &mdash; only when it exists.</p>
+  <p data-lang="de" style="margin-top:1.4rem">Geteilte Ressourcen und CI-Annotations funktionieren hier genauso. Das schlanke Umbrella bringt ein eigenes <code>krypton-shared</code>-Subchart mit (ConfigMaps, Secrets, VaultStaticSecrets mit <code>"shared" true</code> gerendert, Eigent&uuml;mer ist genau eine Application &uuml;ber <code>krypton-shared.enabled</code>); krypton-payments referenziert sie &uuml;ber <code>sharedEnvFrom</code> mit demselben Helper plus <code>chart</code>. <code>&lt;subchart&gt;.jenkins.annotations</code> wird direkt nach dem eigenen <code>annotations</code>-Block des Subcharts gemergt &mdash; nur, wenn er existiert.</p>
   <div class="stack" style="display:grid;gap:14px;margin-top:1.2rem">
   <figure class="code">
-    <figcaption><span class="dot dot-in"></span>charts/krypton-payments/templates/secrets.yaml &middot; <span data-lang="en">shared variant</span><span data-lang="de">geteilte Variante</span></figcaption>
-    <pre data-hl="yaml">{{- $root := . -}}
-{{- range $name, $data := .Values.secrets }}
----
-apiVersion: v1
-kind: Secret
-metadata:
-  {{- include "krypton-lib-slim.metadata" (dict "ctx" $root "component" "secret" "instance" $name "shared" true) | nindent 2 }}
-type: Opaque
-stringData:
-  {{- $data | default dict | toYaml | nindent 2 }}
-{{- end }}</pre>
+    <figcaption><span class="dot dot-in"></span>charts/krypton-payments/templates/deployment.yaml &middot; <span data-lang="en">reference into krypton-shared</span><span data-lang="de">Referenz auf krypton-shared</span></figcaption>
+    <pre data-hl="yaml">{{- range $sharedEnvFrom.secrets }}
+- secretRef:
+    name: {{ include "krypton-lib-slim.componentName" (dict "ctx" $ "chart" "krypton-shared" "component" "secret" "instance" . "shared" true) }}
+{{- end }}
+# krypton-shared/templates/secrets.yaml names the object with the identical call minus "chart":
+#   (dict "ctx" $root "component" "secret" "instance" $name "shared" true)</pre>
   </figure>
+  <div class="cmd">helm template krypton-shared krypton-umbrella-slim -f krypton-umbrella-slim/values-shared-only.yaml</div>
   <figure class="code">
-    <figcaption><span class="dot dot-out"></span><span data-lang="en">rendered names &middot; shared vs. lane-specific</span><span data-lang="de">gerenderte Namen &middot; geteilt vs. Lane-spezifisch</span></figcaption>
-    <pre data-hl="yaml">name: krypton-payments-smtp                    # shared: no lane segment, no app.kubernetes.io/part-of label
-name: krypton-payments-signing
-name: krypton-payments-release-smtp            # default: lane-specific</pre>
+    <figcaption><span class="dot dot-out"></span><span data-lang="en">rendered &middot; dedicated shared Application</span><span data-lang="de">gerendert &middot; eigene shared-Application</span></figcaption>
+    <pre data-hl="yaml">kind: Secret
+metadata:
+  name: krypton-shared-gateway                   # no lane segment, no app.kubernetes.io/part-of label
+---
+kind: ConfigMap
+metadata:
+  name: krypton-shared-common
+# every lane deployment (krypton-shared.enabled: false) references exactly these names:
+#   - configMapRef: { name: krypton-shared-common }
+#   - secretRef:    { name: krypton-shared-gateway }</pre>
   </figure>
   <div class="cmd">helm template krypton krypton-umbrella-slim --set krypton-payments.jenkins.annotations.jenkins\.io/build-number=1234</div>
   <figure class="code">
@@ -1073,10 +1094,37 @@ metadata:
 <section id="argocd">
   <span class="eyebrow">GitOps</span>
   <h2>ArgoCD</h2>
-  <p data-lang="en">Point one Application per lane at the chart directory. Waves order resources within each sync; the lane is set via a values file or a Helm parameter.</p>
-  <p data-lang="de">Pro Lane zeigt eine Application auf das Chart-Verzeichnis. Die Waves ordnen die Ressourcen innerhalb jedes Syncs; die Lane kommt aus einer Values-Datei oder einem Helm-Parameter.</p>
+  <p data-lang="en">Point one Application per lane at the chart directory. Waves order resources within each sync; the lane is set via a values file or a Helm parameter. Lane Applications leave <code>krypton-shared.enabled</code> at its default (off) and merely reference the shared objects; one additional Application per namespace owns them through <code>values-shared-only.yaml</code>.</p>
+  <p data-lang="de">Pro Lane zeigt eine Application auf das Chart-Verzeichnis. Die Waves ordnen die Ressourcen innerhalb jedes Syncs; die Lane kommt aus einer Values-Datei oder einem Helm-Parameter. Lane-Applications lassen <code>krypton-shared.enabled</code> auf dem Default (aus) und referenzieren die geteilten Objekte nur; eine zus&auml;tzliche Application pro Namespace besitzt sie &uuml;ber <code>values-shared-only.yaml</code>.</p>
+  <figure class="code" style="margin-bottom:14px">
+    <figcaption><span class="dot dot-in"></span>application-shared.yaml &middot; <span data-lang="en">owns the shared objects</span><span data-lang="de">besitzt die geteilten Objekte</span></figcaption>
+    <pre data-hl="yaml">apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: krypton-shared
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://git.example.com/krypton/krypton-umbrella.git
+    targetRevision: main
+    path: krypton-umbrella
+    helm:
+      valueFiles:
+        - values.yaml
+        - values-shared-only.yaml   # krypton-shared on, every application subchart off
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: krypton-dev           # the namespace the lane Applications share
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true</pre>
+  </figure>
   <figure class="code">
-    <figcaption><span class="dot dot-in"></span>application.yaml</figcaption>
+    <figcaption><span class="dot dot-in"></span>application.yaml &middot; <span data-lang="en">one per lane</span><span data-lang="de">eine je Lane</span></figcaption>
     <pre data-hl="yaml">apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:

@@ -17,12 +17,14 @@ krypton-umbrella/
 ├── Chart.yaml                  # declares all charts under charts/ (required by Helm 4)
 ├── values.yaml                 # global: lane, static labels/annotations, default sync waves
 ├── values.schema.json          # validates the umbrella keys, esp. global
+├── values-shared-only.yaml     # overlay for the shared owner: krypton-shared on, application subcharts off
 ├── charts/
 │   ├── krypton-lib/            # type: library - renders nothing, provides helpers
 │   │   └── templates/_helpers.tpl
 │   ├── krypton-banking/        # Deployment, Service, ConfigMap, VaultStaticSecret, Route,
 │   │                           # ServiceAccount (+ optional PDB / HPA / NetworkPolicy)
-│   └── krypton-auth/           # Deployment, ServiceAccount
+│   ├── krypton-auth/           # Deployment, ServiceAccount
+│   └── krypton-shared/         # lane-independent ConfigMaps / Secrets / VaultStaticSecrets, one owner per namespace
 └── krypton-umbrella-slim/      # slim variant: metadata-only library with its own umbrella and
                                 # subcharts (see "Slim variant"; .helmignore keeps it out of this chart)
 ```
@@ -60,12 +62,26 @@ Rendering fails loudly if `global.laneName` is unset.
 `componentName`/`metadata` drops the lane segment
 (`krypton-banking`, `krypton-banking-smtp`) and omits the
 `app.kubernetes.io/part-of` label, for ConfigMaps or Secrets that several lane
-deployments consume and that therefore only have to exist once. Use the
-same call where the resource is created and where it is referenced, and
-let exactly one deployment create it (ArgoCD must not see one resource in
-two Applications); the other lanes reference the name only. krypton-banking
-demonstrates this with `config.shared` (name) and `config.create`
-(render the ConfigMap or just reference it).
+deployments in one namespace consume and that therefore only have to exist
+once. They live in their own subchart, **`krypton-shared`**, which renders
+`configMaps`, `secrets` and `vault.secrets` as `krypton-shared-<key>`.
+Exactly one ArgoCD Application per namespace may own them (ArgoCD flags a
+second owner as a shared resource, Helm refuses foreign ownership), so the
+ownership is the plain deploy switch `krypton-shared.enabled`:
+
+| Application | values |
+| --- | --- |
+| consumer lane (default) | `krypton-shared.enabled: false` - workloads reference the names, nothing is created |
+| owning lane | `krypton-shared.enabled: true` next to the enabled application subcharts |
+| dedicated shared Application | `-f values-shared-only.yaml` - `krypton-shared` on, every application subchart off |
+
+The application subcharts reference the objects through the same helper that
+names them, with `chart` pinning the owner, so a reference can never drift:
+`componentName (dict "ctx" . "chart" "krypton-shared" "component" "configMap" "instance" "common" "shared" true)`
+→ `krypton-shared-common`. krypton-banking and krypton-auth expose this as
+`sharedEnvFrom.configMaps` / `.secrets` (instance keys wired in as `envFrom`).
+Service-scoped sharing stays available too: krypton-banking's `config.shared`
+renders its own ConfigMap as `krypton-banking`, gated by `config.create`.
 
 **Label domain** - the platform-generated annotation key
 (`<domain>/source-chart`) takes its

@@ -26,6 +26,11 @@
                   ConfigMaps / Secrets that several lane deployments
                   consume, so they are created once instead of once per
                   lane.
+       chart      (optional, krypton-lib.componentName only) name of the
+                  subchart that OWNS the resource, for templates that
+                  reference a resource rendered by another subchart - e.g.
+                  "krypton-shared" for the lane-independent ConfigMaps /
+                  Secrets. Defaults to the caller's own .Chart.Name.
        extra      (optional, krypton-lib.annotations only) dict of ad-hoc
                   annotations merged in with high precedence.
 
@@ -195,18 +200,30 @@ Use the same call (with "shared" true) both where the resource is created
 and where it is referenced, and let exactly ONE deployment create it; the
 others reference the name only.
 
+Referencing another subchart's resource: "chart" replaces the caller's
+.Chart.Name with the owning subchart's name, everything else stays the
+same. This is how the application subcharts point at the objects of the
+krypton-shared subchart without spelling out a name - both sides call the
+helper with identical arguments, so the reference can never drift:
+    krypton-shared/templates/configmaps.yaml   (creates)
+        (dict "ctx" $root "component" "configMap" "instance" "common" "shared" true)
+    krypton-banking/templates/deployment.yaml  (references)
+        (dict "ctx" $ "chart" "krypton-shared" "component" "configMap" "instance" "common" "shared" true)
+    -> krypton-shared-common on both sides
+
 Truncated to 63 characters (the Kubernetes name limit for most resources).
 
 Usage:
     name: {{ include "krypton-lib.componentName" (dict "ctx" . "component" "deployment") }}
     name: {{ include "krypton-lib.componentName" (dict "ctx" . "component" "vaultStaticSecret" "instance" "database") }}
     name: {{ include "krypton-lib.componentName" (dict "ctx" . "component" "configMap" "shared" true) }}
+    name: {{ include "krypton-lib.componentName" (dict "ctx" . "chart" "krypton-shared" "component" "secret" "instance" "gateway" "shared" true) }}
 */}}
 {{- define "krypton-lib.componentName" -}}
 {{- $ctx := .ctx -}}
 {{- $component := required "krypton-lib.componentName: 'component' is required" .component -}}
 {{- include "krypton-lib.assertComponent" (dict "ctx" $ctx "component" $component) -}}
-{{- $name := $ctx.Chart.Name -}}
+{{- $name := .chart | default $ctx.Chart.Name -}}
 {{- if not .shared -}}
 {{- $name = printf "%s-%s" $name (include "krypton-lib.laneName" .) -}}
 {{- end -}}

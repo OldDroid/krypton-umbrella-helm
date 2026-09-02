@@ -1,0 +1,56 @@
+# krypton-shared - the lane-independent resources of the platform: ConfigMaps,
+# Secrets and Vault-materialised Secrets that every lane deployment in a
+# namespace consumes. Everything in this subchart renders with "shared" true:
+#
+#   krypton-shared-<key>    no lane segment, no app.kubernetes.io/part-of label
+#
+# Ownership. Exactly ONE ArgoCD Application per namespace may render this
+# subchart - ArgoCD flags a second owner as a shared resource, Helm refuses
+# foreign ownership outright. The umbrella steers that with the plain
+# deploy switch krypton-shared.enabled (condition in the umbrella Chart.yaml):
+#
+#   consumer lane   enabled: false (umbrella default) - the application
+#                   subcharts reference the names, nothing is created here
+#   owner lane      enabled: true next to the enabled application subcharts
+#   shared only     enabled: true, every application subchart disabled -
+#                   the dedicated shared Application, see values-shared-only.yaml
+#
+# Consumers reference the objects through the same helper that names them
+# here, with "chart" pinning the owner:
+#   include "krypton-lib-slim.componentName" (dict "ctx" . "chart" "krypton-shared" "component" "secret" "instance" "gateway" "shared" true)
+# krypton-payments exposes that as sharedEnvFrom.configMaps / .secrets.
+
+# One ConfigMap per entry, key = instance: krypton-shared-<key>.
+configMaps: {}
+#  common:
+#    PLATFORM_REGION: eu-central
+
+# One Opaque Secret per entry: krypton-shared-<key>. Keys must not collide
+# with vault.secrets keys - the Vault-written Secrets use the same names and
+# secrets.yaml refuses a render on overlap. Demo values only.
+secrets: {}
+#  gateway:
+#    GATEWAY_TOKEN: change-me
+
+# Vault Secrets Operator: one VaultStaticSecret per entry, writing the Secret
+# krypton-shared-<key>. Paths are rendered through tpl but deliberately carry
+# no lane by default - that is the point of this subchart.
+vault:
+  authRef: krypton-vault-auth
+  mount: kv-v2
+  refreshAfter: 60s
+  secrets: {}
+  #  gateway:
+  #    path: "krypton/shared/gateway"
+
+# Sync waves per component type; unset keys fall back to global.syncWaves.
+syncWaves: {}
+
+# Custom labels / annotations for every resource of this subchart.
+labels: {}
+annotations: {}
+
+# Optional CI block, see krypton-payments.
+# jenkins:
+#   annotations:
+#     jenkins.io/build-number: "1234"

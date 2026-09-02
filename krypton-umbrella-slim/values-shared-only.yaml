@@ -1,0 +1,15 @@
+# Values overlay for the dedicated "shared" ArgoCD Application: renders
+# nothing but the lane-independent krypton-shared subchart. Every lane
+# Application then runs with krypton-shared.enabled: false (the default)
+# and only references the names.
+#
+#   helm template krypton-shared krypton-umbrella-slim -f krypton-umbrella-slim/values-shared-only.yaml
+#
+# global.laneName stays whatever the base values say - shared names never
+# contain it.
+krypton-shared:
+  enabled: true
+krypton-payments:
+  enabled: false
+krypton-notifier:
+  enabled: false

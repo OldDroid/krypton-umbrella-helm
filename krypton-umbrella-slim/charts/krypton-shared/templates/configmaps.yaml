@@ -1,0 +1,17 @@
+{{- /*
+One lane-independent ConfigMap per entry in .Values.configMaps, named
+krypton-shared-<key> ("shared" true: no lane segment, no lane label).
+Application subcharts reference it with the identical helper call plus
+"chart" "krypton-shared" (their sharedEnvFrom.configMaps list), so the
+reference can never drift from the name rendered here.
+*/ -}}
+{{- $root := . -}}
+{{- range $name, $data := .Values.configMaps }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  {{- include "krypton-lib-slim.metadata" (dict "ctx" $root "component" "configMap" "instance" $name "shared" true) | nindent 2 }}
+data:
+  {{- $data | default dict | toYaml | nindent 2 }}
+{{- end }}

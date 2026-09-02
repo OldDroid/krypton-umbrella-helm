@@ -90,6 +90,14 @@ krypton-payments:
   labels:
     krypton.io/team: payments
 
+  # Lane-independent objects of the krypton-shared subchart this workload
+  # consumes (envFrom). Names are computed with the same helper that names
+  # them in krypton-shared, so they never drift; whether they EXIST is the
+  # shared owner's business (krypton-shared.enabled below).
+  sharedEnvFrom:
+    configMaps: [common]
+    secrets: [gateway]
+
   # CI-injected annotations, merged into every resource of this subchart
   # right after the subchart's own annotations - ONLY when the block exists;
   # nothing is rendered otherwise. Jenkins typically sets these per sync via
@@ -118,3 +126,31 @@ krypton-notifier:
   # Custom annotations for every resource of this subchart.
   annotations:
     krypton.io/on-call: notifications-oncall@example.com
+
+# -----------------------------------------------------------------------------
+# Subchart: krypton-shared - lane-independent resources
+# -----------------------------------------------------------------------------
+krypton-shared:
+  # Ownership switch. false (default) = consumer lane: the application
+  # subcharts reference the shared names, nothing is created. Exactly ONE
+  # Application per namespace sets it to true - either the owning lane
+  # (everything enabled) or a dedicated shared Application that also
+  # disables every application subchart (values-shared-only.yaml).
+  # Two owners would make ArgoCD flag every shared object and Helm refuse
+  # the second release.
+  enabled: false
+
+  # Rendered as krypton-shared-common / krypton-shared-gateway - no lane in
+  # the name, no lane label. krypton-payments above wires both into its pods
+  # via sharedEnvFrom.
+  configMaps:
+    common:
+      PLATFORM_REGION: eu-central
+      PLATFORM_TIMEZONE: Europe/Berlin
+  secrets:
+    gateway:
+      GATEWAY_TOKEN: change-me   # demo value - production secrets come from vault.secrets
+  # vault:
+  #   secrets:
+  #     gateway:
+  #       path: "krypton/shared/gateway"   # no lane in the path on purpose

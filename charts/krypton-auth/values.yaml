@@ -46,6 +46,13 @@ probes:
 extraEnv: []
 extraEnvFrom: []
 podAnnotations: {}
+
+# Lane-independent objects of the krypton-shared subchart this workload
+# consumes as envFrom, by instance key (names krypton-shared-<key>, computed
+# with the same helper krypton-shared uses). See krypton-banking.
+sharedEnvFrom:
+  configMaps: []
+  secrets: []
 nodeSelector: {}
 tolerations: []
 affinity: {}
