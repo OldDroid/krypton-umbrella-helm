@@ -46,7 +46,7 @@ standalone (see below).
 ## Conventions
 
 **Resource names** - `krypton-lib.componentName` produces
-`<subchart-name>-<global.laneName>[-<instance>]`, e.g.
+`[<global.namePrefix>-]<subchart-name>-<global.laneName>[-<instance>]`, e.g.
 `krypton-banking-release` for the Deployment, Service, Route and
 ServiceAccount alike - the Kubernetes kind tells them apart, so the
 component type is deliberately not part of the name. The `component`
@@ -58,7 +58,11 @@ VaultStaticSecret `database`; the Secret it writes gets the same name).
 The lane is also stamped as the `app.kubernetes.io/part-of` label;
 setting `global.partOfPrefix` (e.g. `krypton-umbrella`) turns the value
 into `<partOfPrefix>-<laneName>` (`krypton-umbrella-release`) without
-touching the resource names.
+touching the resource names. `global.namePrefix` is the counterpart for
+the names: empty by default, so nothing changes; set to e.g. `acme` every
+resource becomes `acme-<subchart-name>-<laneName>[-<instance>]`
+(`acme-krypton-banking-release`), shared resources included
+(`acme-krypton-shared-common`), so two umbrellas can share a namespace.
 Rendering fails loudly if `global.laneName` is unset.
 
 **Shared (lane-independent) resources** - passing `shared: true` to

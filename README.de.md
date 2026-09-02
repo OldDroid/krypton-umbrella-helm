@@ -46,7 +46,7 @@ Subchart eigenständig zu bauen und zu rendern (siehe unten).
 ## Konventionen
 
 **Ressourcennamen** – `krypton-lib.componentName` erzeugt
-`<subchart-name>-<global.laneName>[-<instance>]`, z. B.
+`[<global.namePrefix>-]<subchart-name>-<global.laneName>[-<instance>]`, z. B.
 `krypton-banking-release` für Deployment, Service, Route und ServiceAccount
 gleichermaßen – der Kubernetes-Kind unterscheidet sie, der Komponententyp
 ist bewusst nicht Teil des Namens. Das `component`-Argument bleibt
@@ -58,7 +58,12 @@ VaultStaticSecret `database`; das Secret, das es schreibt, heißt genauso).
 Die Lane wird zusätzlich als Label `app.kubernetes.io/part-of` gesetzt;
 mit `global.partOfPrefix` (z.B. `krypton-umbrella`) wird daraus
 `<partOfPrefix>-<laneName>` (`krypton-umbrella-release`), die
-Ressourcennamen bleiben unverändert. Ist
+Ressourcennamen bleiben unverändert. Das Gegenstück für die Namen ist
+`global.namePrefix`: per Default leer, also ändert sich nichts; mit z. B.
+`acme` heißt jede Ressource `acme-<subchart-name>-<laneName>[-<instance>]`
+(`acme-krypton-banking-release`), geteilte Ressourcen eingeschlossen
+(`acme-krypton-shared-common`), sodass sich zwei Umbrellas einen Namespace
+teilen können. Ist
 `global.laneName` nicht gesetzt, schlägt das Rendern mit einer klaren
 Fehlermeldung fehl.
 

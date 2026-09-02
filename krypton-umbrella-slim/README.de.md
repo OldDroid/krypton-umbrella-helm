@@ -66,7 +66,10 @@ metadata:
 
 ### Namen und der Instanz-Bezeichner
 
-`componentName` erzeugt `<subchart-name>-<global.laneName>[-<instance>]`.
+`componentName` erzeugt `<subchart-name>-<global.laneName>[-<instance>]`,
+mit vorangestelltem `global.namePrefix`, falls gesetzt (`acme` ergibt
+`acme-krypton-payments-release`, geteilte Ressourcen eingeschlossen; per
+Default leer, also ändert sich nichts).
 Der Komponententyp ist bewusst nicht Teil des Namens – der Kubernetes-Kind
 unterscheidet ein Deployment ohnehin von einem Service namens
 `krypton-payments-release`. Das `component`-Argument bleibt trotzdem
@@ -253,6 +256,7 @@ Route. Weitere nützliche Einträge: `Replace=true`, `ServerSideApply=true`,
 | Key | Ebene | Bedeutung |
 | --- | --- | --- |
 | `global.laneName` | Umbrella, **Pflicht** | Lane; Teil jedes Namens; Render scheitert ohne |
+| `global.namePrefix` | Umbrella | optionales Präfix jedes Namens (`acme-krypton-payments-release`, geteilte Ressourcen eingeschlossen); per Default leer |
 | `global.labelDomain` | Umbrella | Präfix der erzeugten `<domain>/source-chart`-Annotation, Default `krypton.io` |
 | `global.labels` / `global.annotations` | Umbrella | statische Maps für jede Ressource |
 | `global.syncWaves` / `global.syncOptions` | Umbrella | Plattform-Defaults je Komponententyp |

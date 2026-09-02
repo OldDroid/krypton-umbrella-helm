@@ -65,7 +65,10 @@ metadata:
 
 ### Names and the instance identifier
 
-`componentName` produces `<subchart-name>-<global.laneName>[-<instance>]`.
+`componentName` produces `<subchart-name>-<global.laneName>[-<instance>]`,
+prefixed with `global.namePrefix` when that is set (`acme` gives
+`acme-krypton-payments-release`, shared resources included; empty by
+default, so nothing changes).
 The component type is deliberately not part of the name - the Kubernetes
 kind already tells a Deployment from a Service called `krypton-payments-release`.
 The `component` argument is still required: it is validated against the
@@ -244,6 +247,7 @@ Route. Other useful entries: `Replace=true`, `ServerSideApply=true`,
 | Key | Scope | Meaning |
 | --- | --- | --- |
 | `global.laneName` | umbrella, **required** | lane; part of every name; render fails when unset |
+| `global.namePrefix` | umbrella | optional prefix of every name (`acme-krypton-payments-release`, shared resources included); empty by default |
 | `global.labelDomain` | umbrella | prefix of the generated `<domain>/source-chart` annotation, default `krypton.io` |
 | `global.labels` / `global.annotations` | umbrella | static maps for every resource |
 | `global.syncWaves` / `global.syncOptions` | umbrella | platform defaults per component type |

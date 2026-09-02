@@ -9,10 +9,18 @@
 global:
   # Lane / environment this instance of the umbrella is deployed to
   # (e.g. release, test). Consumed by krypton-lib for resource naming:
-  #   <subchart-name>-<laneName>[-<instance>]
+  #   [<namePrefix>-]<subchart-name>-<laneName>[-<instance>]
   # (resources rendered with "shared" true omit the lane segment) and
   # stamped as the app.kubernetes.io/part-of label.
   laneName: release
+
+  # Optional prefix for EVERY resource name rendered by the subcharts.
+  # Empty keeps <subchart-name>-<laneName>[-<instance>]
+  # (krypton-banking-release); set e.g. "acme" to render
+  # acme-krypton-banking-release. Shared resources are prefixed too
+  # (acme-krypton-shared-common), so two umbrellas with different prefixes
+  # can coexist in one namespace. Labels are not affected.
+  namePrefix: ""
 
   # Optional prefix for the app.kubernetes.io/part-of label. Empty stamps
   # the bare lane (part-of: release); set to the umbrella chart name to get

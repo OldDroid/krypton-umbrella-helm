@@ -68,6 +68,20 @@ reachable from inside the library.
 {{- end }}
 
 {{/*
+Optional prefix for every resource name, from global.namePrefix: "" (the
+default) keeps <subchart-name>-<laneName>[-<instance>], "acme" renders
+acme-<subchart-name>-<laneName>[-<instance>]. Applies to shared resources
+too (acme-krypton-shared-common), so an umbrella that carries a prefix
+keeps its lane-specific and its lane-independent resources apart from a
+second, unprefixed (or differently prefixed) umbrella in the same
+namespace. Consumed by krypton-lib.componentName only.
+*/}}
+{{- define "krypton-lib.namePrefix" -}}
+{{- $global := .ctx.Values.global | default dict -}}
+{{- $global.namePrefix | default "" -}}
+{{- end }}
+
+{{/*
 Domain prefix for the platform-generated annotation key
 <domain>/source-chart (the lane itself is carried by the standard
 app.kubernetes.io/part-of label). Configurable via global.labelDomain so
@@ -184,10 +198,14 @@ helm.sh/chart label value: <chart-name>-<chart-version>.
 {{/*
 The one sanctioned resource-name format:
 
-    <subchart-name>-<global-lane-name>[-<instance>]
+    [<prefix>-]<subchart-name>-<global-lane-name>[-<instance>]
     e.g. krypton-banking-release             Deployment, Service, Route, SA, ...
          krypton-banking-release-database    VaultStaticSecret, instance "database"
+         acme-krypton-banking-release        the same Deployment with
+                                             global.namePrefix "acme"
 
+  prefix          optional, from the umbrella's global.namePrefix; empty
+                  (the default) renders no prefix segment at all
   subchart-name   dynamic, from .Chart.Name of the calling subchart
   lane-name       from the umbrella's global.laneName
   instance        optional; the identifier for several resources of the
@@ -209,6 +227,8 @@ specific - a ConfigMap or Secret that every lane deployment of the subchart
 consumes and that therefore only has to exist once:
     krypton-banking
     krypton-banking-smtp
+A configured global.namePrefix is kept (acme-krypton-banking-smtp): the
+prefix separates umbrellas, the lane segment separates lanes.
 Use the same call (with "shared" true) both where the resource is created
 and where it is referenced, and let exactly ONE deployment create it; the
 others reference the name only.
@@ -237,6 +257,9 @@ Usage:
 {{- $component := required "krypton-lib.componentName: 'component' is required" .component -}}
 {{- include "krypton-lib.assertComponent" (dict "ctx" $ctx "component" $component) -}}
 {{- $name := .chart | default $ctx.Chart.Name -}}
+{{- with include "krypton-lib.namePrefix" . -}}
+{{- $name = printf "%s-%s" . $name -}}
+{{- end -}}
 {{- if not .shared -}}
 {{- $name = printf "%s-%s" $name (include "krypton-lib.laneName" .) -}}
 {{- end -}}

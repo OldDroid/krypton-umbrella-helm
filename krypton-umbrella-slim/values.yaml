@@ -6,8 +6,8 @@
 # merged over that subchart's own values.yaml - the umbrella wins per key.
 #
 # The slim library reads exactly these keys and nothing else:
-#   global.laneName, global.partOfPrefix, global.labelDomain, global.labels,
-#   global.annotations, global.syncWaves, global.syncOptions
+#   global.laneName, global.namePrefix, global.partOfPrefix, global.labelDomain,
+#   global.labels, global.annotations, global.syncWaves, global.syncOptions
 # and per subchart:
 #   labels, annotations, jenkins.annotations (optional), syncWaves,
 #   syncWaveOffset, syncOptions
@@ -16,10 +16,18 @@
 global:
   # Lane / environment this instance of the umbrella is deployed to
   # (e.g. release, test). Consumed by krypton-lib-slim for resource naming:
-  #   <subchart-name>-<laneName>[-<instance>]
+  #   [<namePrefix>-]<subchart-name>-<laneName>[-<instance>]
   # (resources rendered with "shared" true omit the lane segment) and
   # stamped as the app.kubernetes.io/part-of label.
   laneName: release
+
+  # Optional prefix for EVERY resource name rendered by the subcharts.
+  # Empty keeps <subchart-name>-<laneName>[-<instance>]
+  # (krypton-payments-release); set e.g. "acme" to render
+  # acme-krypton-payments-release. Shared resources are prefixed too
+  # (acme-krypton-shared-gateway), so two umbrellas with different
+  # prefixes can coexist in one namespace. Labels are not affected.
+  namePrefix: ""
 
   # Optional prefix for the app.kubernetes.io/part-of label. Empty stamps
   # the bare lane (part-of: release); set to the umbrella chart name to get
