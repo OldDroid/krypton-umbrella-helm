@@ -14,6 +14,13 @@ global:
   # stamped as the app.kubernetes.io/part-of label.
   laneName: release
 
+  # Optional prefix for the app.kubernetes.io/part-of label. Empty stamps
+  # the bare lane (part-of: release); set to the umbrella chart name to get
+  # <partOfPrefix>-<laneName> (part-of: krypton-umbrella-release) so the
+  # label also tells which umbrella the lane belongs to. Resource names are
+  # not affected.
+  partOfPrefix: ""
+
   # Domain prefix for the platform-generated annotation key
   # <labelDomain>/source-chart (the lane label is the standard
   # app.kubernetes.io/part-of).

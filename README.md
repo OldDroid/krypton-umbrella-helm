@@ -55,7 +55,10 @@ the sync wave and prune protection. When a subchart renders several
 resources of the same kind, an optional `instance` argument is appended,
 normalised to a DNS-1123 label (`krypton-banking-release-database` for the
 VaultStaticSecret `database`; the Secret it writes gets the same name).
-The lane is also stamped as the `app.kubernetes.io/part-of` label.
+The lane is also stamped as the `app.kubernetes.io/part-of` label;
+setting `global.partOfPrefix` (e.g. `krypton-umbrella`) turns the value
+into `<partOfPrefix>-<laneName>` (`krypton-umbrella-release`) without
+touching the resource names.
 Rendering fails loudly if `global.laneName` is unset.
 
 **Shared (lane-independent) resources** - passing `shared: true` to

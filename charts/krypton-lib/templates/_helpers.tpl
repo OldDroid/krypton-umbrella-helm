@@ -55,6 +55,19 @@ or "test". Fails the render loudly when the umbrella forgot to set it.
 {{- end }}
 
 {{/*
+Value of the app.kubernetes.io/part-of lane label: the lane name, prefixed
+with global.partOfPrefix when set (e.g. partOfPrefix "krypton-umbrella"
+gives krypton-umbrella-release instead of release). The prefix is a value
+because a subchart's .Chart is its own chart - the umbrella's name is not
+reachable from inside the library.
+*/}}
+{{- define "krypton-lib.partOf" -}}
+{{- $global := .ctx.Values.global | default dict -}}
+{{- $lane := include "krypton-lib.laneName" . -}}
+{{- with $global.partOfPrefix -}}{{- printf "%s-%s" . $lane -}}{{- else -}}{{- $lane -}}{{- end -}}
+{{- end }}
+
+{{/*
 Domain prefix for the platform-generated annotation key
 <domain>/source-chart (the lane itself is carried by the standard
 app.kubernetes.io/part-of label). Configurable via global.labelDomain so
@@ -318,7 +331,7 @@ Standard labels merged with the umbrella's static labels.
 
 Merge order (later wins on key collisions):
   1. chart-generated standard labels (app.kubernetes.io/*, helm.sh/chart);
-     the lane is stamped as app.kubernetes.io/part-of: <laneName>
+     the lane is stamped as app.kubernetes.io/part-of: [<partOfPrefix>-]<laneName>
   2. global.labels                  - static platform labels from the umbrella
 
 The app.kubernetes.io/part-of lane label is omitted for "shared" resources
@@ -338,7 +351,7 @@ Usage:
       "app.kubernetes.io/managed-by" $ctx.Release.Service
 -}}
 {{- if not .shared -}}
-{{- $_ := set $labels "app.kubernetes.io/part-of" (include "krypton-lib.laneName" .) -}}
+{{- $_ := set $labels "app.kubernetes.io/part-of" (include "krypton-lib.partOf" .) -}}
 {{- end -}}
 {{- with $ctx.Chart.AppVersion -}}
 {{- $_ := set $labels "app.kubernetes.io/version" (. | toString) -}}
