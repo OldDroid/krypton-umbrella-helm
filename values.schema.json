@@ -16,6 +16,11 @@
           "pattern": "^[a-z0-9]([a-z0-9-]{0,30}[a-z0-9])?$",
           "description": "Lane/environment name; part of every resource name (<subchart>-<lane>[-<instance>], shared resources omit it) and the app.kubernetes.io/part-of label."
         },
+        "partOfPrefix": {
+          "type": "string",
+          "pattern": "^([a-z0-9]([a-z0-9-]{0,30}[a-z0-9])?)?$",
+          "description": "Optional prefix for the app.kubernetes.io/part-of label: <partOfPrefix>-<laneName> (e.g. krypton-umbrella -> krypton-umbrella-release). Empty stamps the bare lane name."
+        },
         "labelDomain": {
           "type": "string",
           "pattern": "^[a-z0-9]([a-z0-9.-]{0,251}[a-z0-9])?$",

@@ -172,7 +172,8 @@ Merge order, later wins on key collisions:
 
 1. standard labels: `app.kubernetes.io/name|instance|version|managed-by`,
    `helm.sh/chart`, and the lane as `app.kubernetes.io/part-of` (omitted on
-   `shared` resources)
+   `shared` resources; `global.partOfPrefix` prepends the umbrella name,
+   `krypton-umbrella-slim-release` instead of `release`)
 2. `global.labels` — umbrella-wide
 3. `<subchart>.labels` — the subchart's `labels:` block, overridable from the
    umbrella's subchart block (the umbrella adds `krypton.io/team: payments`)

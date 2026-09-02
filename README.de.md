@@ -55,7 +55,10 @@ und Prune-Schutz aus. Rendert ein Subchart mehrere Ressourcen derselben
 Art, wird ein optionales `instance`-Argument angehängt, normalisiert auf
 ein DNS-1123-Label (`krypton-banking-release-database` für das
 VaultStaticSecret `database`; das Secret, das es schreibt, heißt genauso).
-Die Lane wird zusätzlich als Label `app.kubernetes.io/part-of` gesetzt. Ist
+Die Lane wird zusätzlich als Label `app.kubernetes.io/part-of` gesetzt;
+mit `global.partOfPrefix` (z.B. `krypton-umbrella`) wird daraus
+`<partOfPrefix>-<laneName>` (`krypton-umbrella-release`), die
+Ressourcennamen bleiben unverändert. Ist
 `global.laneName` nicht gesetzt, schlägt das Rendern mit einer klaren
 Fehlermeldung fehl.
 

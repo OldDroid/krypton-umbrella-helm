@@ -6,8 +6,8 @@
 # merged over that subchart's own values.yaml - the umbrella wins per key.
 #
 # The slim library reads exactly these keys and nothing else:
-#   global.laneName, global.labelDomain, global.labels, global.annotations,
-#   global.syncWaves, global.syncOptions
+#   global.laneName, global.partOfPrefix, global.labelDomain, global.labels,
+#   global.annotations, global.syncWaves, global.syncOptions
 # and per subchart:
 #   labels, annotations, jenkins.annotations (optional), syncWaves,
 #   syncWaveOffset, syncOptions
@@ -20,6 +20,13 @@ global:
   # (resources rendered with "shared" true omit the lane segment) and
   # stamped as the app.kubernetes.io/part-of label.
   laneName: release
+
+  # Optional prefix for the app.kubernetes.io/part-of label. Empty stamps
+  # the bare lane (part-of: release); set to the umbrella chart name to get
+  # <partOfPrefix>-<laneName> (part-of: krypton-umbrella-slim-release) so
+  # the label also tells which umbrella the lane belongs to. Resource names
+  # are not affected.
+  partOfPrefix: ""
 
   # Domain prefix for the platform-generated annotation key
   # <labelDomain>/source-chart. Defaults to krypton.io
