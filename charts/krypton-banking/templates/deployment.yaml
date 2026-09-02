@@ -63,7 +63,7 @@ spec:
           envFrom:
             {{- if $config.envFrom }}
             - configMapRef:
-                name: {{ include "krypton-lib.componentName" (dict "ctx" . "component" "configMap") }}
+                name: {{ include "krypton-lib.componentName" (dict "ctx" . "component" "configMap" "shared" $config.shared) }}
             {{- end }}
             # Secrets materialised by the VaultStaticSecrets (sync wave -1),
             # so they already exist when this Deployment (wave 1) syncs.
@@ -90,7 +90,7 @@ spec:
       volumes:
         - name: config
           configMap:
-            name: {{ include "krypton-lib.componentName" (dict "ctx" $ "component" "configMap") }}
+            name: {{ include "krypton-lib.componentName" (dict "ctx" $ "component" "configMap" "shared" $config.shared) }}
       {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:

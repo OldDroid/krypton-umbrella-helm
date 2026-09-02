@@ -56,6 +56,17 @@ kebab-case-Suffix angehängt
 `global.laneName` nicht gesetzt, schlägt das Rendern mit einer klaren
 Fehlermeldung fehl.
 
+**Geteilte (lane-unabhängige) Ressourcen** – wird `componentName`/`metadata`
+zusätzlich `shared: true` übergeben, entfällt das Lane-Segment im Namen
+(`krypton-banking-cm`, `krypton-banking-secret-smtp`) und das
+`<domain>/lane`-Label wird nicht gesetzt – für ConfigMaps oder Secrets, die
+mehrere Lane-Deployments gemeinsam nutzen und daher nur einmal existieren
+müssen. Derselbe Aufruf wird beim Erzeugen und beim Referenzieren der
+Ressource verwendet; erzeugt wird sie von genau einem Deployment (ArgoCD
+darf eine Ressource nicht in zwei Applications sehen), alle anderen Lanes
+referenzieren nur den Namen. krypton-banking zeigt das mit `config.shared`
+(Name) und `config.create` (ConfigMap rendern oder nur referenzieren).
+
 **Label-Domain** – die plattformgenerierten Label-/Annotation-Keys
 (`<domain>/lane`, `<domain>/source-chart`) beziehen
 ihr Präfix aus `global.labelDomain` (Default `krypton.io`); das Gerüst lässt
@@ -104,8 +115,9 @@ erste Treffer gewinnt:
 2. `global.syncWaves.<komponente>` — plattformweite Defaults
 
 `krypton-lib.annotations` setzt die Wave als `argocd.argoproj.io/sync-wave`
-ganz am Ende seiner Merge-Kette (Standard → `global.annotations` → `extra`
-pro Aufruf → Wave) und lässt sie weg, wenn keine Wave konfiguriert ist.
+ganz am Ende seiner Merge-Kette (Standard → `global.annotations` →
+`<subchart>.jenkins.annotations` → `extra` pro Aufruf → Wave) und lässt sie
+weg, wenn keine Wave konfiguriert ist.
 Aktuelle Reihenfolge für krypton-banking: VaultStaticSecret `-1` →
 ConfigMap `0` → Deployment/Service `1` → Route `3` — das von Vault
 materialisierte Secret existiert also, bevor das Deployment es einbindet,
@@ -115,6 +127,14 @@ Readiness-/Liveness-Probes tragen (`probes:` je Subchart, pro Lane
 überschreibbar); das Pod-Template von banking trägt per Default zusätzlich
 eine `checksum/config`-Annotation, damit ConfigMap-Änderungen die Pods neu
 ausrollen.
+
+**CI-Annotations** – `<subchart>.jenkins.annotations` wird direkt nach
+`global.annotations` in jede Ressource des Subcharts gemergt, und zwar nur,
+wenn der Block existiert; ein normales Rendern trägt also keine
+CI-Annotations. Jenkins setzt ihn pro Sync, z. B. über ArgoCD-Helm-Parameter
+`krypton-banking.jenkins.annotations.jenkins\.io/build-number=1234`;
+skalare Werte werden stringifiziert, eine numerische Build-ID ist also
+sicher.
 
 **Subchart-übergreifende Reihenfolge** – soll ein Subchart erst nach einem
 anderen syncen, verschiebt `syncWaveOffset` (je Subchart, gesteuert aus dem

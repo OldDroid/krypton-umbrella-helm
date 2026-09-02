@@ -1,6 +1,16 @@
+{{- /*
+config.shared: true names the ConfigMap without the lane
+(krypton-banking-cm) and drops the lane label - one ConfigMap for every
+lane of this subchart. Only ONE lane deployment may then create it
+(config.create: true); every other lane sets config.create: false and
+merely references the name from its Deployment.
+*/ -}}
+{{- $config := .Values.config | default dict -}}
+{{- if or (not (hasKey $config "create")) $config.create }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  {{- include "krypton-lib.metadata" (dict "ctx" . "component" "configMap") | nindent 2 }}
+  {{- include "krypton-lib.metadata" (dict "ctx" . "component" "configMap" "shared" $config.shared) | nindent 2 }}
 data:
-  {{- (.Values.config | default dict).data | default dict | toYaml | nindent 2 }}
+  {{- $config.data | default dict | toYaml | nindent 2 }}
+{{- end }}

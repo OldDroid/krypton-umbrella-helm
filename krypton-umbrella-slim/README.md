@@ -109,6 +109,27 @@ The Deployment references the same names through the same helper, so an
     name: {{ include "krypton-lib-slim.componentName" (dict "ctx" $ "component" "vaultStaticSecret" "instance" $name) }}
 ```
 
+### Shared resources without the lane
+
+A ConfigMap or Secret that several lane deployments consume only has to
+exist once. Pass `shared: true` and the name omits the lane segment, the
+`<labelDomain>/lane` label is not stamped:
+
+```yaml
+metadata:
+  {{- include "krypton-lib-slim.metadata" (dict "ctx" $root "component" "secret" "instance" $name "shared" true) | nindent 2 }}
+```
+
+```
+krypton-payments-secret-smtp          # instead of krypton-payments-release-secret-smtp
+krypton-payments-cm                   # no instance
+```
+
+Use the same call (with `shared: true`) where the resource is created and
+where it is referenced. Let exactly one deployment create the resource -
+ArgoCD must not see one object in two Applications - and gate the creating
+template with a values flag so every other lane only references the name.
+
 The catalog (`krypton-lib-slim.componentCatalog` in `_helpers.tpl`) is the
 single source of truth for component strings; an unknown `component`
 argument or `syncWaves`/`syncOptions` key fails the render with the catalog

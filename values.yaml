@@ -10,6 +10,7 @@ global:
   # Lane / environment this instance of the umbrella is deployed to
   # (e.g. release, test). Consumed by krypton-lib for resource naming:
   #   <subchart-name>-<laneName>-<component-shortname>
+  # (resources rendered with "shared" true omit the lane segment)
   laneName: release
 
   # Domain prefix for every platform-generated label/annotation key:
@@ -98,6 +99,18 @@ krypton-banking:
   # manifest disappears from git.
   syncPrune:
     route: false
+
+  # CI-injected annotations, merged into every resource of this subchart
+  # right after global.annotations - ONLY when the block exists; nothing is
+  # rendered otherwise. Jenkins typically sets these per sync via ArgoCD
+  # helm parameters, e.g.
+  #   --set krypton-banking.jenkins.annotations.jenkins\.io/build-number=1234
+  #   --set krypton-banking.jenkins.annotations.jenkins\.io/git-commit=abc1234
+  # Scalar values are stringified at render time.
+  # jenkins:
+  #   annotations:
+  #     jenkins.io/build-number: "1234"
+  #     jenkins.io/job-url: https://jenkins.example.com/job/banking/1234/
 
 # -----------------------------------------------------------------------------
 # Subchart: krypton-auth

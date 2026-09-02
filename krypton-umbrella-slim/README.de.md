@@ -111,6 +111,29 @@ Das Deployment referenziert dieselben Namen über denselben Helper, ein
     name: {{ include "krypton-lib-slim.componentName" (dict "ctx" $ "component" "vaultStaticSecret" "instance" $name) }}
 ```
 
+### Geteilte Ressourcen ohne Lane
+
+Eine ConfigMap oder ein Secret, das mehrere Lane-Deployments gemeinsam
+nutzen, muss nur einmal existieren. Mit `shared: true` entfällt das
+Lane-Segment im Namen, und das `<labelDomain>/lane`-Label wird nicht
+gesetzt:
+
+```yaml
+metadata:
+  {{- include "krypton-lib-slim.metadata" (dict "ctx" $root "component" "secret" "instance" $name "shared" true) | nindent 2 }}
+```
+
+```
+krypton-payments-secret-smtp          # statt krypton-payments-release-secret-smtp
+krypton-payments-cm                   # ohne Instanz
+```
+
+Derselbe Aufruf (mit `shared: true`) wird beim Erzeugen und beim
+Referenzieren verwendet. Erzeugt wird die Ressource von genau einem
+Deployment – ArgoCD darf ein Objekt nicht in zwei Applications sehen –,
+das erzeugende Template wird also über ein Values-Flag geschaltet, und
+alle anderen Lanes referenzieren nur den Namen.
+
 Der Katalog (`krypton-lib-slim.componentCatalog` in `_helpers.tpl`) ist die
 einzige Quelle für Komponenten-Strings; ein unbekanntes `component`-Argument
 oder ein unbekannter `syncWaves`/`syncOptions`-Key lässt den Render mit dem

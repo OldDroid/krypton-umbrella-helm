@@ -19,6 +19,12 @@
                   component type within one subchart (e.g. one
                   VaultStaticSecret per vault path); appended to the
                   resource name as an extra kebab-cased suffix.
+       shared     (optional) true marks the resource as lane-independent:
+                  the name omits the lane segment
+                  (<subchart-name>-<component-shortname>[-<instance>]) and
+                  the <domain>/lane label is not stamped. For ConfigMaps /
+                  Secrets that several lane deployments consume, so they
+                  are created once instead of once per lane.
        extra      (optional, krypton-lib.annotations only) dict of ad-hoc
                   annotations merged in with high precedence.
 
@@ -173,19 +179,33 @@ An optional "instance" is appended kebab-cased as one more suffix when a
 subchart renders several resources of the same component type:
     krypton-banking-release-vault-static-secret-database
 
+"shared" true drops the lane segment for resources that are not lane
+specific - a ConfigMap or Secret that every lane deployment of the subchart
+consumes and that therefore only has to exist once:
+    krypton-banking-cm
+    krypton-banking-secret-smtp
+Use the same call (with "shared" true) both where the resource is created
+and where it is referenced, and let exactly ONE deployment create it; the
+others reference the name only.
+
 Truncated to 63 characters (the Kubernetes name limit for most resources).
 
 Usage:
     name: {{ include "krypton-lib.componentName" (dict "ctx" . "component" "deployment") }}
     name: {{ include "krypton-lib.componentName" (dict "ctx" . "component" "vaultStaticSecret" "instance" "database") }}
+    name: {{ include "krypton-lib.componentName" (dict "ctx" . "component" "configMap" "shared" true) }}
 */}}
 {{- define "krypton-lib.componentName" -}}
 {{- $ctx := .ctx -}}
 {{- $component := required "krypton-lib.componentName: 'component' is required" .component -}}
 {{- include "krypton-lib.assertComponent" (dict "ctx" $ctx "component" $component) -}}
-{{- $lane := include "krypton-lib.laneName" . -}}
 {{- $short := get (fromYaml (include "krypton-lib.componentCatalog" .)) $component | default (kebabcase $component) -}}
-{{- $name := printf "%s-%s-%s" $ctx.Chart.Name $lane $short -}}
+{{- $name := "" -}}
+{{- if .shared -}}
+{{- $name = printf "%s-%s" $ctx.Chart.Name $short -}}
+{{- else -}}
+{{- $name = printf "%s-%s-%s" $ctx.Chart.Name (include "krypton-lib.laneName" .) $short -}}
+{{- end -}}
 {{- with .instance -}}
 {{- $name = printf "%s-%s" $name (kebabcase .) -}}
 {{- end -}}
@@ -277,6 +297,9 @@ Merge order (later wins on key collisions):
   1. chart-generated standard labels (app.kubernetes.io/*, helm.sh/chart, lane)
   2. global.labels                  - static platform labels from the umbrella
 
+The <domain>/lane label is omitted for "shared" resources (see
+componentName): a resource consumed by several lanes belongs to none.
+
 Usage:
     labels:
       {{- include "krypton-lib.labels" (dict "ctx" .) | nindent 4 }}
@@ -290,8 +313,10 @@ Usage:
       "app.kubernetes.io/name"       $ctx.Chart.Name
       "app.kubernetes.io/instance"   $ctx.Release.Name
       "app.kubernetes.io/managed-by" $ctx.Release.Service
-      (printf "%s/lane" $domain)     (include "krypton-lib.laneName" .)
 -}}
+{{- if not .shared -}}
+{{- $_ := set $labels (printf "%s/lane" $domain) (include "krypton-lib.laneName" .) -}}
+{{- end -}}
 {{- with $ctx.Chart.AppVersion -}}
 {{- $_ := set $labels "app.kubernetes.io/version" (. | toString) -}}
 {{- end -}}
@@ -415,9 +440,18 @@ ones on key collisions:
 
   1. chart-generated standard annotations (<labelDomain>/source-chart)
   2. global.annotations              - static annotations from the umbrella
-  3. extra                           - optional per-call additions
-  4. argocd.argoproj.io/sync-wave    - resolved via krypton-lib.syncWave
-  5. argocd.argoproj.io/sync-options - resolved via krypton-lib.syncOptions
+  3. .Values.jenkins.annotations     - CI-injected annotations (build number,
+                                       commit, job URL, ...), set per subchart
+                                       from the umbrella as
+                                       <subchart-name>.jenkins.annotations,
+                                       typically via ArgoCD helm parameters.
+                                       Only merged when the block exists;
+                                       values are stringified so a numeric
+                                       build id from --set stays a valid
+                                       annotation value.
+  4. extra                           - optional per-call additions
+  5. argocd.argoproj.io/sync-wave    - resolved via krypton-lib.syncWave
+  6. argocd.argoproj.io/sync-options - resolved via krypton-lib.syncOptions
      (per-component prune protection via syncPrune values)
 
 The two ArgoCD annotations are applied LAST, so a configured wave or sync
@@ -443,9 +477,19 @@ Usage:
 {{- $standard := dict
       (printf "%s/source-chart" $domain) (include "krypton-lib.chart" .)
 -}}
+{{- /* jenkins.annotations is optional: absent block -> nothing is merged */ -}}
+{{- $jenkinsAnnotations := dict -}}
+{{- with $ctx.Values.jenkins -}}
+{{- if kindIs "map" . -}}
+{{- range $k, $v := .annotations | default dict -}}
+{{- $_ := set $jenkinsAnnotations $k (toString $v) -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
 {{- $annotations := mergeOverwrite (dict)
       $standard
       (deepCopy ($global.annotations | default dict))
+      $jenkinsAnnotations
       (deepCopy (.extra | default dict))
 -}}
 {{- $wave := include "krypton-lib.syncWave" (dict "ctx" $ctx "component" $component) -}}

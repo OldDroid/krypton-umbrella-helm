@@ -23,6 +23,19 @@
       "type": ["object", "null"],
       "additionalProperties": { "type": "string" }
     },
+    "jenkins": {
+      "type": ["object", "null"],
+      "description": "CI-injected block. jenkins.annotations is merged into every resource's annotations of this subchart when present; other keys are left to the pipeline.",
+      "properties": {
+        "annotations": {
+          "type": ["object", "null"],
+          "additionalProperties": {
+            "oneOf": [{ "type": "string" }, { "type": "number" }, { "type": "boolean" }]
+          },
+          "description": "Annotation map; scalar values are stringified at render time, so a numeric build id from --set is fine."
+        }
+      }
+    },
     "nodeSelector": {
       "type": ["object", "null"],
       "additionalProperties": { "type": "string" }

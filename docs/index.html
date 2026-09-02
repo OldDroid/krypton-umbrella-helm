@@ -367,14 +367,89 @@ name: krypton-banking-release-vault-static-secret-app
 name: krypton-banking-release-vault-static-secret-database</pre>
       </figure>
     </div>
-    <div class="note"><span data-lang="en"><b>Guard:</b> an unset or empty <code>global.laneName</code> fails the render loudly &mdash; no resource can ever be created without a lane in its name.</span><span data-lang="de"><b>Absicherung:</b> ein fehlendes oder leeres <code>global.laneName</code> l&auml;sst das Rendern laut fehlschlagen &mdash; keine Ressource entsteht je ohne Lane im Namen.</span></div>
+    <div class="note"><span data-lang="en"><b>Guard:</b> an unset or empty <code>global.laneName</code> fails the render loudly &mdash; no lane-specific resource can ever be created without a lane in its name. Only resources explicitly marked <code>shared</code> (next card) drop it.</span><span data-lang="de"><b>Absicherung:</b> ein fehlendes oder leeres <code>global.laneName</code> l&auml;sst das Rendern laut fehlschlagen &mdash; keine Lane-spezifische Ressource entsteht je ohne Lane im Namen. Nur explizit als <code>shared</code> markierte Ressourcen (n&auml;chste Karte) lassen sie weg.</span></div>
+  </article>
+
+  <!-- E1b shared resources -->
+  <article class="example" id="ex-shared">
+    <h3 data-lang="en">Shared resources without the lane</h3><h3 data-lang="de">Geteilte Ressourcen ohne Lane</h3>
+    <p data-lang="en">A ConfigMap or Secret that several lane deployments consume only has to exist once. Passing <code>shared: true</code> to <code>componentName</code> / <code>metadata</code> drops the lane segment from the name and omits the <code>&lt;labelDomain&gt;/lane</code> label. The same call is used where the resource is created and where it is referenced; exactly one lane creates it, every other lane references the name. krypton-banking wires this to <code>config.shared</code> (name) and <code>config.create</code> (render or reference).</p>
+    <p data-lang="de">Eine ConfigMap oder ein Secret, das mehrere Lane-Deployments gemeinsam nutzen, muss nur einmal existieren. Mit <code>shared: true</code> an <code>componentName</code> / <code>metadata</code> entf&auml;llt das Lane-Segment im Namen, und das <code>&lt;labelDomain&gt;/lane</code>-Label wird nicht gesetzt. Derselbe Aufruf wird beim Erzeugen und beim Referenzieren verwendet; genau eine Lane erzeugt die Ressource, jede andere referenziert nur den Namen. krypton-banking verdrahtet das mit <code>config.shared</code> (Name) und <code>config.create</code> (rendern oder referenzieren).</p>
+    <div class="io">
+      <div class="stack">
+        <figure class="code">
+          <figcaption><span class="dot dot-in"></span>charts/krypton-banking/templates/configmap.yaml</figcaption>
+          <pre data-hl="yaml">{{- $config := .Values.config | default dict -}}
+{{- if or (not (hasKey $config "create")) $config.create }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  {{- include "krypton-lib.metadata" (dict "ctx" . "component" "configMap" "shared" $config.shared) | nindent 2 }}
+data:
+  {{- $config.data | default dict | toYaml | nindent 2 }}
+{{- end }}</pre>
+        </figure>
+        <figure class="code">
+          <figcaption><span class="dot dot-in"></span>values.yaml &middot; <span data-lang="en">lane release (owner)</span><span data-lang="de">Lane release (Eigent&uuml;mer)</span></figcaption>
+          <pre data-hl="yaml">krypton-banking:
+  config:
+    shared: true     # name without the lane segment
+    create: true     # this lane creates the ConfigMap</pre>
+        </figure>
+        <figure class="code">
+          <figcaption><span class="dot dot-in"></span>values.yaml &middot; <span data-lang="en">lane test (consumer)</span><span data-lang="de">Lane test (Konsument)</span></figcaption>
+          <pre data-hl="yaml">krypton-banking:
+  config:
+    shared: true
+    create: false    # reference only - created by the release lane</pre>
+        </figure>
+      </div>
+      <div class="stack">
+        <div class="cmd">helm template krypton krypton-umbrella --set krypton-banking.config.shared=true</div>
+        <figure class="code">
+          <figcaption><span class="dot dot-out"></span><span data-lang="en">rendered &middot; lane release</span><span data-lang="de">gerendert &middot; Lane release</span></figcaption>
+          <pre data-hl="yaml">kind: ConfigMap
+metadata:
+  name: krypton-banking-cm            # no lane segment
+  labels:
+    app.kubernetes.io/instance: krypton
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: krypton-banking
+    app.kubernetes.io/version: 1.4.2
+    helm.sh/chart: krypton-banking-0.1.0
+    krypton.io/cost-center: cc-4711
+    krypton.io/platform: krypton      # no krypton.io/lane label
+---
+kind: Deployment
+metadata:
+  name: krypton-banking-release-deploy
+# ...
+envFrom:
+  - configMapRef:
+      name: krypton-banking-cm</pre>
+        </figure>
+        <div class="cmd">helm template krypton krypton-umbrella --set global.laneName=test --set krypton-banking.config.shared=true --set krypton-banking.config.create=false</div>
+        <figure class="code">
+          <figcaption><span class="dot dot-out"></span><span data-lang="en">rendered &middot; lane test</span><span data-lang="de">gerendert &middot; Lane test</span></figcaption>
+          <pre data-hl="yaml"># no ConfigMap in the output - the Deployment references the shared name
+kind: Deployment
+metadata:
+  name: krypton-banking-test-deploy
+# ...
+envFrom:
+  - configMapRef:
+      name: krypton-banking-cm</pre>
+        </figure>
+      </div>
+    </div>
+    <div class="note"><span data-lang="en"><b>Ownership:</b> ArgoCD must not see one object in two Applications &mdash; gate the creating template with a values flag so exactly one lane renders the shared resource. The slim library offers the same <code>shared</code> argument (see <a href="#slim">slim variant</a>).</span><span data-lang="de"><b>Eigent&uuml;merschaft:</b> ArgoCD darf ein Objekt nicht in zwei Applications sehen &mdash; das erzeugende Template wird &uuml;ber ein Values-Flag geschaltet, sodass genau eine Lane die geteilte Ressource rendert. Die schlanke Library bietet dasselbe <code>shared</code>-Argument (siehe <a href="#slim">schlanke Variante</a>).</span></div>
   </article>
 
   <!-- E2 metadata -->
   <article class="example" id="ex-metadata">
     <h3 data-lang="en">Labels &amp; annotations merge</h3><h3 data-lang="de">Labels- &amp; Annotations-Merge</h3>
-    <p data-lang="en">Chart-generated standard keys merge with the static <code>global.labels</code> / <code>global.annotations</code>; the ArgoCD keys are applied last so they can never be shadowed. One <code>krypton-lib.metadata</code> include produces the whole block.</p>
-    <p data-lang="de">Chart-generierte Standard-Keys verschmelzen mit den statischen <code>global.labels</code> / <code>global.annotations</code>; die ArgoCD-Keys kommen zuletzt und k&ouml;nnen nie &uuml;berdeckt werden. Ein einziges <code>krypton-lib.metadata</code>-Include erzeugt den ganzen Block.</p>
+    <p data-lang="en">Chart-generated standard keys merge with the static <code>global.labels</code> / <code>global.annotations</code>; CI annotations from Jenkins slot in right after (next card); the ArgoCD keys are applied last so they can never be shadowed. One <code>krypton-lib.metadata</code> include produces the whole block.</p>
+    <p data-lang="de">Chart-generierte Standard-Keys verschmelzen mit den statischen <code>global.labels</code> / <code>global.annotations</code>; CI-Annotations aus Jenkins reihen sich direkt danach ein (n&auml;chste Karte); die ArgoCD-Keys kommen zuletzt und k&ouml;nnen nie &uuml;berdeckt werden. Ein einziges <code>krypton-lib.metadata</code>-Include erzeugt den ganzen Block.</p>
     <div class="io">
       <figure class="code">
         <figcaption><span class="dot dot-in"></span>values.yaml &middot; umbrella</figcaption>
@@ -407,6 +482,60 @@ name: krypton-banking-release-vault-static-secret-database</pre>
     krypton.io/source-chart: krypton-banking-0.1.0</pre>
       </figure>
     </div>
+  </article>
+
+  <!-- E2a jenkins annotations -->
+  <article class="example" id="ex-jenkins">
+    <h3 data-lang="en">CI annotations from Jenkins</h3><h3 data-lang="de">CI-Annotations aus Jenkins</h3>
+    <p data-lang="en"><code>&lt;subchart&gt;.jenkins.annotations</code> is merged into every resource of that subchart right after <code>global.annotations</code> &mdash; and only when the block exists, so a plain render carries no CI annotations. Jenkins sets it per sync through ArgoCD Helm parameters (dots inside a key are escaped as <code>\.</code>); scalar values are stringified, so a numeric build id is safe. Other subcharts are untouched.</p>
+    <p data-lang="de"><code>&lt;subchart&gt;.jenkins.annotations</code> wird direkt nach <code>global.annotations</code> in jede Ressource des Subcharts gemergt &mdash; und nur, wenn der Block existiert; ein normales Rendern tr&auml;gt also keine CI-Annotations. Jenkins setzt ihn pro Sync &uuml;ber ArgoCD-Helm-Parameter (Punkte innerhalb eines Keys werden als <code>\.</code> escaped); skalare Werte werden stringifiziert, eine numerische Build-ID ist also sicher. Andere Subcharts bleiben unber&uuml;hrt.</p>
+    <div class="io">
+      <div class="stack">
+        <div class="cmd">helm template krypton krypton-umbrella --set krypton-banking.jenkins.annotations.jenkins\.io/build-number=1234 --set krypton-banking.jenkins.annotations.jenkins\.io/git-commit=abc1234</div>
+        <figure class="code">
+          <figcaption><span class="dot dot-in"></span>application.yaml &middot; <span data-lang="en">ArgoCD Helm parameters (same effect)</span><span data-lang="de">ArgoCD-Helm-Parameter (gleiche Wirkung)</span></figcaption>
+          <pre data-hl="yaml">spec:
+  source:
+    helm:
+      parameters:
+        - name: krypton-banking.jenkins.annotations.jenkins\.io/build-number
+          value: "1234"
+        - name: krypton-banking.jenkins.annotations.jenkins\.io/git-commit
+          value: abc1234</pre>
+        </figure>
+        <figure class="code">
+          <figcaption><span class="dot dot-in"></span>values.yaml &middot; <span data-lang="en">umbrella (same effect)</span><span data-lang="de">Umbrella (gleiche Wirkung)</span></figcaption>
+          <pre data-hl="yaml">krypton-banking:
+  jenkins:
+    annotations:
+      jenkins.io/build-number: 1234    # number is fine - stringified at render time
+      jenkins.io/git-commit: abc1234</pre>
+        </figure>
+      </div>
+      <figure class="code">
+        <figcaption><span class="dot dot-out"></span><span data-lang="en">rendered &middot; every krypton-banking resource</span><span data-lang="de">gerendert &middot; jede krypton-banking-Ressource</span></figcaption>
+        <pre data-hl="yaml">kind: ConfigMap
+metadata:
+  name: krypton-banking-release-cm
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+    jenkins.io/build-number: "1234"
+    jenkins.io/git-commit: abc1234
+    krypton.io/git-repository: https://git.example.com/krypton/krypton-umbrella
+    krypton.io/owner: platform-team
+    krypton.io/source-chart: krypton-banking-0.1.0
+---
+kind: Deployment
+metadata:
+  name: krypton-auth-release-deploy   # krypton-auth has no jenkins block
+  annotations:
+    argocd.argoproj.io/sync-wave: "11"
+    krypton.io/git-repository: https://git.example.com/krypton/krypton-umbrella
+    krypton.io/owner: platform-team
+    krypton.io/source-chart: krypton-auth-0.1.0</pre>
+      </figure>
+    </div>
+    <div class="note"><span data-lang="en"><b>Merge order:</b> standard &rarr; <code>global.annotations</code> &rarr; <code>jenkins.annotations</code> &rarr; per-call <code>extra</code> &rarr; ArgoCD sync-wave / sync-options. The ArgoCD keys always win. The slim library merges <code>jenkins.annotations</code> at the same position, after the subchart&rsquo;s own <code>annotations</code> block.</span><span data-lang="de"><b>Merge-Reihenfolge:</b> Standard &rarr; <code>global.annotations</code> &rarr; <code>jenkins.annotations</code> &rarr; <code>extra</code> pro Aufruf &rarr; ArgoCD Sync-Wave / Sync-Options. Die ArgoCD-Keys gewinnen immer. Die schlanke Library mergt <code>jenkins.annotations</code> an derselben Stelle, nach dem eigenen <code>annotations</code>-Block des Subcharts.</span></div>
   </article>
 
   <!-- E2b config delivery -->
@@ -895,6 +1024,45 @@ metadata:
     argocd.argoproj.io/sync-options: Prune=false,Delete=false
     argocd.argoproj.io/sync-wave: "3"
     haproxy.router.openshift.io/timeout: 30s   # extraAnnotations from the Route template</pre>
+  </figure>
+  </div>
+  <p data-lang="en" style="margin-top:1.4rem">Shared resources and CI annotations work the same way here. <code>"shared" true</code> on the metadata include drops the lane from the name and the lane label, and <code>&lt;subchart&gt;.jenkins.annotations</code> is merged right after the subchart&rsquo;s own <code>annotations</code> block &mdash; only when it exists.</p>
+  <p data-lang="de" style="margin-top:1.4rem">Geteilte Ressourcen und CI-Annotations funktionieren hier genauso. <code>"shared" true</code> am Metadata-Include entfernt die Lane aus dem Namen und das Lane-Label, und <code>&lt;subchart&gt;.jenkins.annotations</code> wird direkt nach dem eigenen <code>annotations</code>-Block des Subcharts gemergt &mdash; nur, wenn er existiert.</p>
+  <div class="stack" style="display:grid;gap:14px;margin-top:1.2rem">
+  <figure class="code">
+    <figcaption><span class="dot dot-in"></span>charts/krypton-payments/templates/secrets.yaml &middot; <span data-lang="en">shared variant</span><span data-lang="de">geteilte Variante</span></figcaption>
+    <pre data-hl="yaml">{{- $root := . -}}
+{{- range $name, $data := .Values.secrets }}
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  {{- include "krypton-lib-slim.metadata" (dict "ctx" $root "component" "secret" "instance" $name "shared" true) | nindent 2 }}
+type: Opaque
+stringData:
+  {{- $data | default dict | toYaml | nindent 2 }}
+{{- end }}</pre>
+  </figure>
+  <figure class="code">
+    <figcaption><span class="dot dot-out"></span><span data-lang="en">rendered names &middot; shared vs. lane-specific</span><span data-lang="de">gerenderte Namen &middot; geteilt vs. Lane-spezifisch</span></figcaption>
+    <pre data-hl="yaml">name: krypton-payments-secret-smtp             # shared: no lane segment, no krypton.io/lane label
+name: krypton-payments-secret-signing
+name: krypton-payments-release-secret-smtp     # default: lane-specific</pre>
+  </figure>
+  <div class="cmd">helm template krypton krypton-umbrella-slim --set krypton-payments.jenkins.annotations.jenkins\.io/build-number=1234</div>
+  <figure class="code">
+    <figcaption><span class="dot dot-out"></span><span data-lang="en">rendered &middot; Route (krypton-payments)</span><span data-lang="de">gerendert &middot; Route (krypton-payments)</span></figcaption>
+    <pre data-hl="yaml">kind: Route
+metadata:
+  name: krypton-payments-release-route
+  annotations:
+    argocd.argoproj.io/sync-options: Prune=false,Delete=false
+    argocd.argoproj.io/sync-wave: "3"
+    haproxy.router.openshift.io/timeout: 30s
+    jenkins.io/build-number: "1234"            # after payments.annotations, before extraAnnotations
+    krypton.io/git-repository: https://git.example.com/krypton/krypton-umbrella
+    krypton.io/owner: platform-team
+    krypton.io/source-chart: krypton-payments-0.1.0</pre>
   </figure>
   </div>
   <div class="note"><span data-lang="en">Full reference: <code>krypton-umbrella-slim/README.md</code>. The slim umbrella is excluded from the full chart via <code>.helmignore</code> and deployed as its own ArgoCD Application (<code>path: krypton-umbrella-slim</code>).</span><span data-lang="de">Vollst&auml;ndige Referenz: <code>krypton-umbrella-slim/README.de.md</code>. Das schlanke Umbrella ist per <code>.helmignore</code> aus dem vollen Chart ausgenommen und wird als eigene ArgoCD-Application deployt (<code>path: krypton-umbrella-slim</code>).</span></div>

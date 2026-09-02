@@ -55,3 +55,12 @@ affinity: {}
 # additionally sets syncWaveOffset: 10 for this subchart, shifting the
 # whole band behind krypton-banking: the ServiceAccount renders as wave
 # "8", the Deployment as "11".
+
+# Optional CI block. When jenkins.annotations exists (usually injected from
+# the umbrella as krypton-auth.jenkins.annotations via ArgoCD helm
+# parameters), its entries are merged into every resource's annotations;
+# when absent, nothing is rendered. Deliberately not declared here, so the
+# default manifests carry no CI annotations.
+# jenkins:
+#   annotations:
+#     jenkins.io/build-number: "1234"

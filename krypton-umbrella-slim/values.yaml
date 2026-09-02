@@ -17,6 +17,7 @@ global:
   # Lane / environment this instance of the umbrella is deployed to
   # (e.g. release, test). Consumed by krypton-lib-slim for resource naming:
   #   <subchart-name>-<laneName>-<component-shortname>[-<instance>]
+  # (resources rendered with "shared" true omit the lane segment)
   laneName: release
 
   # Domain prefix for every platform-generated label/annotation key:

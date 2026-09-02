@@ -37,6 +37,19 @@ config:
     BANKING_LOG_LEVEL: info
     BANKING_FEATURE_INSTANT_PAYMENTS: "true"
 
+  # false -> the ConfigMap is NOT lane specific: it is named without the
+  #          lane (krypton-banking-cm instead of krypton-banking-<lane>-cm)
+  #          and carries no lane label, so every lane deployment of this
+  #          subchart consumes the same ConfigMap.
+  # true  -> one ConfigMap per lane (the default).
+  shared: false
+
+  # Whether this deployment renders the ConfigMap at all. Keep true for
+  # lane-specific config. For a shared ConfigMap exactly ONE lane creates
+  # it (create: true) and every other lane sets create: false from the
+  # umbrella - the Deployment still references the shared name.
+  create: true
+
   # Expose the keys to the container as environment variables (envFrom).
   # Env vars NEVER update inside a running container - envFrom consumers
   # need rollPodsOnChange: true to pick up changes at all.
@@ -162,3 +175,12 @@ syncWaves:
 # rendered resource with argocd.argoproj.io/sync-options: Prune=false.
 # Nothing is set here on purpose - vaultStaticSecret inherits the platform
 # default from global.syncPrune, and the umbrella adds route: false on top.
+
+# Optional CI block. When jenkins.annotations exists (usually injected from
+# the umbrella as krypton-banking.jenkins.annotations via ArgoCD helm
+# parameters), its entries are merged into every resource's annotations;
+# when absent, nothing is rendered. Deliberately not declared here, so the
+# default manifests carry no CI annotations.
+# jenkins:
+#   annotations:
+#     jenkins.io/build-number: "1234"

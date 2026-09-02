@@ -37,6 +37,13 @@
                          subchart - two ConfigMaps, three Secrets, one
                          VaultStaticSecret per Vault path. Appended to the
                          resource name as one more kebab-cased suffix.
+       shared            (optional) true marks the resource as
+                         lane-independent: the name omits the lane segment
+                         (<subchart-name>-<component-shortname>[-<instance>])
+                         and the <labelDomain>/lane label is not stamped.
+                         For ConfigMaps / Secrets that several lane
+                         deployments consume, so they are created once
+                         instead of once per lane.
        extraLabels       (optional) dict merged into the labels with the
                          highest precedence.
        extraAnnotations  (optional) dict merged into the annotations with
@@ -212,19 +219,33 @@ The one sanctioned resource-name format:
   instance             optional, kebab-cased; the identifier for several
                        resources of the same type in one subchart
 
+"shared" true drops the lane segment for resources that are not lane
+specific - a ConfigMap or Secret that every lane deployment of the subchart
+consumes and that therefore only has to exist once:
+    krypton-payments-cm-app
+    krypton-payments-secret-smtp
+Use the same call (with "shared" true) both where the resource is created
+and where it is referenced, and let exactly ONE deployment create it; the
+others reference the name only.
+
 Truncated to 63 characters (the Kubernetes name limit for most resources).
 
 Usage:
     name: {{ include "krypton-lib-slim.componentName" (dict "ctx" . "component" "deployment") }}
     name: {{ include "krypton-lib-slim.componentName" (dict "ctx" . "component" "configMap" "instance" "logging") }}
+    name: {{ include "krypton-lib-slim.componentName" (dict "ctx" . "component" "secret" "instance" "smtp" "shared" true) }}
 */}}
 {{- define "krypton-lib-slim.componentName" -}}
 {{- $ctx := .ctx -}}
 {{- $component := required "krypton-lib-slim.componentName: 'component' is required" .component -}}
 {{- include "krypton-lib-slim.assertComponent" (dict "ctx" $ctx "component" $component) -}}
-{{- $lane := include "krypton-lib-slim.laneName" . -}}
 {{- $short := get (fromYaml (include "krypton-lib-slim.componentCatalog" .)) $component | default (kebabcase $component) -}}
-{{- $name := printf "%s-%s-%s" $ctx.Chart.Name $lane $short -}}
+{{- $name := "" -}}
+{{- if .shared -}}
+{{- $name = printf "%s-%s" $ctx.Chart.Name $short -}}
+{{- else -}}
+{{- $name = printf "%s-%s-%s" $ctx.Chart.Name (include "krypton-lib-slim.laneName" .) $short -}}
+{{- end -}}
 {{- with .instance -}}
 {{- $name = printf "%s-%s" $name (kebabcase (toString .)) -}}
 {{- end -}}
@@ -247,6 +268,9 @@ Merge order (later wins on key collisions):
                           via <subchart-name>.labels are already coalesced in)
   4. extraLabels        - optional per-call additions
 
+The <labelDomain>/lane label is omitted for "shared" resources (see
+componentName): a resource consumed by several lanes belongs to none.
+
 Usage:
     labels:
       {{- include "krypton-lib-slim.labels" (dict "ctx" .) | nindent 4 }}
@@ -261,8 +285,10 @@ Usage:
       "app.kubernetes.io/name"       $ctx.Chart.Name
       "app.kubernetes.io/instance"   $ctx.Release.Name
       "app.kubernetes.io/managed-by" $ctx.Release.Service
-      (printf "%s/lane" $domain)     (include "krypton-lib-slim.laneName" .)
 -}}
+{{- if not .shared -}}
+{{- $_ := set $labels (printf "%s/lane" $domain) (include "krypton-lib-slim.laneName" .) -}}
+{{- end -}}
 {{- with $ctx.Chart.AppVersion -}}
 {{- $_ := set $labels "app.kubernetes.io/version" (. | toString) -}}
 {{- end -}}

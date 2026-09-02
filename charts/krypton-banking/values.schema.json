@@ -26,6 +26,14 @@
           "additionalProperties": { "type": "string" },
           "description": "Rendered 1:1 into the ConfigMap - keys must be env-var names, values must be strings."
         },
+        "shared": {
+          "type": "boolean",
+          "description": "true names the ConfigMap without the lane segment (krypton-banking-cm) and omits the lane label, so all lane deployments consume one ConfigMap; false (default) renders one per lane."
+        },
+        "create": {
+          "type": "boolean",
+          "description": "false skips rendering the ConfigMap while the Deployment keeps referencing it - for lanes that consume a shared ConfigMap created by another lane."
+        },
         "envFrom": {
           "type": "boolean",
           "description": "Expose the keys as container env vars; requires rollPodsOnChange for changes to ever reach the process."
@@ -134,6 +142,19 @@
     "podAnnotations": {
       "type": ["object", "null"],
       "additionalProperties": { "type": "string" }
+    },
+    "jenkins": {
+      "type": ["object", "null"],
+      "description": "CI-injected block. jenkins.annotations is merged into every resource's annotations of this subchart when present; other keys are left to the pipeline.",
+      "properties": {
+        "annotations": {
+          "type": ["object", "null"],
+          "additionalProperties": {
+            "oneOf": [{ "type": "string" }, { "type": "number" }, { "type": "boolean" }]
+          },
+          "description": "Annotation map; scalar values are stringified at render time, so a numeric build id from --set is fine."
+        }
+      }
     },
     "nodeSelector": {
       "type": ["object", "null"],

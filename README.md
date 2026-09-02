@@ -54,6 +54,17 @@ subchart renders several resources of the same component type, an optional
 (`krypton-banking-release-vault-static-secret-database`). Rendering fails
 loudly if `global.laneName` is unset.
 
+**Shared (lane-independent) resources** - passing `shared: true` to
+`componentName`/`metadata` drops the lane segment
+(`krypton-banking-cm`, `krypton-banking-secret-smtp`) and omits the
+`<domain>/lane` label, for ConfigMaps or Secrets that several lane
+deployments consume and that therefore only have to exist once. Use the
+same call where the resource is created and where it is referenced, and
+let exactly one deployment create it (ArgoCD must not see one resource in
+two Applications); the other lanes reference the name only. krypton-banking
+demonstrates this with `config.shared` (name) and `config.create`
+(render the ConfigMap or just reference it).
+
 **Label domain** - the platform-generated label/annotation keys
 (`<domain>/lane`, `<domain>/source-chart`) take their
 prefix from `global.labelDomain` (default `krypton.io`), so the scaffold can
@@ -98,8 +109,9 @@ hit wins:
 2. `global.syncWaves.<component>` — platform-wide defaults
 
 `krypton-lib.annotations` applies the wave as `argocd.argoproj.io/sync-wave`
-last in its merge chain (standard → `global.annotations` → per-call `extra`
-→ wave), and omits it when no wave is configured. Current order for
+last in its merge chain (standard → `global.annotations` →
+`<subchart>.jenkins.annotations` → per-call `extra` → wave), and omits it
+when no wave is configured. Current order for
 krypton-banking: VaultStaticSecret `-1` → ConfigMap `0` → Deployment/Service
 `1` → Route `3`, so the Vault-materialised Secret exists before the
 Deployment mounts it, and the Route goes live last. The waves only gate on
@@ -107,6 +119,13 @@ real application health because the Deployments carry configurable
 readiness/liveness probes (`probes:` in each subchart, overridable per
 lane); by default the banking pod template additionally carries a
 `checksum/config` annotation so ConfigMap changes roll the pods.
+
+**CI annotations** - `<subchart>.jenkins.annotations` is merged into every
+resource of that subchart right after `global.annotations`, and only when
+the block exists, so plain renders carry no CI annotations. Jenkins sets it
+per sync, e.g. via ArgoCD helm parameters
+`krypton-banking.jenkins.annotations.jenkins\.io/build-number=1234`; scalar
+values are stringified, so a numeric build id is safe.
 
 **Cross-subchart ordering** - when one subchart must sync after another,
 shift its whole band with `syncWaveOffset` (per subchart, steered from the
