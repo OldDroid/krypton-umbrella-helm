@@ -1,6 +1,6 @@
 {{- /*
 config.shared: true names the ConfigMap without the lane
-(krypton-banking-cm) and drops the lane label - one ConfigMap for every
+(krypton-banking) and drops the lane label - one ConfigMap for every
 lane of this subchart. Only ONE lane deployment may then create it
 (config.create: true); every other lane sets config.create: false and
 merely references the name from its Deployment.

@@ -334,8 +334,8 @@ helm template t krypton-umbrella/charts/krypton-banking --set global.laneName=de
   <!-- E1 naming -->
   <article class="example" id="ex-naming">
     <h3 data-lang="en">Resource naming &amp; lanes</h3><h3 data-lang="de">Ressourcennamen &amp; Lanes</h3>
-    <p data-lang="en">Every resource is named <code>&lt;subchart&gt;-&lt;laneName&gt;-&lt;component-shortname&gt;</code>. The suffix is the component type&rsquo;s Kubernetes shortname from the catalog (configMap &rarr; cm); types without one are kebab-cased, and multiple resources of one type get an instance suffix. Switching the lane renames everything consistently.</p>
-    <p data-lang="de">Jede Ressource hei&szlig;t <code>&lt;subchart&gt;-&lt;laneName&gt;-&lt;komponenten-shortname&gt;</code>. Als Suffix dient der Kubernetes-Shortname des Komponententyps aus dem Katalog (configMap &rarr; cm); Typen ohne Shortname werden gekebab-cased, mehrere Ressourcen eines Typs erhalten einen Instance-Suffix. Ein Lane-Wechsel benennt alles konsistent um.</p>
+    <p data-lang="en">Every resource is named <code>&lt;subchart&gt;-&lt;laneName&gt;[-&lt;instance&gt;]</code>. The component type is deliberately not part of the name &mdash; the Kubernetes kind already tells the Deployment from the Service called <code>krypton-banking-release</code>; it is still passed to every helper because it selects the sync wave and prune protection. Several resources of one kind get an instance suffix, normalised to a DNS-1123 label. The lane is also stamped as <code>app.kubernetes.io/part-of</code>. Switching the lane renames everything consistently.</p>
+    <p data-lang="de">Jede Ressource hei&szlig;t <code>&lt;subchart&gt;-&lt;laneName&gt;[-&lt;instance&gt;]</code>. Der Komponententyp ist bewusst nicht Teil des Namens &mdash; der Kubernetes-Kind unterscheidet das Deployment ohnehin vom Service namens <code>krypton-banking-release</code>; er wird trotzdem jedem Helper &uuml;bergeben, weil er Sync-Wave und Prune-Schutz ausw&auml;hlt. Mehrere Ressourcen einer Art erhalten einen Instance-Suffix, normalisiert auf ein DNS-1123-Label. Die Lane wird zus&auml;tzlich als <code>app.kubernetes.io/part-of</code> gesetzt. Ein Lane-Wechsel benennt alles konsistent um.</p>
     <div class="io">
       <div class="stack">
         <figure class="code">
@@ -346,25 +346,25 @@ helm template t krypton-umbrella/charts/krypton-banking --set global.laneName=de
         <div class="cmd">helm template krypton krypton-umbrella --set global.laneName=test</div>
         <figure class="code">
           <figcaption><span class="dot dot-out"></span><span data-lang="en">rendered names &middot; lane test</span><span data-lang="de">gerenderte Namen &middot; Lane test</span></figcaption>
-          <pre data-hl="yaml">name: krypton-banking-test-sa
-name: krypton-banking-test-cm
-name: krypton-banking-test-deploy
-name: krypton-auth-test-deploy
+          <pre data-hl="yaml">name: krypton-banking-test             # ServiceAccount
+name: krypton-banking-test             # ConfigMap
+name: krypton-banking-test             # Deployment
+name: krypton-auth-test                # Deployment
 # ... every resource follows the lane</pre>
         </figure>
       </div>
       <figure class="code">
         <figcaption><span class="dot dot-out"></span><span data-lang="en">rendered names &middot; lane release</span><span data-lang="de">gerenderte Namen &middot; Lane release</span></figcaption>
-        <pre data-hl="yaml">name: krypton-banking-release-pdb
-name: krypton-auth-release-sa
-name: krypton-banking-release-sa
-name: krypton-banking-release-cm
-name: krypton-banking-release-svc
-name: krypton-auth-release-deploy
-name: krypton-banking-release-deploy
-name: krypton-banking-release-route
-name: krypton-banking-release-vault-static-secret-app
-name: krypton-banking-release-vault-static-secret-database</pre>
+        <pre data-hl="yaml">name: krypton-banking-release          # PodDisruptionBudget
+name: krypton-auth-release             # ServiceAccount
+name: krypton-banking-release          # ServiceAccount
+name: krypton-banking-release          # ConfigMap
+name: krypton-banking-release          # Service
+name: krypton-auth-release             # Deployment
+name: krypton-banking-release          # Deployment
+name: krypton-banking-release          # Route
+name: krypton-banking-release-app      # VaultStaticSecret, instance "app"
+name: krypton-banking-release-database # VaultStaticSecret, instance "database"</pre>
       </figure>
     </div>
     <div class="note"><span data-lang="en"><b>Guard:</b> an unset or empty <code>global.laneName</code> fails the render loudly &mdash; no lane-specific resource can ever be created without a lane in its name. Only resources explicitly marked <code>shared</code> (next card) drop it.</span><span data-lang="de"><b>Absicherung:</b> ein fehlendes oder leeres <code>global.laneName</code> l&auml;sst das Rendern laut fehlschlagen &mdash; keine Lane-spezifische Ressource entsteht je ohne Lane im Namen. Nur explizit als <code>shared</code> markierte Ressourcen (n&auml;chste Karte) lassen sie weg.</span></div>
@@ -410,23 +410,23 @@ data:
           <figcaption><span class="dot dot-out"></span><span data-lang="en">rendered &middot; lane release</span><span data-lang="de">gerendert &middot; Lane release</span></figcaption>
           <pre data-hl="yaml">kind: ConfigMap
 metadata:
-  name: krypton-banking-cm            # no lane segment
+  name: krypton-banking               # no lane segment
   labels:
     app.kubernetes.io/instance: krypton
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: krypton-banking
-    app.kubernetes.io/version: 1.4.2
+    app.kubernetes.io/version: 1.4.2  # no app.kubernetes.io/part-of label
     helm.sh/chart: krypton-banking-0.1.0
     krypton.io/cost-center: cc-4711
-    krypton.io/platform: krypton      # no krypton.io/lane label
+    krypton.io/platform: krypton
 ---
 kind: Deployment
 metadata:
-  name: krypton-banking-release-deploy
+  name: krypton-banking-release
 # ...
 envFrom:
   - configMapRef:
-      name: krypton-banking-cm</pre>
+      name: krypton-banking</pre>
         </figure>
         <div class="cmd">helm template krypton krypton-umbrella --set global.laneName=test --set krypton-banking.config.shared=true --set krypton-banking.config.create=false</div>
         <figure class="code">
@@ -434,11 +434,11 @@ envFrom:
           <pre data-hl="yaml"># no ConfigMap in the output - the Deployment references the shared name
 kind: Deployment
 metadata:
-  name: krypton-banking-test-deploy
+  name: krypton-banking-test
 # ...
 envFrom:
   - configMapRef:
-      name: krypton-banking-cm</pre>
+      name: krypton-banking</pre>
         </figure>
       </div>
     </div>
@@ -465,15 +465,15 @@ envFrom:
       <figure class="code">
         <figcaption><span class="dot dot-out"></span><span data-lang="en">rendered &middot; ConfigMap metadata</span><span data-lang="de">gerendert &middot; ConfigMap-Metadata</span></figcaption>
         <pre data-hl="yaml">metadata:
-  name: krypton-banking-release-cm
+  name: krypton-banking-release
   labels:
     app.kubernetes.io/instance: krypton
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: krypton-banking
+    app.kubernetes.io/part-of: release
     app.kubernetes.io/version: 1.4.2
     helm.sh/chart: krypton-banking-0.1.0
     krypton.io/cost-center: cc-4711
-    krypton.io/lane: release
     krypton.io/platform: krypton
   annotations:
     argocd.argoproj.io/sync-wave: "0"
@@ -516,7 +516,7 @@ envFrom:
         <figcaption><span class="dot dot-out"></span><span data-lang="en">rendered &middot; every krypton-banking resource</span><span data-lang="de">gerendert &middot; jede krypton-banking-Ressource</span></figcaption>
         <pre data-hl="yaml">kind: ConfigMap
 metadata:
-  name: krypton-banking-release-cm
+  name: krypton-banking-release
   annotations:
     argocd.argoproj.io/sync-wave: "0"
     jenkins.io/build-number: "1234"
@@ -527,7 +527,7 @@ metadata:
 ---
 kind: Deployment
 metadata:
-  name: krypton-auth-release-deploy   # krypton-auth has no jenkins block
+  name: krypton-auth-release          # krypton-auth has no jenkins block
   annotations:
     argocd.argoproj.io/sync-wave: "11"
     krypton.io/git-repository: https://git.example.com/krypton/krypton-umbrella
@@ -562,7 +562,7 @@ checksum/config: 07d4d0d518f66e13b9f9fce7b20e6a76f051dc42b6cf24abbaa41a5485f127f
 # container
 envFrom:
   - configMapRef:
-      name: krypton-banking-release-cm</pre>
+      name: krypton-banking-release</pre>
         </figure>
         <div class="cmd">helm template krypton krypton-umbrella --set krypton-banking.config.rollPodsOnChange=false --set krypton-banking.config.mountPath=/etc/krypton/config --set krypton-banking.config.envFrom=false</div>
         <figure class="code">
@@ -575,7 +575,7 @@ volumeMounts:
 volumes:
   - name: config
     configMap:
-      name: krypton-banking-release-cm</pre>
+      name: krypton-banking-release</pre>
         </figure>
       </div>
     </div>
@@ -705,8 +705,8 @@ krypton-banking:
         <figure class="code">
           <figcaption><span class="dot dot-out"></span><span data-lang="en">rendered kinds</span><span data-lang="de">gerenderte Kinds</span></figcaption>
           <pre data-hl="yaml"># only krypton-auth remains:
-kind: ServiceAccount     # krypton-auth-release-sa
-kind: Deployment         # krypton-auth-release-deploy</pre>
+kind: ServiceAccount     # krypton-auth-release
+kind: Deployment         # krypton-auth-release</pre>
         </figure>
       </div>
     </div>
@@ -770,21 +770,21 @@ image: "proxy.bank.internal:5000/krypton/auth-service:0.9.0"</pre>
       </figure>
       <figure class="code">
         <figcaption><span class="dot dot-out"></span><span data-lang="en">rendered &middot; lane release</span><span data-lang="de">gerendert &middot; Lane release</span></figcaption>
-        <pre data-hl="yaml"># VaultStaticSecret ...vault-static-secret-app
+        <pre data-hl="yaml"># VaultStaticSecret krypton-banking-release-app
   path: krypton/release/banking/app
   refreshAfter: 60s
   destination:
-    name: krypton-banking-release-vault-static-secret-app
+    name: krypton-banking-release-app
 
-# VaultStaticSecret ...vault-static-secret-database
+# VaultStaticSecret krypton-banking-release-database
   path: krypton/release/banking/database
   refreshAfter: 30s
 
 # Deployment -> both Secrets via envFrom
 - secretRef:
-    name: krypton-banking-release-vault-static-secret-app
+    name: krypton-banking-release-app
 - secretRef:
-    name: krypton-banking-release-vault-static-secret-database</pre>
+    name: krypton-banking-release-database</pre>
       </figure>
     </div>
   </article>
@@ -805,12 +805,12 @@ image: "proxy.bank.internal:5000/krypton/auth-service:0.9.0"</pre>
         <figcaption><span class="dot dot-out"></span><span data-lang="en">rendered</span><span data-lang="de">gerendert</span></figcaption>
         <pre data-hl="yaml">kind: ServiceAccount
 metadata:
-  name: krypton-banking-release-sa
+  name: krypton-banking-release
   annotations:
     argocd.argoproj.io/sync-wave: "-2"
 # ...
 # Deployment pod spec:
-      serviceAccountName: krypton-banking-release-sa</pre>
+      serviceAccountName: krypton-banking-release</pre>
       </figure>
     </div>
     <div class="cmd" style="margin-top:12px">helm template krypton krypton-umbrella --set krypton-banking.serviceAccount.create=false --set krypton-banking.serviceAccount.name=legacy-vault-sa</div>
@@ -889,7 +889,7 @@ kind: HorizontalPodAutoscaler
 spec:
   scaleTargetRef:
     kind: Deployment
-    name: krypton-banking-release-deploy
+    name: krypton-banking-release
   minReplicas: 2
   maxReplicas: 6
 # Deployment: spec.replicas is omitted while HPA is on</pre>
@@ -967,8 +967,8 @@ krypton-banking:
 <section id="slim">
   <span class="eyebrow" data-lang="en">Variant</span><span class="eyebrow" data-lang="de">Variante</span>
   <h2 data-lang="en">Slim variant</h2><h2 data-lang="de">Schlanke Variante</h2>
-  <p data-lang="en"><code>krypton-umbrella-slim/</code> is a second, self-contained umbrella whose library <code>krypton-lib-slim</code> generates <em>metadata only</em>: unified names with an optional <b>instance identifier</b> for several ConfigMaps / Secrets / VaultStaticSecrets per subchart, merged labels and annotations (global &rarr; subchart &rarr; call site), ArgoCD sync waves with the offset mechanism, and generic ArgoCD sync options. Everything below <code>metadata:</code> is written by the subchart itself. Both variants share the component catalog, so the names are identical. Written for the Helm&nbsp;3 line ArgoCD runs.</p>
-  <p data-lang="de"><code>krypton-umbrella-slim/</code> ist ein zweites, eigenst&auml;ndiges Umbrella, dessen Library <code>krypton-lib-slim</code> <em>nur Metadata</em> erzeugt: einheitliche Namen mit optionalem <b>Instanz-Bezeichner</b> f&uuml;r mehrere ConfigMaps / Secrets / VaultStaticSecrets je Subchart, zusammengef&uuml;hrte Labels und Annotations (global &rarr; Subchart &rarr; Aufrufstelle), ArgoCD-Sync-Waves samt Offset-Mechanik und generische ArgoCD-Sync-Options. Alles unterhalb von <code>metadata:</code> schreibt das Subchart selbst. Beide Varianten teilen sich den Komponentenkatalog, die Namen sind identisch. Geschrieben f&uuml;r die Helm-3-Linie, die ArgoCD nutzt.</p>
+  <p data-lang="en"><code>krypton-umbrella-slim/</code> is a second, self-contained umbrella whose library <code>krypton-lib-slim</code> generates <em>metadata only</em>: unified names with an optional <b>instance identifier</b> for several ConfigMaps / Secrets / VaultStaticSecrets per subchart, merged labels and annotations (global &rarr; subchart &rarr; call site), ArgoCD sync waves with the offset mechanism, and generic ArgoCD sync options. Everything below <code>metadata:</code> is written by the subchart itself. Both variants share the component catalog and the naming scheme (<code>&lt;subchart&gt;-&lt;lane&gt;[-&lt;instance&gt;]</code>, lane label <code>app.kubernetes.io/part-of</code>), so the names are identical. Written for the Helm&nbsp;3 line ArgoCD runs.</p>
+  <p data-lang="de"><code>krypton-umbrella-slim/</code> ist ein zweites, eigenst&auml;ndiges Umbrella, dessen Library <code>krypton-lib-slim</code> <em>nur Metadata</em> erzeugt: einheitliche Namen mit optionalem <b>Instanz-Bezeichner</b> f&uuml;r mehrere ConfigMaps / Secrets / VaultStaticSecrets je Subchart, zusammengef&uuml;hrte Labels und Annotations (global &rarr; Subchart &rarr; Aufrufstelle), ArgoCD-Sync-Waves samt Offset-Mechanik und generische ArgoCD-Sync-Options. Alles unterhalb von <code>metadata:</code> schreibt das Subchart selbst. Beide Varianten teilen sich den Komponentenkatalog und das Namensschema (<code>&lt;subchart&gt;-&lt;lane&gt;[-&lt;instance&gt;]</code>, Lane-Label <code>app.kubernetes.io/part-of</code>), die Namen sind also identisch. Geschrieben f&uuml;r die Helm-3-Linie, die ArgoCD nutzt.</p>
   <div class="stack" style="display:grid;gap:14px;margin-top:1.2rem">
   <figure class="code">
     <figcaption><span class="dot dot-in"></span>charts/krypton-payments/templates/configmaps.yaml</figcaption>
@@ -1000,25 +1000,26 @@ krypton-payments:
     <figcaption><span class="dot dot-out"></span>helm template krypton krypton-umbrella-slim</figcaption>
     <pre data-hl="yaml">kind: ConfigMap
 metadata:
-  name: krypton-payments-release-cm-app          # instance "app"
+  name: krypton-payments-release-app             # instance "app"
   annotations:
     argocd.argoproj.io/sync-wave: "0"
 ---
 kind: ConfigMap
 metadata:
-  name: krypton-payments-release-cm-logging      # instance "logging"
+  name: krypton-payments-release-logging         # instance "logging"
 ---
 kind: VaultStaticSecret
 metadata:
-  name: krypton-payments-release-vault-static-secret-database
+  name: krypton-payments-release-database
   annotations:
     argocd.argoproj.io/sync-options: Prune=false
     argocd.argoproj.io/sync-wave: "-1"
 ---
 kind: Route
 metadata:
-  name: krypton-payments-release-route
+  name: krypton-payments-release                 # no instance - same name as Deployment, Service, SA
   labels:
+    app.kubernetes.io/part-of: release
     krypton.io/team: payments
   annotations:
     argocd.argoproj.io/sync-options: Prune=false,Delete=false
@@ -1045,16 +1046,16 @@ stringData:
   </figure>
   <figure class="code">
     <figcaption><span class="dot dot-out"></span><span data-lang="en">rendered names &middot; shared vs. lane-specific</span><span data-lang="de">gerenderte Namen &middot; geteilt vs. Lane-spezifisch</span></figcaption>
-    <pre data-hl="yaml">name: krypton-payments-secret-smtp             # shared: no lane segment, no krypton.io/lane label
-name: krypton-payments-secret-signing
-name: krypton-payments-release-secret-smtp     # default: lane-specific</pre>
+    <pre data-hl="yaml">name: krypton-payments-smtp                    # shared: no lane segment, no app.kubernetes.io/part-of label
+name: krypton-payments-signing
+name: krypton-payments-release-smtp            # default: lane-specific</pre>
   </figure>
   <div class="cmd">helm template krypton krypton-umbrella-slim --set krypton-payments.jenkins.annotations.jenkins\.io/build-number=1234</div>
   <figure class="code">
     <figcaption><span class="dot dot-out"></span><span data-lang="en">rendered &middot; Route (krypton-payments)</span><span data-lang="de">gerendert &middot; Route (krypton-payments)</span></figcaption>
     <pre data-hl="yaml">kind: Route
 metadata:
-  name: krypton-payments-release-route
+  name: krypton-payments-release
   annotations:
     argocd.argoproj.io/sync-options: Prune=false,Delete=false
     argocd.argoproj.io/sync-wave: "3"

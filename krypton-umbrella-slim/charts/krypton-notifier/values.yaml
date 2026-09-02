@@ -4,7 +4,8 @@ image: registry.example.com/krypton/notifier-service:0.4.0
 imagePullPolicy: IfNotPresent
 
 # A single ConfigMap - no instance identifier, so the name is simply
-# krypton-notifier-<lane>-cm.
+# krypton-notifier-<lane> (same as the Deployment and Service; the kind
+# tells them apart).
 config:
   NOTIFIER_CHANNELS: "email,sms"
   NOTIFIER_LOG_LEVEL: info

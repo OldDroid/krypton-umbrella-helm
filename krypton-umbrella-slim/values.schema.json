@@ -14,12 +14,12 @@
         "laneName": {
           "type": "string",
           "pattern": "^[a-z0-9]([a-z0-9-]{0,30}[a-z0-9])?$",
-          "description": "Lane/environment name; part of every resource name: <subchart>-<lane>-<component-shortname>[-<instance>]."
+          "description": "Lane/environment name; part of every resource name (<subchart>-<lane>[-<instance>], shared resources omit it) and the app.kubernetes.io/part-of label."
         },
         "labelDomain": {
           "type": "string",
           "pattern": "^[a-z0-9]([a-z0-9.-]{0,251}[a-z0-9])?$",
-          "description": "Domain prefix for generated label/annotation keys; defaults to krypton.io."
+          "description": "Domain prefix for the generated <domain>/source-chart annotation; defaults to krypton.io."
         },
         "labels": { "$ref": "#/definitions/stringMap" },
         "annotations": { "$ref": "#/definitions/stringMap" },

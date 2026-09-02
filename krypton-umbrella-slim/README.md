@@ -63,14 +63,17 @@ metadata:
 
 ### Names and the instance identifier
 
-`componentName` produces `<subchart-name>-<global.laneName>-<component-shortname>`.
-The suffix is the Kubernetes shortname registered in the component catalog
-(`configMap` → `cm`, `service` → `svc`); kinds without one use the
-kebab-cased type (`vaultStaticSecret` → `vault-static-secret`).
+`componentName` produces `<subchart-name>-<global.laneName>[-<instance>]`.
+The component type is deliberately not part of the name - the Kubernetes
+kind already tells a Deployment from a Service called `krypton-payments-release`.
+The `component` argument is still required: it is validated against the
+catalog and selects the sync wave / sync options.
 
 When a subchart renders several resources of one kind, pass an `instance`;
-it is appended kebab-cased. krypton-payments renders its ConfigMaps, Secrets
-and VaultStaticSecrets from maps and uses the map key as the instance:
+it is appended, normalised to a DNS-1123 label (camelCase boundaries become
+dashes, everything is lowercased, other characters become dashes).
+krypton-payments renders its ConfigMaps, Secrets and VaultStaticSecrets
+from maps and uses the map key as the instance:
 
 ```yaml
 {{- $root := . -}}
@@ -88,18 +91,19 @@ data:
 renders (lane `release`):
 
 ```
-krypton-payments-release-sa
-krypton-payments-release-cm-app
-krypton-payments-release-cm-logging
-krypton-payments-release-secret-smtp
-krypton-payments-release-secret-signing
-krypton-payments-release-vault-static-secret-app
-krypton-payments-release-vault-static-secret-database
-krypton-payments-release-deploy
-krypton-payments-release-svc
-krypton-payments-release-route
-krypton-notifier-release-cm            # no instance - a single ConfigMap
+krypton-payments-release               # ServiceAccount, Deployment, Service, Route - one name, four kinds
+krypton-payments-release-app           # ConfigMap "app" and VaultStaticSecret "app" - different kinds
+krypton-payments-release-logging       # ConfigMap
+krypton-payments-release-smtp          # Secret
+krypton-payments-release-signing       # Secret
+krypton-payments-release-database      # VaultStaticSecret (writes the Secret of the same name)
+krypton-notifier-release               # ConfigMap, Deployment, Service - no instance
 ```
+
+Because the kind is the only thing separating resources of one name, two
+resources of the *same* kind need distinct instances. The one trap is the
+Secret a VaultStaticSecret writes: krypton-payments refuses to render when a
+key appears in both `secrets` and `vault.secrets`.
 
 The Deployment references the same names through the same helper, so an
 `envFrom` entry and the resource it points to can never drift apart:
@@ -113,7 +117,7 @@ The Deployment references the same names through the same helper, so an
 
 A ConfigMap or Secret that several lane deployments consume only has to
 exist once. Pass `shared: true` and the name omits the lane segment, the
-`<labelDomain>/lane` label is not stamped:
+`app.kubernetes.io/part-of` lane label is not stamped:
 
 ```yaml
 metadata:
@@ -121,8 +125,8 @@ metadata:
 ```
 
 ```
-krypton-payments-secret-smtp          # instead of krypton-payments-release-secret-smtp
-krypton-payments-cm                   # no instance
+krypton-payments-smtp                 # instead of krypton-payments-release-smtp
+krypton-payments                      # no instance
 ```
 
 Use the same call (with `shared: true`) where the resource is created and
@@ -140,7 +144,8 @@ in the error message. A genuinely new kind is one added line.
 Merge order, later wins on key collisions:
 
 1. standard labels: `app.kubernetes.io/name|instance|version|managed-by`,
-   `helm.sh/chart`, `<labelDomain>/lane`
+   `helm.sh/chart`, and the lane as `app.kubernetes.io/part-of` (omitted on
+   `shared` resources)
 2. `global.labels` — umbrella-wide
 3. `<subchart>.labels` — the subchart's `labels:` block, overridable from the
    umbrella's subchart block (the umbrella adds `krypton.io/team: payments`)
@@ -211,7 +216,7 @@ Route. Other useful entries: `Replace=true`, `ServerSideApply=true`,
 | Key | Scope | Meaning |
 | --- | --- | --- |
 | `global.laneName` | umbrella, **required** | lane; part of every name; render fails when unset |
-| `global.labelDomain` | umbrella | prefix of the generated keys, default `krypton.io` |
+| `global.labelDomain` | umbrella | prefix of the generated `<domain>/source-chart` annotation, default `krypton.io` |
 | `global.labels` / `global.annotations` | umbrella | static maps for every resource |
 | `global.syncWaves` / `global.syncOptions` | umbrella | platform defaults per component type |
 | `labels` / `annotations` | subchart | custom maps for every resource of the subchart |

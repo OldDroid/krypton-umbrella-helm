@@ -23,7 +23,7 @@ resources:
 # ServiceAccount the workload pods run as. create=true renders a dedicated
 # SA (component type serviceAccount, sync wave -2, so it exists before the
 # Vault objects that authenticate with it) named
-# <subchart>-<lane>-sa - bind the VaultAuth Kubernetes role to
+# <subchart>-<lane> - bind the VaultAuth Kubernetes role to
 # exactly that name. create=false references an existing SA instead
 # (name empty -> the namespace "default" SA).
 serviceAccount:
@@ -38,7 +38,7 @@ config:
     BANKING_FEATURE_INSTANT_PAYMENTS: "true"
 
   # false -> the ConfigMap is NOT lane specific: it is named without the
-  #          lane (krypton-banking-cm instead of krypton-banking-<lane>-cm)
+  #          lane (krypton-banking instead of krypton-banking-<lane>)
   #          and carries no lane label, so every lane deployment of this
   #          subchart consumes the same ConfigMap.
   # true  -> one ConfigMap per lane (the default).
@@ -106,7 +106,8 @@ vault:
   refreshAfter: 60s
 
   # One VaultStaticSecret per entry. The key becomes the instance suffix of
-  # the resource name: krypton-banking-release-vault-static-secret-<key>.
+  # the resource name: krypton-banking-<lane>-<key> (VaultStaticSecret and
+  # the Secret it writes).
   # Paths are rendered through tpl -> lane-aware by default, so every lane
   # reads its own secrets (override per lane in the umbrella with a plain
   # string if needed). envFrom: true wires the resulting Secret into the

@@ -9,12 +9,14 @@
 global:
   # Lane / environment this instance of the umbrella is deployed to
   # (e.g. release, test). Consumed by krypton-lib for resource naming:
-  #   <subchart-name>-<laneName>-<component-shortname>
-  # (resources rendered with "shared" true omit the lane segment)
+  #   <subchart-name>-<laneName>[-<instance>]
+  # (resources rendered with "shared" true omit the lane segment) and
+  # stamped as the app.kubernetes.io/part-of label.
   laneName: release
 
-  # Domain prefix for every platform-generated label/annotation key:
-  # <labelDomain>/lane, <labelDomain>/source-chart.
+  # Domain prefix for the platform-generated annotation key
+  # <labelDomain>/source-chart (the lane label is the standard
+  # app.kubernetes.io/part-of).
   # When reusing this scaffold for another platform, change it here (and
   # adjust the static keys under labels:/annotations: below) - the library
   # chart needs no edits. Defaults to krypton.io when omitted.

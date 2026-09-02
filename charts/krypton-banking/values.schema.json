@@ -28,7 +28,7 @@
         },
         "shared": {
           "type": "boolean",
-          "description": "true names the ConfigMap without the lane segment (krypton-banking-cm) and omits the lane label, so all lane deployments consume one ConfigMap; false (default) renders one per lane."
+          "description": "true names the ConfigMap without the lane segment (krypton-banking) and omits the app.kubernetes.io/part-of lane label, so all lane deployments consume one ConfigMap; false (default) renders one per lane."
         },
         "create": {
           "type": "boolean",

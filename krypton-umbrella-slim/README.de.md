@@ -64,13 +64,17 @@ metadata:
 
 ### Namen und der Instanz-Bezeichner
 
-`componentName` erzeugt `<subchart-name>-<global.laneName>-<komponenten-shortname>`.
-Das Suffix ist der im Komponentenkatalog registrierte Kubernetes-Shortname
-(`configMap` → `cm`, `service` → `svc`); Kinds ohne Shortname nutzen den
-kebab-case-Typ (`vaultStaticSecret` → `vault-static-secret`).
+`componentName` erzeugt `<subchart-name>-<global.laneName>[-<instance>]`.
+Der Komponententyp ist bewusst nicht Teil des Namens – der Kubernetes-Kind
+unterscheidet ein Deployment ohnehin von einem Service namens
+`krypton-payments-release`. Das `component`-Argument bleibt trotzdem
+Pflicht: Es wird gegen den Katalog validiert und wählt Sync-Wave und
+Sync-Options aus.
 
 Rendert ein Subchart mehrere Ressourcen einer Art, wird ein `instance`
-übergeben und kebab-cased angehängt. krypton-payments rendert seine
+übergeben und angehängt, normalisiert auf ein DNS-1123-Label
+(camelCase-Grenzen werden zu Bindestrichen, alles wird kleingeschrieben,
+andere Zeichen werden zu Bindestrichen). krypton-payments rendert seine
 ConfigMaps, Secrets und VaultStaticSecrets aus Maps und nimmt den Map-Key
 als Instanz:
 
@@ -90,18 +94,20 @@ data:
 ergibt (Lane `release`):
 
 ```
-krypton-payments-release-sa
-krypton-payments-release-cm-app
-krypton-payments-release-cm-logging
-krypton-payments-release-secret-smtp
-krypton-payments-release-secret-signing
-krypton-payments-release-vault-static-secret-app
-krypton-payments-release-vault-static-secret-database
-krypton-payments-release-deploy
-krypton-payments-release-svc
-krypton-payments-release-route
-krypton-notifier-release-cm            # ohne Instanz - eine einzelne ConfigMap
+krypton-payments-release               # ServiceAccount, Deployment, Service, Route - ein Name, vier Kinds
+krypton-payments-release-app           # ConfigMap "app" und VaultStaticSecret "app" - verschiedene Kinds
+krypton-payments-release-logging       # ConfigMap
+krypton-payments-release-smtp          # Secret
+krypton-payments-release-signing       # Secret
+krypton-payments-release-database      # VaultStaticSecret (schreibt das gleichnamige Secret)
+krypton-notifier-release               # ConfigMap, Deployment, Service - ohne Instanz
 ```
+
+Weil nur der Kind Ressourcen gleichen Namens trennt, brauchen zwei
+Ressourcen *derselben* Art verschiedene Instanzen. Die eine Falle ist das
+Secret, das ein VaultStaticSecret schreibt: krypton-payments verweigert das
+Rendern, wenn ein Key sowohl in `secrets` als auch in `vault.secrets`
+vorkommt.
 
 Das Deployment referenziert dieselben Namen über denselben Helper, ein
 `envFrom`-Eintrag und die Ressource dahinter können nie auseinanderlaufen:
@@ -115,8 +121,8 @@ Das Deployment referenziert dieselben Namen über denselben Helper, ein
 
 Eine ConfigMap oder ein Secret, das mehrere Lane-Deployments gemeinsam
 nutzen, muss nur einmal existieren. Mit `shared: true` entfällt das
-Lane-Segment im Namen, und das `<labelDomain>/lane`-Label wird nicht
-gesetzt:
+Lane-Segment im Namen, und das `app.kubernetes.io/part-of`-Lane-Label wird
+nicht gesetzt:
 
 ```yaml
 metadata:
@@ -124,8 +130,8 @@ metadata:
 ```
 
 ```
-krypton-payments-secret-smtp          # statt krypton-payments-release-secret-smtp
-krypton-payments-cm                   # ohne Instanz
+krypton-payments-smtp                 # statt krypton-payments-release-smtp
+krypton-payments                      # ohne Instanz
 ```
 
 Derselbe Aufruf (mit `shared: true`) wird beim Erzeugen und beim
@@ -145,7 +151,8 @@ ergänzte Zeile.
 Merge-Reihenfolge, spätere gewinnen bei Key-Kollisionen:
 
 1. Standard-Labels: `app.kubernetes.io/name|instance|version|managed-by`,
-   `helm.sh/chart`, `<labelDomain>/lane`
+   `helm.sh/chart` sowie die Lane als `app.kubernetes.io/part-of` (entfällt
+   bei `shared`-Ressourcen)
 2. `global.labels` — umbrella-weit
 3. `<subchart>.labels` — der `labels:`-Block des Subcharts, aus dem
    Umbrella-Block überschreibbar (der Umbrella ergänzt `krypton.io/team: payments`)
@@ -219,7 +226,7 @@ Route. Weitere nützliche Einträge: `Replace=true`, `ServerSideApply=true`,
 | Key | Ebene | Bedeutung |
 | --- | --- | --- |
 | `global.laneName` | Umbrella, **Pflicht** | Lane; Teil jedes Namens; Render scheitert ohne |
-| `global.labelDomain` | Umbrella | Präfix der erzeugten Keys, Default `krypton.io` |
+| `global.labelDomain` | Umbrella | Präfix der erzeugten `<domain>/source-chart`-Annotation, Default `krypton.io` |
 | `global.labels` / `global.annotations` | Umbrella | statische Maps für jede Ressource |
 | `global.syncWaves` / `global.syncOptions` | Umbrella | Plattform-Defaults je Komponententyp |
 | `labels` / `annotations` | Subchart | eigene Maps für jede Ressource des Subcharts |

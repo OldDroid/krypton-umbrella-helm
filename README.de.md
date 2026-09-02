@@ -44,22 +44,23 @@ Subchart eigenständig zu bauen und zu rendern (siehe unten).
 ## Konventionen
 
 **Ressourcennamen** – `krypton-lib.componentName` erzeugt
-`<subchart-name>-<global.laneName>-<komponenten-shortname>`, z. B.
-`krypton-banking-release-deploy`. Als Namens-Suffix dient der im Katalog
-hinterlegte Kubernetes-Shortname des Komponententyps (`configMap` → `cm`,
-`service` → `svc`); Typen ohne Shortname fallen auf den kebab-case-Typ
-zurück (`vaultStaticSecret` → `vault-static-secret`). Rendert ein Subchart
-mehrere Ressourcen desselben
-Komponententyps, wird ein optionales `instance`-Argument als weiterer
-kebab-case-Suffix angehängt
-(`krypton-banking-release-vault-static-secret-database`). Ist
+`<subchart-name>-<global.laneName>[-<instance>]`, z. B.
+`krypton-banking-release` für Deployment, Service, Route und ServiceAccount
+gleichermaßen – der Kubernetes-Kind unterscheidet sie, der Komponententyp
+ist bewusst nicht Teil des Namens. Das `component`-Argument bleibt
+trotzdem Pflicht: Es wird gegen den Katalog validiert und wählt Sync-Wave
+und Prune-Schutz aus. Rendert ein Subchart mehrere Ressourcen derselben
+Art, wird ein optionales `instance`-Argument angehängt, normalisiert auf
+ein DNS-1123-Label (`krypton-banking-release-database` für das
+VaultStaticSecret `database`; das Secret, das es schreibt, heißt genauso).
+Die Lane wird zusätzlich als Label `app.kubernetes.io/part-of` gesetzt. Ist
 `global.laneName` nicht gesetzt, schlägt das Rendern mit einer klaren
 Fehlermeldung fehl.
 
 **Geteilte (lane-unabhängige) Ressourcen** – wird `componentName`/`metadata`
 zusätzlich `shared: true` übergeben, entfällt das Lane-Segment im Namen
-(`krypton-banking-cm`, `krypton-banking-secret-smtp`) und das
-`<domain>/lane`-Label wird nicht gesetzt – für ConfigMaps oder Secrets, die
+(`krypton-banking`, `krypton-banking-smtp`) und das
+`app.kubernetes.io/part-of`-Label wird nicht gesetzt – für ConfigMaps oder Secrets, die
 mehrere Lane-Deployments gemeinsam nutzen und daher nur einmal existieren
 müssen. Derselbe Aufruf wird beim Erzeugen und beim Referenzieren der
 Ressource verwendet; erzeugt wird sie von genau einem Deployment (ArgoCD
@@ -67,9 +68,9 @@ darf eine Ressource nicht in zwei Applications sehen), alle anderen Lanes
 referenzieren nur den Namen. krypton-banking zeigt das mit `config.shared`
 (Name) und `config.create` (ConfigMap rendern oder nur referenzieren).
 
-**Label-Domain** – die plattformgenerierten Label-/Annotation-Keys
-(`<domain>/lane`, `<domain>/source-chart`) beziehen
-ihr Präfix aus `global.labelDomain` (Default `krypton.io`); das Gerüst lässt
+**Label-Domain** – der plattformgenerierte Annotation-Key
+(`<domain>/source-chart`) bezieht
+sein Präfix aus `global.labelDomain` (Default `krypton.io`); das Gerüst lässt
 sich damit über einen einzigen Values-Key für andere Projekte umbenennen.
 Die statischen Keys unter `global.labels`/`global.annotations` sind
 gewöhnliche Values und werden einfach mit angepasst.
@@ -148,9 +149,9 @@ belegt). Komponenten-Waves innerhalb von `-9..9` halten und Offsets in
 10er-Schritten vergeben, dann überlappen sich die Bänder nie.
 
 **Komponentenkatalog** – `krypton-lib.componentCatalog` (in `_helpers.tpl`)
-ist die einzige Quelle der Wahrheit für Komponententyp-Strings und ordnet
-jedem Typ den Kubernetes-Shortname für die Ressourcennamen zu (leer =
-kein Shortname, es wird der kebab-case-Typ verwendet). Jedes
+ist die einzige Quelle der Wahrheit für Komponententyp-Strings (die Werte
+der Map sind die Kubernetes-Shortnames der Kinds, rein dokumentarisch –
+Namen verwenden sie nicht). Jedes
 `component`-Argument und jeder konfigurierte `syncWaves`-/`syncPrune`-Key
 (auf Subchart- wie auf global-Ebene) wird beim Rendern dagegen geprüft; ein
 unbekannter String wie `syncWaves.rout` lässt das Rendern fehlschlagen, mit
@@ -159,8 +160,7 @@ konfigurieren, den ein Subchart (noch) nicht rendert, ist erlaubt und
 bleibt schlicht wirkungslos — Waves und Prune-Flags lassen sich also schon
 vor dem Manifest anlegen. Der Katalog deckt die gängigen
 Kubernetes-/OpenShift-/VSO-Kinds ab; ein wirklich neuer Typ ist eine
-zusätzliche Zeile (Typ plus Shortname, leer für keinen), ohne
-Schema-Änderungen.
+zusätzliche Zeile, ohne Schema-Änderungen.
 
 **Values-Schemas** – jedes Chart bringt eine `values.schema.json` mit, die
 Helm bei jedem lint/template/install gegen die *koaleszierten* Values des
@@ -236,13 +236,11 @@ aktive Kopie unter `charts/krypton-lib` verdecken.
      {{- include "krypton-lib.metadata" (dict "ctx" . "component" "networkPolicy") | nindent 2 }}
    ```
 
-   Der Namens-Suffix kommt aus dem Shortname im Katalog
-   (`krypton-banking-release-netpol`); Typen ohne Shortname werden
-   automatisch nach kebab-case umgesetzt.
+   Die Ressource heißt wie jeder andere Singleton des Subcharts
+   (`krypton-banking-release`); der Kind NetworkPolicy unterscheidet sie.
 2. Nur wenn der Typ für die Plattform wirklich neu ist: in
    `krypton-lib.componentCatalog` in `_helpers.tpl` eintragen — eine Zeile,
-   die den Typ auf seinen Shortname abbildet (leer für keinen), keine
-   Schema-Änderungen. Bereits katalogisierte Typen (networkPolicy ist
+   keine Schema-Änderungen. Bereits katalogisierte Typen (networkPolicy ist
    es) brauchen nirgendwo eine Registrierung; ihre
    `syncWaves`-/`syncPrune`-Einträge dürfen sogar schon vor dem Manifest
    existieren.

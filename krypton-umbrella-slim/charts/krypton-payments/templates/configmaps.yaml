@@ -1,7 +1,7 @@
 {{- /*
 One ConfigMap per entry in .Values.configMaps. The entry key is passed as
 "instance", so every ConfigMap gets its own name
-(krypton-payments-<lane>-cm-<key>) while all of them share the configMap
+(krypton-payments-<lane>-<key>) while all of them share the configMap
 sync wave. Inside the range, $root (not .) is the context for the library.
 */ -}}
 {{- $root := . -}}

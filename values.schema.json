@@ -14,7 +14,7 @@
         "laneName": {
           "type": "string",
           "pattern": "^[a-z0-9]([a-z0-9-]{0,30}[a-z0-9])?$",
-          "description": "Lane/environment name; part of every resource name: <subchart>-<lane>-<component-shortname>."
+          "description": "Lane/environment name; part of every resource name (<subchart>-<lane>[-<instance>], shared resources omit it) and the app.kubernetes.io/part-of label."
         },
         "labelDomain": {
           "type": "string",

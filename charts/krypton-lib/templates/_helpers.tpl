@@ -12,19 +12,20 @@
                   coalesced .Values (subchart defaults + umbrella overrides +
                   global), its .Chart and the .Release.
        component  the component type of the manifest, e.g. "deployment",
-                  "configMap", "route", "vaultStaticSecret". Drives the name
-                  suffix (the type's catalogued Kubernetes shortname, e.g.
-                  configMap -> cm) and the sync-wave lookup.
+                  "configMap", "route", "vaultStaticSecret". Validated
+                  against the component catalog and drives the sync-wave /
+                  prune lookup; it is NOT part of the name.
        instance   (optional) distinguishes multiple resources of the SAME
-                  component type within one subchart (e.g. one
-                  VaultStaticSecret per vault path); appended to the
-                  resource name as an extra kebab-cased suffix.
+                  kind within one subchart (e.g. one VaultStaticSecret per
+                  vault path); appended to the resource name, normalised to
+                  a DNS-1123 label.
        shared     (optional) true marks the resource as lane-independent:
                   the name omits the lane segment
-                  (<subchart-name>-<component-shortname>[-<instance>]) and
-                  the <domain>/lane label is not stamped. For ConfigMaps /
-                  Secrets that several lane deployments consume, so they
-                  are created once instead of once per lane.
+                  (<subchart-name>[-<instance>]) and the
+                  app.kubernetes.io/part-of lane label is not stamped. For
+                  ConfigMaps / Secrets that several lane deployments
+                  consume, so they are created once instead of once per
+                  lane.
        extra      (optional, krypton-lib.annotations only) dict of ad-hoc
                   annotations merged in with high precedence.
 
@@ -49,10 +50,11 @@ or "test". Fails the render loudly when the umbrella forgot to set it.
 {{- end }}
 
 {{/*
-Domain prefix for all platform-generated label and annotation keys:
-<domain>/lane, <domain>/source-chart. Configurable via
-global.labelDomain so the scaffold can be reused for other platforms without
-touching the library; defaults to krypton.io.
+Domain prefix for the platform-generated annotation key
+<domain>/source-chart (the lane itself is carried by the standard
+app.kubernetes.io/part-of label). Configurable via global.labelDomain so
+the scaffold can be reused for other platforms without touching the
+library; defaults to krypton.io.
 */}}
 {{- define "krypton-lib.labelDomain" -}}
 {{- $global := .ctx.Values.global | default dict -}}
@@ -67,11 +69,11 @@ touching the library; defaults to krypton.io.
 {{/*
 Catalog of component types known to the platform - the single source of
 truth for what may be passed as a "component" argument and what may appear
-as a key under syncWaves / syncPrune - and of the Kubernetes shortname
-(kubectl api-resources) each type is abbreviated to in resource names:
-configMap -> cm, deployment -> deploy. An empty shortname means the kind
-has none upstream (Route, Secret, the VSO kinds, ...); those names fall
-back to the kebab-cased type.
+as a key under syncWaves / syncPrune. The values are the Kubernetes
+shortnames (kubectl api-resources) of the kinds; the naming scheme
+(<subchart>-<lane>[-<instance>]) does not use them, they are kept as
+documentation and so that both library variants carry exactly the same
+catalog.
 
 Configuring a catalogued type that a subchart does not (yet) render is
 allowed and simply has no effect - manifests pull their own settings, so
@@ -164,26 +166,31 @@ helm.sh/chart label value: <chart-name>-<chart-version>.
 {{/*
 The one sanctioned resource-name format:
 
-    <subchart-name>-<global-lane-name>-<component-shortname>
-    e.g. krypton-banking-release-deploy
+    <subchart-name>-<global-lane-name>[-<instance>]
+    e.g. krypton-banking-release             Deployment, Service, Route, SA, ...
+         krypton-banking-release-database    VaultStaticSecret, instance "database"
 
-  subchart-name        dynamic, from .Chart.Name of the calling subchart
-  lane-name            from the umbrella's global.laneName
-  component-shortname  the Kubernetes shortname the catalog maps the
-                       caller's component type to ("configMap" -> "cm");
-                       types without one fall back to the kebab-cased type
-                       ("vaultStaticSecret" -> "vault-static-secret"), so
-                       the name always stays a valid DNS-1123 label
+  subchart-name   dynamic, from .Chart.Name of the calling subchart
+  lane-name       from the umbrella's global.laneName
+  instance        optional; the identifier for several resources of the
+                  same kind in one subchart. Normalised to a DNS-1123 label:
+                  camelCase boundaries become dashes ("logLevel" ->
+                  "log-level"), the result is lowercased and every other
+                  character outside [a-z0-9-] becomes a dash.
 
-An optional "instance" is appended kebab-cased as one more suffix when a
-subchart renders several resources of the same component type:
-    krypton-banking-release-vault-static-secret-database
+The component type is NOT part of the name - the Kubernetes kind already
+tells a Deployment from a Service of the same name. It still has to be
+passed: it is validated against the catalog and drives the sync-wave /
+prune lookup. Consequence: several resources of the SAME kind in one
+subchart need distinct instances, and a Secret written by a
+VaultStaticSecret (destination.name) must not reuse the instance of a plain
+Secret rendered by the same subchart.
 
 "shared" true drops the lane segment for resources that are not lane
 specific - a ConfigMap or Secret that every lane deployment of the subchart
 consumes and that therefore only has to exist once:
-    krypton-banking-cm
-    krypton-banking-secret-smtp
+    krypton-banking
+    krypton-banking-smtp
 Use the same call (with "shared" true) both where the resource is created
 and where it is referenced, and let exactly ONE deployment create it; the
 others reference the name only.
@@ -199,15 +206,14 @@ Usage:
 {{- $ctx := .ctx -}}
 {{- $component := required "krypton-lib.componentName: 'component' is required" .component -}}
 {{- include "krypton-lib.assertComponent" (dict "ctx" $ctx "component" $component) -}}
-{{- $short := get (fromYaml (include "krypton-lib.componentCatalog" .)) $component | default (kebabcase $component) -}}
-{{- $name := "" -}}
-{{- if .shared -}}
-{{- $name = printf "%s-%s" $ctx.Chart.Name $short -}}
-{{- else -}}
-{{- $name = printf "%s-%s-%s" $ctx.Chart.Name (include "krypton-lib.laneName" .) $short -}}
+{{- $name := $ctx.Chart.Name -}}
+{{- if not .shared -}}
+{{- $name = printf "%s-%s" $name (include "krypton-lib.laneName" .) -}}
 {{- end -}}
 {{- with .instance -}}
-{{- $name = printf "%s-%s" $name (kebabcase .) -}}
+{{- $instance := regexReplaceAll "([a-z0-9])([A-Z])" (toString .) "${1}-${2}" | lower -}}
+{{- $instance = regexReplaceAll "[^a-z0-9-]" $instance "-" -}}
+{{- $name = printf "%s-%s" $name $instance -}}
 {{- end -}}
 {{- $name | trunc 63 | trimSuffix "-" -}}
 {{- end }}
@@ -252,7 +258,7 @@ Name of the ServiceAccount the workload runs as:
   serviceAccount.create=true  -> serviceAccount.name, defaulting to the
                                  platform name (componentName of type
                                  serviceAccount, e.g.
-                                 krypton-banking-release-sa)
+                                 krypton-banking-release)
   serviceAccount.create=false -> serviceAccount.name, defaulting to "default"
                                  (reference an existing SA)
 
@@ -294,11 +300,12 @@ Usage:
 Standard labels merged with the umbrella's static labels.
 
 Merge order (later wins on key collisions):
-  1. chart-generated standard labels (app.kubernetes.io/*, helm.sh/chart, lane)
+  1. chart-generated standard labels (app.kubernetes.io/*, helm.sh/chart);
+     the lane is stamped as app.kubernetes.io/part-of: <laneName>
   2. global.labels                  - static platform labels from the umbrella
 
-The <domain>/lane label is omitted for "shared" resources (see
-componentName): a resource consumed by several lanes belongs to none.
+The app.kubernetes.io/part-of lane label is omitted for "shared" resources
+(see componentName): a resource consumed by several lanes belongs to none.
 
 Usage:
     labels:
@@ -307,7 +314,6 @@ Usage:
 {{- define "krypton-lib.labels" -}}
 {{- $ctx := .ctx -}}
 {{- $global := $ctx.Values.global | default dict -}}
-{{- $domain := include "krypton-lib.labelDomain" . -}}
 {{- $labels := dict
       "helm.sh/chart"                (include "krypton-lib.chart" .)
       "app.kubernetes.io/name"       $ctx.Chart.Name
@@ -315,7 +321,7 @@ Usage:
       "app.kubernetes.io/managed-by" $ctx.Release.Service
 -}}
 {{- if not .shared -}}
-{{- $_ := set $labels (printf "%s/lane" $domain) (include "krypton-lib.laneName" .) -}}
+{{- $_ := set $labels "app.kubernetes.io/part-of" (include "krypton-lib.laneName" .) -}}
 {{- end -}}
 {{- with $ctx.Chart.AppVersion -}}
 {{- $_ := set $labels "app.kubernetes.io/version" (. | toString) -}}

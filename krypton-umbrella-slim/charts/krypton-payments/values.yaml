@@ -7,9 +7,11 @@ imagePullPolicy: IfNotPresent
 
 # Several ConfigMaps in ONE subchart: one ConfigMap per entry. The map key is
 # the instance identifier and becomes part of the resource name:
-#   krypton-payments-<lane>-cm-app
-#   krypton-payments-<lane>-cm-logging
+#   krypton-payments-<lane>-app
+#   krypton-payments-<lane>-logging
 # All of them share the configMap sync wave (global.syncWaves.configMap).
+# (A ConfigMap and a VaultStaticSecret may share the key "app" - different
+# kinds never collide on a name.)
 configMaps:
   app:
     PAYMENTS_LOG_LEVEL: info
@@ -20,8 +22,10 @@ configMaps:
 
 # Several plain Secrets (type Opaque, stringData): one per entry, key =
 # instance identifier:
-#   krypton-payments-<lane>-secret-smtp
-#   krypton-payments-<lane>-secret-signing
+#   krypton-payments-<lane>-smtp
+#   krypton-payments-<lane>-signing
+# Keys must differ from the vault.secrets keys below: the Vault-written
+# Secrets use the same names, and secrets.yaml refuses a render on overlap.
 # Demo values only - production secrets come from Vault (below).
 secrets:
   smtp:
@@ -31,8 +35,8 @@ secrets:
     SIGNING_KEY_ID: demo-key
 
 # Vault Secrets Operator: one VaultStaticSecret per entry, key = instance:
-#   krypton-payments-<lane>-vault-static-secret-app
-#   krypton-payments-<lane>-vault-static-secret-database
+#   krypton-payments-<lane>-app        (VaultStaticSecret and its target Secret)
+#   krypton-payments-<lane>-database
 # Paths are rendered through tpl by the subchart template, so the defaults
 # template the lane in and every lane reads its own secrets. authRef / mount
 # / refreshAfter are shared defaults with per-entry overrides.
