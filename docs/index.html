@@ -504,6 +504,81 @@ kind: Deployment   # krypton-banking-release, referencing both</pre>
     </div>
   </article>
 
+  <!-- E2 pod selectors -->
+  <article class="example" id="ex-selector">
+    <h3 data-lang="en">Pod selectors: Deployment &harr; Service</h3><h3 data-lang="de">Pod-Selektoren: Deployment &harr; Service</h3>
+    <p data-lang="en">A Deployment's <code>spec.selector</code>, its pod template labels and the Service selector must agree, or the Service routes to nothing. <code>krypton-lib.selectorLabels</code> renders the identity all of them share: <code>app.kubernetes.io/name</code> (the subchart), <code>app.kubernetes.io/instance</code> (the Helm release, i.e. the ArgoCD Application) and <code>app.kubernetes.io/part-of</code> (the lane label, <code>[&lt;partOfPrefix&gt;-]&lt;laneName&gt;</code>). The pod template takes the full <code>krypton-lib.labels</code> set, which contains exactly these three values, so the selector always matches; the lane in the selector keeps a Service, PDB or NetworkPolicy of one lane from ever picking up another lane's pods in the same namespace.</p>
+    <p data-lang="de">Der <code>spec.selector</code> eines Deployments, seine Pod-Template-Labels und der Service-Selektor m&uuml;ssen &uuml;bereinstimmen, sonst routet der Service ins Leere. <code>krypton-lib.selectorLabels</code> rendert die Identit&auml;t, die alle drei teilen: <code>app.kubernetes.io/name</code> (das Subchart), <code>app.kubernetes.io/instance</code> (das Helm-Release, also die ArgoCD-Application) und <code>app.kubernetes.io/part-of</code> (das Lane-Label, <code>[&lt;partOfPrefix&gt;-]&lt;laneName&gt;</code>). Das Pod-Template bekommt den vollen <code>krypton-lib.labels</code>-Satz, der genau diese drei Werte enth&auml;lt, der Selektor passt also immer; die Lane im Selektor verhindert, dass ein Service, PDB oder eine NetworkPolicy einer Lane je die Pods einer anderen Lane im selben Namespace einsammelt.</p>
+    <div class="io">
+      <div class="stack">
+        <figure class="code">
+          <figcaption><span class="dot dot-in"></span>charts/krypton-banking/templates/deployment.yaml</figcaption>
+          <pre data-hl="yaml">spec:
+  selector:
+    matchLabels:
+      {{- include "krypton-lib.selectorLabels" (dict "ctx" .) | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "krypton-lib.labels" (dict "ctx" .) | nindent 8 }}</pre>
+        </figure>
+        <figure class="code">
+          <figcaption><span class="dot dot-in"></span>charts/krypton-banking/templates/service.yaml</figcaption>
+          <pre data-hl="yaml">spec:
+  selector:
+    {{- include "krypton-lib.selectorLabels" (dict "ctx" .) | nindent 4 }}</pre>
+        </figure>
+        <figure class="code">
+          <figcaption><span class="dot dot-in"></span>values.yaml &middot; umbrella</figcaption>
+          <pre data-hl="yaml">global:
+  laneName: release
+  partOfPrefix: krypton-umbrella   # part-of: krypton-umbrella-release</pre>
+        </figure>
+        <div class="cmd">helm template krypton krypton-umbrella --set global.partOfPrefix=krypton-umbrella</div>
+      </div>
+      <figure class="code">
+        <figcaption><span class="dot dot-out"></span><span data-lang="en">rendered &middot; Deployment and Service (excerpt)</span><span data-lang="de">gerendert &middot; Deployment und Service (Auszug)</span></figcaption>
+        <pre data-hl="yaml">kind: Deployment
+metadata:
+  name: krypton-banking-release
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: krypton-banking
+      app.kubernetes.io/instance: krypton
+      app.kubernetes.io/part-of: krypton-umbrella-release
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/instance: krypton
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: krypton-banking
+        app.kubernetes.io/part-of: krypton-umbrella-release
+        app.kubernetes.io/version: 1.4.2
+        helm.sh/chart: krypton-banking-0.1.0
+        krypton.io/cost-center: cc-4711
+        krypton.io/platform: krypton
+---
+kind: Service
+metadata:
+  name: krypton-banking-release
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+      protocol: TCP
+  selector:
+    app.kubernetes.io/name: krypton-banking
+    app.kubernetes.io/instance: krypton
+    app.kubernetes.io/part-of: krypton-umbrella-release</pre>
+      </figure>
+    </div>
+    <div class="note"><span data-lang="en"><b>One-way door:</b> a Deployment selector is immutable. Renaming the lane creates a new Deployment anyway, but changing <code>global.partOfPrefix</code> on a lane that already runs changes only the selector and the apply is rejected &mdash; delete that lane's Deployments once, then sync again. Never add chart version or custom labels to the selector.</span><span data-lang="de"><b>Einbahnstra&szlig;e:</b> ein Deployment-Selektor ist unver&auml;nderlich. Eine Lane-Umbenennung erzeugt ohnehin ein neues Deployment, aber <code>global.partOfPrefix</code> auf einer bereits laufenden Lane zu &auml;ndern ver&auml;ndert nur den Selektor und der Apply wird abgelehnt &mdash; die Deployments dieser Lane einmalig l&ouml;schen, dann erneut syncen. Nie Chart-Version oder eigene Labels in den Selektor aufnehmen.</span></div>
+  </article>
+
   <!-- E2a jenkins annotations -->
   <article class="example" id="ex-jenkins">
     <h3 data-lang="en">CI annotations from Jenkins</h3><h3 data-lang="de">CI-Annotations aus Jenkins</h3>
@@ -904,6 +979,7 @@ spec:
     matchLabels:
       app.kubernetes.io/name: krypton-banking
       app.kubernetes.io/instance: krypton
+      app.kubernetes.io/part-of: release
 ---
 kind: HorizontalPodAutoscaler
 spec:

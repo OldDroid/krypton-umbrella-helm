@@ -98,6 +98,16 @@ be rebranded per project with one values key; the static keys under
 alongside. `app.kubernetes.io/instance` is the Helm release name (the
 ArgoCD Application name), not a hardcoded value.
 
+**Pod selectors** - `krypton-lib.selectorLabels` renders the identity that
+Deployment, Service, PodDisruptionBudget and NetworkPolicy selectors match
+pods by: `app.kubernetes.io/name` (subchart), `app.kubernetes.io/instance`
+(release) and `app.kubernetes.io/part-of` (the lane label, so one lane's
+Service can never select another lane's pods). The values are the same
+ones `krypton-lib.labels` stamps onto the pod template. Deployment
+selectors are immutable, so changing `global.partOfPrefix` on an existing
+lane requires deleting that lane's Deployments once before the next sync;
+a lane rename creates new Deployments anyway.
+
 **Workload configuration** - `krypton-lib.image` assembles the image
 reference from `image.registry`/`repository`/`tag` (or `digest`); setting
 `global.imageRegistry` repoints every subchart at a per-lane proxy or

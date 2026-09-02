@@ -104,6 +104,17 @@ gewöhnliche Values und werden einfach mit angepasst.
 `app.kubernetes.io/instance` ist der Helm-Release-Name (der Name der
 ArgoCD-Application), kein fest verdrahteter Wert.
 
+**Pod-Selektoren** – `krypton-lib.selectorLabels` rendert die Identität,
+über die Deployment, Service, PodDisruptionBudget und NetworkPolicy ihre
+Pods auswählen: `app.kubernetes.io/name` (Subchart),
+`app.kubernetes.io/instance` (Release) und `app.kubernetes.io/part-of`
+(das Lane-Label, ein Service einer Lane wählt also nie die Pods einer
+anderen Lane aus). Die Werte sind dieselben, die `krypton-lib.labels` auf
+das Pod-Template stempelt. Deployment-Selektoren sind unveränderlich:
+`global.partOfPrefix` auf einer bestehenden Lane zu ändern erfordert daher
+einmalig das Löschen der Deployments dieser Lane vor dem nächsten Sync;
+eine Lane-Umbenennung erzeugt ohnehin neue Deployments.
+
 **Workload-Konfiguration** – `krypton-lib.image` baut die Image-Referenz
 aus `image.registry`/`repository`/`tag` (oder `digest`) zusammen; mit
 `global.imageRegistry` zeigt jedes Subchart über einen einzigen Key auf

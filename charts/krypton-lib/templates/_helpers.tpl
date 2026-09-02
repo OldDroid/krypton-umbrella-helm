@@ -384,9 +384,26 @@ Usage:
 {{- end }}
 
 {{/*
-Selector labels - the immutable identity subset used in Deployment and
-Service selectors. Never add mutable values (lane, chart, version) here:
-a Deployment's selector cannot be changed after creation.
+Pod selector labels - the identity subset of krypton-lib.labels that
+Deployment, Service, PodDisruptionBudget and NetworkPolicy selectors match
+pods by. Exactly three keys, each carrying the same value the pod template
+receives from krypton-lib.labels:
+
+    app.kubernetes.io/name       <subchart-name>        (.Chart.Name)
+    app.kubernetes.io/instance   <release-name>         (.Release.Name)
+    app.kubernetes.io/part-of    [<partOfPrefix>-]<laneName>
+
+The lane label is part of the identity so a Service or NetworkPolicy of one
+lane can never select the pods of another lane that happens to share the
+namespace and release name. It is NOT an argument: pods are never "shared",
+so the selector always carries the lane.
+
+A Deployment's selector is immutable, which makes every value here a
+one-way door: changing global.laneName renames the Deployment anyway (a
+new object with a new selector), but changing global.partOfPrefix on an
+existing lane changes only the selector and the apply is rejected - delete
+the Deployments of that lane once, then sync again. Never add chart
+version, custom labels or anything else that varies between syncs.
 
 Usage:
     selector:
@@ -396,6 +413,7 @@ Usage:
 {{- define "krypton-lib.selectorLabels" -}}
 app.kubernetes.io/name: {{ .ctx.Chart.Name }}
 app.kubernetes.io/instance: {{ .ctx.Release.Name }}
+app.kubernetes.io/part-of: {{ include "krypton-lib.partOf" . }}
 {{- end }}
 
 
