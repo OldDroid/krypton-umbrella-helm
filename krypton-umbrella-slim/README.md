@@ -182,9 +182,14 @@ Merge order, later wins on key collisions:
    umbrella's subchart block (the umbrella adds `krypton.io/team: payments`)
 4. `extraLabels` — per call
 
-`selectorLabels` is only `app.kubernetes.io/name` + `app.kubernetes.io/instance`
-(`instance` is the Helm release name, i.e. the ArgoCD Application name);
-never put mutable values into a selector.
+`selectorLabels` is the pod identity for Deployment / Service selectors:
+`app.kubernetes.io/name` + `app.kubernetes.io/instance` +
+`app.kubernetes.io/part-of` (`instance` is the Helm release name, i.e. the
+ArgoCD Application name; `part-of` is the lane label, so one lane's Service
+never selects another lane's pods). A Deployment selector is immutable:
+changing `global.partOfPrefix` on an existing lane therefore requires
+deleting that lane's Deployments once. Never put other mutable values into
+a selector.
 
 ### Annotations
 

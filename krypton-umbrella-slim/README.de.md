@@ -188,9 +188,15 @@ Merge-Reihenfolge, spätere gewinnen bei Key-Kollisionen:
    Umbrella-Block überschreibbar (der Umbrella ergänzt `krypton.io/team: payments`)
 4. `extraLabels` — je Aufruf
 
-`selectorLabels` ist nur `app.kubernetes.io/name` + `app.kubernetes.io/instance`
-(`instance` ist der Helm-Release-Name, also der Name der ArgoCD-Application);
-nie veränderliche Werte in einen Selektor aufnehmen.
+`selectorLabels` ist die Pod-Identität für Deployment-/Service-Selektoren:
+`app.kubernetes.io/name` + `app.kubernetes.io/instance` +
+`app.kubernetes.io/part-of` (`instance` ist der Helm-Release-Name, also der
+Name der ArgoCD-Application; `part-of` ist das Lane-Label, ein Service
+einer Lane wählt also nie die Pods einer anderen Lane aus). Ein
+Deployment-Selektor ist unveränderlich: `global.partOfPrefix` auf einer
+bestehenden Lane zu ändern erfordert daher einmalig das Löschen der
+Deployments dieser Lane. Nie andere veränderliche Werte in einen Selektor
+aufnehmen.
 
 ### Annotations
 
