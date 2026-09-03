@@ -1,6 +1,6 @@
 apiVersion: v2
 name: krypton-shared
-description: Lane-independent platform resources (ConfigMaps, Secrets, Vault secrets) consumed by every lane deployment in a namespace
+description: Lane-independent platform resources (ConfigMaps, Secrets, Vault secrets, namespace NetworkPolicy) consumed by every lane deployment in a namespace
 type: application
 version: 0.1.0
 # Chart icon, embedded as a data URI so nothing is fetched from a remote at any point.

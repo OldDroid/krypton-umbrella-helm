@@ -22,9 +22,9 @@ krypton-umbrella/
 │   ├── krypton-lib/            # type: library - renders nothing, provides helpers
 │   │   └── templates/_helpers.tpl
 │   ├── krypton-banking/        # Deployment, Service, ConfigMap, VaultStaticSecret, Route,
-│   │                           # ServiceAccount (+ optional PDB / HPA / NetworkPolicy)
+│   │                           # ServiceAccount (+ optional PDB / HPA)
 │   ├── krypton-auth/           # Deployment, ServiceAccount
-│   └── krypton-shared/         # lane-independent ConfigMaps / Secrets / VaultStaticSecrets, one owner per namespace
+│   └── krypton-shared/         # lane-independent ConfigMaps / Secrets / VaultStaticSecrets + namespace NetworkPolicy, one owner per namespace
 └── krypton-umbrella-slim/      # slim variant: metadata-only library with its own umbrella and
                                 # subcharts (see "Slim variant"; .helmignore keeps it out of this chart)
 ```
@@ -71,7 +71,12 @@ Rendering fails loudly if `global.laneName` is unset.
 `app.kubernetes.io/part-of` label, for ConfigMaps or Secrets that several lane
 deployments in one namespace consume and that therefore only have to exist
 once. They live in their own subchart, **`krypton-shared`**, which renders
-`configMaps`, `secrets` and `vault.secrets` as `krypton-shared-<key>`.
+`configMaps`, `secrets` and `vault.secrets` as `krypton-shared-<key>`, plus
+the namespace-wide `networkPolicy` (named `krypton-shared`, `podSelector: {}`):
+every pod in the namespace then accepts ingress only from its own namespace
+and from the OpenShift router, so a Route is the only way in from another
+namespace; egress is not restricted, and `networkPolicy.extraRules` opens
+further peers such as `openshift-monitoring`.
 Exactly one ArgoCD Application per namespace may own them (ArgoCD flags a
 second owner as a shared resource, Helm refuses foreign ownership), so the
 ownership is the plain deploy switch `krypton-shared.enabled`:
@@ -131,10 +136,9 @@ umbrella. Pod-level passthroughs (`extraEnv`, `extraEnvFrom`,
 `podAnnotations`, `nodeSelector`, `tolerations`, `affinity`) go verbatim
 into the pod spec, so app teams never fork a template. Optional components
 follow the enabled-flag pattern per lane: `podDisruptionBudget` (the
-release lane enables it for banking), `autoscaling` (while enabled the
+release lane enables it for banking) and `autoscaling` (while enabled the
 Deployment stops rendering `spec.replicas`, so ArgoCD and the HPA never
-fight over replica counts) and `networkPolicy` (same-namespace plus
-OpenShift router ingress).
+fight over replica counts).
 
 **Sync waves** - `krypton-lib.syncWave` resolves per component type, first
 hit wins:
@@ -145,7 +149,7 @@ hit wins:
 
 `krypton-lib.annotations` applies the wave as `argocd.argoproj.io/sync-wave`
 last in its merge chain (standard → `global.annotations` →
-`<subchart>.jenkins.annotations` → per-call `extra` → wave), and omits it
+`<subchart>.jenkins.annotations` → per-call `extra`/`annotation`/`annotationsFrom` → wave), and omits it
 when no wave is configured. Current order for
 krypton-banking: VaultStaticSecret `-1` → ConfigMap `0` → Deployment/Service
 `1` → Route `3`, so the Vault-materialised Secret exists before the
@@ -161,6 +165,17 @@ the block exists, so plain renders carry no CI annotations. Jenkins sets it
 per sync, e.g. via ArgoCD helm parameters
 `krypton-banking.jenkins.annotations.jenkins\.io/build-number=1234`; scalar
 values are stringified, so a numeric build id is safe.
+
+**Per-resource annotations** - `krypton-lib.metadata`/`annotations` take
+three optional per-call arguments for annotations that belong to exactly
+one resource: `extra` (a dict), `annotation` (one `"key=value"` string) and
+`annotationsFrom` (a dotted path below `.Values` to a map, e.g.
+`"route.annotations"`, or `(printf "routes.%s.annotations" $name)` inside a
+`range`, so one Route of many gets its `haproxy.router.openshift.io/timeout`
+and the others do not). They merge in that order after the CI annotations
+and below the two ArgoCD keys; a missing `annotationsFrom` path contributes
+nothing, a path that is not a map fails the render. The banking Route wires
+`route.annotations` this way.
 
 **Cross-subchart ordering** - when one subchart must sync after another,
 shift its whole band with `syncWaveOffset` (per subchart, steered from the
@@ -244,28 +259,28 @@ The generated `charts/*/charts/` and `charts/*/Chart.lock` are gitignored on
 purpose: a stale vendored copy of krypton-lib must never shadow the live one
 under `charts/krypton-lib` when the umbrella renders.
 
-### Adding a new component type to a subchart (e.g. a NetworkPolicy)
+### Adding a new component type to a subchart (e.g. a ServiceMonitor)
 
 1. Create the manifest in the subchart's `templates/` using the shared
    metadata helper with a new component-type key:
 
    ```yaml
    metadata:
-     {{- include "krypton-lib.metadata" (dict "ctx" . "component" "networkPolicy") | nindent 2 }}
+     {{- include "krypton-lib.metadata" (dict "ctx" . "component" "serviceMonitor") | nindent 2 }}
    ```
 
    The resource is named like every other singleton of the subchart
-   (`krypton-banking-release`); the kind NetworkPolicy tells it apart.
+   (`krypton-banking-release`); the kind ServiceMonitor tells it apart.
 2. If (and only if) the kind is genuinely new to the platform, add it to
    `krypton-lib.componentCatalog` in `_helpers.tpl` - one line, no schema
-   edits. Kinds already in the catalog (networkPolicy is) need no
+   edits. Kinds already in the catalog (serviceMonitor is) need no
    registration anywhere, and their `syncWaves`/`syncPrune` entries may even
    be staged before the manifest exists.
-3. Give it a wave where it fits the band: `syncWaves.networkPolicy` in the
+3. Give it a wave where it fits the band: `syncWaves.serviceMonitor` in the
    subchart values, a platform default under `global.syncWaves`, or a lane
-   override in the umbrella's subchart block (e.g. `"0"` so policies exist
-   before workloads start).
-4. Optionally protect it from pruning: `syncPrune.networkPolicy: false`.
+   override in the umbrella's subchart block (e.g. `"2"` so the monitor
+   follows its Service).
+4. Optionally protect it from pruning: `syncPrune.serviceMonitor: false`.
 
 No library changes are needed — naming, labels, annotations, wave and prune
 resolution all key off the component string.

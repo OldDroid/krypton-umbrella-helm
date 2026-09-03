@@ -1,6 +1,6 @@
 # krypton-shared - the lane-independent resources of the platform: ConfigMaps,
 # Secrets and Vault-materialised Secrets that every lane deployment in a
-# namespace consumes. Everything in this subchart renders with "shared" true:
+# namespace consumes, plus the namespace-wide NetworkPolicy. Everything in this subchart renders with "shared" true:
 #
 #   krypton-shared-<key>    no lane segment, no app.kubernetes.io/part-of label
 #
@@ -45,6 +45,30 @@ vault:
   secrets: {}
   #  gateway:
   #    path: "krypton/shared/gateway"
+
+# Namespace-wide NetworkPolicy (component type networkPolicy), one per
+# namespace like every other object here: named krypton-shared, no lane
+# segment, no lane label. It selects EVERY pod in the namespace and denies
+# exactly one thing - ingress from other namespaces. Pods of the same
+# namespace and the OpenShift router stay allowed on every port, so Routes
+# keep working and the Route is the only way in from outside; egress is not
+# restricted at all. Enabled by the shared owner (umbrella krypton-shared
+# block).
+networkPolicy:
+  enabled: false
+  # true when the router runs on the host network (HostNetwork endpoint
+  # publishing strategy, typical on bare metal / vSphere): its traffic then
+  # arrives from the node IP and only matches through the
+  # openshift-host-network peer this switch adds.
+  allowRouterHostNetwork: false
+  # Further NetworkPolicyIngressRule objects, appended verbatim - e.g.
+  # Prometheus scraping from openshift-monitoring:
+  # extraRules:
+  #   - from:
+  #       - namespaceSelector:
+  #           matchLabels:
+  #             kubernetes.io/metadata.name: openshift-monitoring
+  extraRules: []
 
 # Sync waves per component type; unset keys fall back to global.syncWaves
 # (configMap 0, vaultStaticSecret -1 ...). Shared objects exist before any

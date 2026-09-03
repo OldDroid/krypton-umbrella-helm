@@ -62,6 +62,13 @@
       "additionalProperties": false,
       "properties": {
         "host": { "type": "string" },
+        "annotations": {
+          "type": ["object", "null"],
+          "additionalProperties": {
+            "oneOf": [{ "type": "string" }, { "type": "number" }, { "type": "boolean" }]
+          },
+          "description": "Route-specific annotations, merged into this one resource via annotationsFrom; scalar values are stringified."
+        },
         "targetPort": {
           "oneOf": [{ "type": "string" }, { "type": "integer" }]
         },
@@ -128,13 +135,6 @@
         "minReplicas": { "type": "integer", "minimum": 1 },
         "maxReplicas": { "type": "integer", "minimum": 1 },
         "targetCPUUtilizationPercentage": { "type": "integer", "minimum": 1, "maximum": 100 }
-      }
-    },
-    "networkPolicy": {
-      "type": ["object", "null"],
-      "additionalProperties": false,
-      "properties": {
-        "enabled": { "type": "boolean" }
       }
     },
     "extraEnv": { "type": ["array", "null"], "items": { "type": "object" } },

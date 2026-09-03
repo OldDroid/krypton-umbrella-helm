@@ -50,11 +50,11 @@ template, `$` inside a `range`).
 
 | Helper | Arguments | Produces |
 | --- | --- | --- |
-| `krypton-lib-slim.metadata` | `ctx`, `component`, `instance?`, `extraLabels?`, `extraAnnotations?` | `name:` + `labels:` + `annotations:` |
+| `krypton-lib-slim.metadata` | `ctx`, `component`, `instance?`, `shared?`, `extraLabels?`, `extraAnnotations?`, `annotation?`, `annotationsFrom?` | `name:` + `labels:` + `annotations:` |
 | `krypton-lib-slim.componentName` | `ctx`, `component`, `instance?` | the resource name (also for cross-references) |
 | `krypton-lib-slim.labels` | `ctx`, `extraLabels?` | the merged label map |
 | `krypton-lib-slim.selectorLabels` | `ctx` | the immutable identity subset for selectors |
-| `krypton-lib-slim.annotations` | `ctx`, `component`, `extraAnnotations?` | the merged annotation map incl. the ArgoCD ones |
+| `krypton-lib-slim.annotations` | `ctx`, `component`, `extraAnnotations?`, `annotation?`, `annotationsFrom?` | the merged annotation map incl. the ArgoCD ones |
 | `krypton-lib-slim.syncWave` | `ctx`, `component` | the resolved wave, `""` if none |
 | `krypton-lib-slim.syncOptions` | `ctx`, `component` | the comma-joined sync options, `""` if none |
 
@@ -204,8 +204,13 @@ a selector.
    scalar values are stringified, so a numeric build id is safe.
 5. `extraAnnotations` — per call; the Route passes `.Values.route.annotations`
    (`haproxy.router.openshift.io/timeout`)
-6. `argocd.argoproj.io/sync-wave`
-7. `argocd.argoproj.io/sync-options`
+6. `annotation` — per call, one `"key=value"` string for exactly this resource
+7. `annotationsFrom` — per call, a dotted path below `.Values` to a map
+   (`"route.annotations"`, or `(printf "routes.%s.annotations" $name)` inside
+   a `range`, so one Route of many gets its timeout); a missing path
+   contributes nothing, a path that is not a map fails the render
+8. `argocd.argoproj.io/sync-wave`
+9. `argocd.argoproj.io/sync-options`
 
 The two ArgoCD annotations are applied last and cannot be shadowed; each is
 omitted when nothing is configured.
