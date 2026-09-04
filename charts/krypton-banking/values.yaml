@@ -79,6 +79,13 @@ route:
   tls:
     termination: edge
     insecureEdgeTerminationPolicy: Redirect
+  # Route-specific annotations, e.g. a longer HAProxy timeout. Handed to the
+  # metadata helper as annotationsFrom "route.annotations": merged after
+  # global.annotations and jenkins.annotations, below the two ArgoCD keys.
+  # With several Routes per subchart the same mechanism annotates exactly
+  # one of them: (printf "routes.%s.annotations" $name) inside the range.
+  annotations: {}
+  #  haproxy.router.openshift.io/timeout: 300s
 
 # Probe specs are passed through verbatim to the container. Readiness is what
 # makes the sync waves real: ArgoCD only starts the next wave once the
@@ -143,11 +150,6 @@ autoscaling:
   minReplicas: 2
   maxReplicas: 6
   targetCPUUtilizationPercentage: 75
-
-# NetworkPolicy (component type networkPolicy): allows same-namespace
-# traffic plus the OpenShift router on the container port.
-networkPolicy:
-  enabled: false
 
 # ---------------------------------------------------------------------------
 # Passthroughs - copied verbatim into the pod spec so app teams never need

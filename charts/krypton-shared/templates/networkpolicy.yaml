@@ -1,0 +1,58 @@
+{{- /*
+Namespace-wide NetworkPolicy (component type networkPolicy), rendered with
+"shared" true like everything else in this subchart: named krypton-shared,
+no lane segment, no lane label - one per namespace, owned by the shared
+Application.
+
+It selects EVERY pod in the namespace and denies exactly one thing: ingress
+from other namespaces. Pods of the same namespace stay allowed on every
+port, and so does the OpenShift router (it only ever reaches Service target
+ports), so Routes keep working and the Route is the only way in from
+outside the namespace. Egress is not touched - policyTypes lists Ingress
+only, outbound traffic stays unrestricted.
+
+Rules across NetworkPolicies are additive. A workload that must accept
+traffic from another namespace (Prometheus in openshift-monitoring, a
+caller elsewhere) gets that through networkPolicy.extraRules here or
+through a policy of its own; this template is never forked for it.
+*/ -}}
+{{- $np := .Values.networkPolicy | default dict }}
+{{- if $np.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  {{- include "krypton-lib.metadata" (dict "ctx" . "component" "networkPolicy" "shared" true) | nindent 2 }}
+spec:
+  # Every pod in the namespace, whichever lane or subchart it belongs to.
+  podSelector: {}
+  policyTypes:
+    - Ingress
+  ingress:
+    # Same namespace: every pod, every port. A podSelector without a
+    # namespaceSelector only ever matches the policy's own namespace.
+    - from:
+        - podSelector: {}
+    # OpenShift router. Its namespace is labelled differently per network
+    # plugin:
+    #   policy-group.network.openshift.io/ingress  OVN-Kubernetes
+    #   network.openshift.io/policy-group          openshift-sdn
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              policy-group.network.openshift.io/ingress: ""
+        - namespaceSelector:
+            matchLabels:
+              network.openshift.io/policy-group: ingress
+        {{- if $np.allowRouterHostNetwork }}
+        # Router pods on the host network: their traffic arrives from the
+        # node IP, which OVN-Kubernetes represents as the
+        # openshift-host-network namespace.
+        - namespaceSelector:
+            matchLabels:
+              policy-group.network.openshift.io/host-network: ""
+        {{- end }}
+    {{- with $np.extraRules }}
+    # Additional peers, appended verbatim from the values.
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+{{- end }}

@@ -268,7 +268,7 @@ footer .eyebrow{color:var(--faint);}
     ├── krypton-lib/            # type: library — renders nothing, provides the helpers
     │   └── templates/_helpers.tpl
     ├── krypton-banking/        # Deployment, Service, ConfigMap, VaultStaticSecrets, Route,
-    │                           # ServiceAccount (+ optional PDB / HPA / NetworkPolicy)
+    │                           # ServiceAccount (+ optional PDB / HPA)
     └── krypton-auth/           # Deployment, ServiceAccount</pre>
   </figure>
 </section>
@@ -302,7 +302,7 @@ helm template t krypton-umbrella/charts/krypton-banking --set global.laneName=de
       <div class="wb-rowlabel">krypton-banking</div>
       <div class="wb-block wb-b" style="grid-column:2">SA</div>
       <div class="wb-block wb-b" style="grid-column:3">VSS &times;2</div>
-      <div class="wb-block wb-b" style="grid-column:4">CM&middot;NP</div>
+      <div class="wb-block wb-b" style="grid-column:4">CM</div>
       <div class="wb-block wb-b" style="grid-column:5">Deploy&middot;Svc&middot;PDB</div>
       <div class="wb-cell" style="grid-column:6"></div>
       <div class="wb-block wb-b" style="grid-column:7">Route</div>
@@ -318,8 +318,8 @@ helm template t krypton-umbrella/charts/krypton-banking --set global.laneName=de
     <div class="wb-legend">
       <span><i style="background:var(--accent-soft);border:1px solid var(--accent-border)"></i>krypton-banking (offset 0)</span>
       <span><i style="background:var(--band-a-soft);border:1px solid var(--band-a-border)"></i>krypton-auth (offset +10)</span>
-      <span data-lang="en">SA=ServiceAccount &middot; VSS=VaultStaticSecret &middot; CM=ConfigMap &middot; NP=NetworkPolicy</span>
-      <span data-lang="de">SA=ServiceAccount &middot; VSS=VaultStaticSecret &middot; CM=ConfigMap &middot; NP=NetworkPolicy</span>
+      <span data-lang="en">SA=ServiceAccount &middot; VSS=VaultStaticSecret &middot; CM=ConfigMap</span>
+      <span data-lang="de">SA=ServiceAccount &middot; VSS=VaultStaticSecret &middot; CM=ConfigMap</span>
     </div>
   </div>
 </section>
@@ -375,8 +375,8 @@ name: krypton-banking-release-database # VaultStaticSecret, instance "database"<
   <!-- E1b shared resources -->
   <article class="example" id="ex-shared">
     <h3 data-lang="en">Shared resources without the lane</h3><h3 data-lang="de">Geteilte Ressourcen ohne Lane</h3>
-    <p data-lang="en">ConfigMaps and Secrets that every lane deployment in a namespace consumes only have to exist once. They live in their own subchart, <code>krypton-shared</code>, whose templates pass <code>shared: true</code> to <code>metadata</code>: the name drops the lane segment (<code>krypton-shared-&lt;key&gt;</code>) and the <code>app.kubernetes.io/part-of</code> label is omitted. Exactly one ArgoCD Application per namespace may own them &mdash; ArgoCD flags a second owner as a shared resource, Helm refuses it &mdash; so ownership is the plain deploy switch <code>krypton-shared.enabled</code>. The application subcharts reference the objects with the <em>same</em> helper call plus <code>chart: krypton-shared</code>, so a reference can never drift from the rendered name.</p>
-    <p data-lang="de">ConfigMaps und Secrets, die jedes Lane-Deployment in einem Namespace nutzt, m&uuml;ssen nur einmal existieren. Sie leben in einem eigenen Subchart, <code>krypton-shared</code>, dessen Templates <code>shared: true</code> an <code>metadata</code> &uuml;bergeben: Der Name verliert das Lane-Segment (<code>krypton-shared-&lt;key&gt;</code>), das <code>app.kubernetes.io/part-of</code>-Label entf&auml;llt. Genau eine ArgoCD-Application pro Namespace darf sie besitzen &mdash; ArgoCD meldet einen zweiten Eigent&uuml;mer als Shared Resource, Helm verweigert ihn &mdash;, die Eigent&uuml;merschaft ist deshalb der gew&ouml;hnliche Deploy-Schalter <code>krypton-shared.enabled</code>. Die Anwendungs-Subcharts referenzieren die Objekte mit <em>demselben</em> Helper-Aufruf plus <code>chart: krypton-shared</code>, eine Referenz kann so nie vom gerenderten Namen abdriften.</p>
+    <p data-lang="en">ConfigMaps and Secrets that every lane deployment in a namespace consumes only have to exist once. They live in their own subchart, <code>krypton-shared</code>, whose templates pass <code>shared: true</code> to <code>metadata</code>: the name drops the lane segment (<code>krypton-shared-&lt;key&gt;</code>) and the <code>app.kubernetes.io/part-of</code> label is omitted. Exactly one ArgoCD Application per namespace may own them &mdash; ArgoCD flags a second owner as a shared resource, Helm refuses it &mdash; so ownership is the plain deploy switch <code>krypton-shared.enabled</code>. The application subcharts reference the objects with the <em>same</em> helper call plus <code>chart: krypton-shared</code>, so a reference can never drift from the rendered name. The same subchart carries the namespace-wide NetworkPolicy (named <code>krypton-shared</code>, <code>podSelector: {}</code>): every pod in the namespace accepts ingress only from its own namespace and from the OpenShift router, so a Route is the only way in from another namespace; egress stays open, and <code>networkPolicy.extraRules</code> admits further peers such as <code>openshift-monitoring</code>.</p>
+    <p data-lang="de">ConfigMaps und Secrets, die jedes Lane-Deployment in einem Namespace nutzt, m&uuml;ssen nur einmal existieren. Sie leben in einem eigenen Subchart, <code>krypton-shared</code>, dessen Templates <code>shared: true</code> an <code>metadata</code> &uuml;bergeben: Der Name verliert das Lane-Segment (<code>krypton-shared-&lt;key&gt;</code>), das <code>app.kubernetes.io/part-of</code>-Label entf&auml;llt. Genau eine ArgoCD-Application pro Namespace darf sie besitzen &mdash; ArgoCD meldet einen zweiten Eigent&uuml;mer als Shared Resource, Helm verweigert ihn &mdash;, die Eigent&uuml;merschaft ist deshalb der gew&ouml;hnliche Deploy-Schalter <code>krypton-shared.enabled</code>. Die Anwendungs-Subcharts referenzieren die Objekte mit <em>demselben</em> Helper-Aufruf plus <code>chart: krypton-shared</code>, eine Referenz kann so nie vom gerenderten Namen abdriften. Dasselbe Subchart tr&auml;gt die namespace-weite NetworkPolicy (Name <code>krypton-shared</code>, <code>podSelector: {}</code>): Jeder Pod im Namespace akzeptiert Ingress nur aus dem eigenen Namespace und vom OpenShift-Router, aus einem anderen Namespace f&uuml;hrt der Weg also nur &uuml;ber die Route; Egress bleibt offen, weitere Peers wie <code>openshift-monitoring</code> &ouml;ffnet <code>networkPolicy.extraRules</code>.</p>
     <div class="io">
       <div class="stack">
         <figure class="code">
@@ -416,7 +416,9 @@ krypton-shared:
       PLATFORM_REGION: eu-central
   secrets:
     gateway:
-      GATEWAY_TOKEN: change-me</pre>
+      GATEWAY_TOKEN: change-me
+  networkPolicy:
+    enabled: true                 # namespace-wide ingress isolation, one per namespace</pre>
         </figure>
       </div>
       <div class="stack">
@@ -437,7 +439,11 @@ envFrom:
         <div class="cmd">helm template krypton-shared krypton-umbrella -f values-shared-only.yaml</div>
         <figure class="code">
           <figcaption><span class="dot dot-out"></span><span data-lang="en">rendered &middot; dedicated shared Application (complete output)</span><span data-lang="de">gerendert &middot; eigene shared-Application (gesamte Ausgabe)</span></figcaption>
-          <pre data-hl="yaml">kind: Secret
+          <pre data-hl="yaml">kind: NetworkPolicy
+metadata:
+  name: krypton-shared                 # namespace-wide: podSelector {}, ingress from own namespace + router only
+---
+kind: Secret
 metadata:
   name: krypton-shared-gateway
 ---
@@ -455,7 +461,8 @@ metadata:
         <div class="cmd">helm template krypton krypton-umbrella --set krypton-shared.enabled=true</div>
         <figure class="code">
           <figcaption><span class="dot dot-out"></span><span data-lang="en">rendered &middot; owning lane</span><span data-lang="de">gerendert &middot; Eigent&uuml;mer-Lane</span></figcaption>
-          <pre data-hl="yaml"># the application plus both shared objects in one release
+          <pre data-hl="yaml"># the application plus the shared objects in one release
+kind: NetworkPolicy # krypton-shared, namespace-wide ingress isolation
 kind: Secret       # krypton-shared-gateway
 kind: ConfigMap    # krypton-shared-common
 kind: Deployment   # krypton-banking-release, referencing both</pre>
@@ -468,8 +475,8 @@ kind: Deployment   # krypton-banking-release, referencing both</pre>
   <!-- E2 metadata -->
   <article class="example" id="ex-metadata">
     <h3 data-lang="en">Labels &amp; annotations merge</h3><h3 data-lang="de">Labels- &amp; Annotations-Merge</h3>
-    <p data-lang="en">Chart-generated standard keys merge with the static <code>global.labels</code> / <code>global.annotations</code>; CI annotations from Jenkins slot in right after (next card); the ArgoCD keys are applied last so they can never be shadowed. One <code>krypton-lib.metadata</code> include produces the whole block.</p>
-    <p data-lang="de">Chart-generierte Standard-Keys verschmelzen mit den statischen <code>global.labels</code> / <code>global.annotations</code>; CI-Annotations aus Jenkins reihen sich direkt danach ein (n&auml;chste Karte); die ArgoCD-Keys kommen zuletzt und k&ouml;nnen nie &uuml;berdeckt werden. Ein einziges <code>krypton-lib.metadata</code>-Include erzeugt den ganzen Block.</p>
+    <p data-lang="en">Chart-generated standard keys merge with the static <code>global.labels</code> / <code>global.annotations</code>; CI annotations from Jenkins slot in right after (next card); the ArgoCD keys are applied last so they can never be shadowed. One <code>krypton-lib.metadata</code> include produces the whole block. Annotations for exactly one resource go into that call: <code>extra</code> (a dict), <code>annotation</code> (one <code>key=value</code> string) or <code>annotationsFrom</code> (a dotted values path such as <code>route.annotations</code>, or <code>routes.&lt;name&gt;.annotations</code> per instance inside a range, so one Route of many gets its HAProxy timeout) &mdash; merged after the CI annotations, below the ArgoCD keys.</p>
+    <p data-lang="de">Chart-generierte Standard-Keys verschmelzen mit den statischen <code>global.labels</code> / <code>global.annotations</code>; CI-Annotations aus Jenkins reihen sich direkt danach ein (n&auml;chste Karte); die ArgoCD-Keys kommen zuletzt und k&ouml;nnen nie &uuml;berdeckt werden. Ein einziges <code>krypton-lib.metadata</code>-Include erzeugt den ganzen Block. Annotations f&uuml;r genau eine Ressource wandern in diesen Aufruf: <code>extra</code> (ein Dict), <code>annotation</code> (ein <code>key=value</code>-String) oder <code>annotationsFrom</code> (ein Punkt-Pfad in die Values wie <code>route.annotations</code>, oder <code>routes.&lt;name&gt;.annotations</code> je Instanz in einem range, sodass von mehreren Routes genau eine ihr HAProxy-Timeout bekommt) &mdash; gemergt nach den CI-Annotations, unterhalb der ArgoCD-Keys.</p>
     <div class="io">
       <figure class="code">
         <figcaption><span class="dot dot-in"></span>values.yaml &middot; umbrella</figcaption>
@@ -502,6 +509,65 @@ kind: Deployment   # krypton-banking-release, referencing both</pre>
     krypton.io/source-chart: krypton-banking-0.1.0</pre>
       </figure>
     </div>
+  </article>
+
+  <!-- E2b per-resource annotations -->
+  <article class="example" id="ex-annotation">
+    <h3 data-lang="en">Annotations for exactly one resource</h3><h3 data-lang="de">Annotations f&uuml;r genau eine Ressource</h3>
+    <p data-lang="en"><code>global.annotations</code> and <code>&lt;subchart&gt;.annotations</code> reach every resource. For a single one &mdash; the HAProxy timeout of one Route, not of the Deployment next to it &mdash; the <code>metadata</code> call takes three optional arguments: <code>extra</code> (a dict; the slim library calls it <code>extraAnnotations</code>), <code>annotation</code> (one <code>key=value</code> string, the one-liner form of the same thing) and <code>annotationsFrom</code> (a dotted path below <code>.Values</code>). The path form is what a template uses when the annotations belong in the values: it tolerates a missing path, so inside a <code>range</code> over several Routes only the instances that carry a <code>routes.&lt;name&gt;.annotations</code> block get one, and it fails the render when the path holds anything but a map. All three merge after the CI annotations and below the two ArgoCD keys.</p>
+    <p data-lang="de"><code>global.annotations</code> und <code>&lt;subchart&gt;.annotations</code> erreichen jede Ressource. F&uuml;r eine einzelne &mdash; das HAProxy-Timeout einer Route, nicht des Deployments daneben &mdash; nimmt der <code>metadata</code>-Aufruf drei optionale Argumente: <code>extra</code> (ein Dict; das schlanke Library-Chart nennt es <code>extraAnnotations</code>), <code>annotation</code> (ein <code>key=value</code>-String, die Einzeiler-Form desselben) und <code>annotationsFrom</code> (ein Punkt-Pfad unterhalb von <code>.Values</code>). Die Pfad-Form nimmt ein Template, wenn die Annotations in die Values geh&ouml;ren: Sie toleriert einen fehlenden Pfad, in einem <code>range</code> &uuml;ber mehrere Routes bekommen also nur die Instanzen mit einem <code>routes.&lt;name&gt;.annotations</code>-Block eine, und sie l&auml;sst das Rendern fehlschlagen, wenn der Pfad etwas anderes als eine Map enth&auml;lt. Alle drei werden nach den CI-Annotations und unterhalb der beiden ArgoCD-Keys gemergt.</p>
+    <div class="io">
+      <div class="stack">
+        <figure class="code">
+          <figcaption><span class="dot dot-in"></span>charts/krypton-banking/templates/route.yaml</figcaption>
+          <pre data-hl="yaml">metadata:
+  {{- include "krypton-lib.metadata" (dict "ctx" . "component" "route" "annotationsFrom" "route.annotations") | nindent 2 }}</pre>
+        </figure>
+        <figure class="code">
+          <figcaption><span class="dot dot-in"></span>values.yaml &middot; umbrella</figcaption>
+          <pre data-hl="yaml">krypton-banking:
+  route:
+    annotations:
+      haproxy.router.openshift.io/timeout: 300s</pre>
+        </figure>
+        <figure class="code">
+          <figcaption><span class="dot dot-in"></span><span data-lang="en">the other two forms</span><span data-lang="de">die beiden anderen Formen</span></figcaption>
+          <pre data-hl="yaml"># one annotation, fixed in the template
+{{- include "krypton-lib.metadata" (dict "ctx" . "component" "route" "annotation" "haproxy.router.openshift.io/timeout=300s") | nindent 2 }}
+
+# several Routes, only some annotated: the path is computed per instance
+{{- range $name, $_ := .Values.routes }}
+{{- include "krypton-lib.metadata" (dict "ctx" $ "component" "route" "instance" $name "annotationsFrom" (printf "routes.%s.annotations" $name)) | nindent 2 }}
+{{- end }}
+# values: routes.api.annotations set, routes.web without
+# -> krypton-banking-release-api carries the timeout, -web does not</pre>
+        </figure>
+      </div>
+      <div class="stack">
+        <div class="cmd">helm template krypton krypton-umbrella --set krypton-banking.route.annotations.haproxy\.router\.openshift\.io/timeout=300s</div>
+        <figure class="code">
+          <figcaption><span class="dot dot-out"></span><span data-lang="en">rendered &middot; Route</span><span data-lang="de">gerendert &middot; Route</span></figcaption>
+          <pre data-hl="yaml">kind: Route
+metadata:
+  name: krypton-banking-release
+  annotations:
+    argocd.argoproj.io/sync-options: Prune=false
+    argocd.argoproj.io/sync-wave: "3"
+    haproxy.router.openshift.io/timeout: 300s     # from route.annotations - this Route only
+    krypton.io/git-repository: https://git.example.com/krypton/krypton-umbrella
+    krypton.io/owner: platform-team
+    krypton.io/source-chart: krypton-banking-0.1.0
+# Deployment, Service, ServiceAccount of the same subchart: no timeout annotation</pre>
+        </figure>
+        <figure class="code err-fig">
+          <figcaption><span class="dot dot-err"></span><span data-lang="en">render error &middot; path is not a map</span><span data-lang="de">Render-Fehler &middot; Pfad ist keine Map</span></figcaption>
+          <pre data-hl="none">Error: execution error at (.../templates/route.yaml:12:3):
+krypton-lib.annotations: annotationsFrom "route.annotations" must point to a map
+of annotations, got string (chart "krypton-banking")</pre>
+        </figure>
+      </div>
+    </div>
+    <div class="note"><span data-lang="en"><b>One mechanism, three spellings:</b> <code>extra</code>/<code>extraAnnotations</code> is the dict form, <code>annotation</code> writes one entry of that dict inline, <code>annotationsFrom</code> looks the dict up in the values with nil-safe navigation and stringified values. Combined in one call they merge in exactly that order. The slim umbrella&rsquo;s krypton-payments Route passes <code>.Values.route.annotations</code> as <code>extraAnnotations</code> &mdash; equivalent to <code>annotationsFrom "route.annotations"</code> as long as the path always exists.</span><span data-lang="de"><b>Ein Mechanismus, drei Schreibweisen:</b> <code>extra</code>/<code>extraAnnotations</code> ist die Dict-Form, <code>annotation</code> schreibt einen Eintrag dieses Dicts inline, <code>annotationsFrom</code> schl&auml;gt das Dict nil-sicher in den Values nach und stringifiziert die Werte. In einem Aufruf kombiniert mergen sie genau in dieser Reihenfolge. Die krypton-payments-Route des schlanken Umbrellas reicht <code>.Values.route.annotations</code> als <code>extraAnnotations</code> durch &mdash; gleichwertig zu <code>annotationsFrom "route.annotations"</code>, solange der Pfad immer existiert.</span></div>
   </article>
 
   <!-- E2 pod selectors -->
@@ -950,9 +1016,9 @@ krypton-banking:
 
   <!-- E11 optional -->
   <article class="example" id="ex-optional">
-    <h3 data-lang="en">Optional components: PDB, HPA, NetworkPolicy</h3><h3 data-lang="de">Optionale Komponenten: PDB, HPA, NetworkPolicy</h3>
-    <p data-lang="en">Each follows the enabled-flag pattern and is steered per lane. While <code>autoscaling.enabled</code> is true, the Deployment stops rendering <code>spec.replicas</code>, so ArgoCD and the HPA never fight over the replica count.</p>
-    <p data-lang="de">Jede folgt dem Enabled-Flag-Muster und wird pro Lane gesteuert. Solange <code>autoscaling.enabled</code> aktiv ist, rendert das Deployment kein <code>spec.replicas</code> mehr &mdash; ArgoCD und HPA streiten nie um die Replikazahl.</p>
+    <h3 data-lang="en">Optional components: PDB, HPA</h3><h3 data-lang="de">Optionale Komponenten: PDB, HPA</h3>
+    <p data-lang="en">Each follows the enabled-flag pattern and is steered per lane. While <code>autoscaling.enabled</code> is true, the Deployment stops rendering <code>spec.replicas</code>, so ArgoCD and the HPA never fight over the replica count. The namespace-wide NetworkPolicy is not a per-lane component &mdash; it is a shared resource of <code>krypton-shared</code> (see <a href="#ex-shared">shared resources</a>).</p>
+    <p data-lang="de">Jede folgt dem Enabled-Flag-Muster und wird pro Lane gesteuert. Solange <code>autoscaling.enabled</code> aktiv ist, rendert das Deployment kein <code>spec.replicas</code> mehr &mdash; ArgoCD und HPA streiten nie um die Replikazahl. Die namespace-weite NetworkPolicy ist keine Lane-Komponente &mdash; sie ist eine geteilte Ressource von <code>krypton-shared</code> (siehe <a href="#ex-shared">geteilte Ressourcen</a>).</p>
     <div class="io">
       <figure class="code">
         <figcaption><span class="dot dot-in"></span>values.yaml</figcaption>
@@ -966,9 +1032,7 @@ autoscaling:
   enabled: false
   minReplicas: 2
   maxReplicas: 6
-  targetCPUUtilizationPercentage: 75
-networkPolicy:
-  enabled: false</pre>
+  targetCPUUtilizationPercentage: 75</pre>
       </figure>
       <figure class="code">
         <figcaption><span class="dot dot-out"></span><span data-lang="en">rendered &middot; PDB (on) and HPA (when enabled)</span><span data-lang="de">gerendert &middot; PDB (an) und HPA (falls aktiviert)</span></figcaption>

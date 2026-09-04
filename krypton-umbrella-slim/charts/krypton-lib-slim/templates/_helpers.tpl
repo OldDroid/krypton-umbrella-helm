@@ -54,6 +54,15 @@
        extraAnnotations  (optional) dict merged into the annotations with
                          high precedence (only the two ArgoCD annotations
                          are applied after it).
+       annotation        (optional) ONE ad-hoc annotation as a "key=value"
+                         string - the short form of extraAnnotations.
+       annotationsFrom   (optional) dotted path below .Values to a map of
+                         annotations for exactly this resource, e.g.
+                         "route.annotations", or (printf
+                         "routes.%s.annotations" $name) inside a range so
+                         ONE Route of many gets its HAProxy timeout. A
+                         missing path contributes nothing, a path that is
+                         not a map fails the render.
 
      Helm loads the templates of every chart in the dependency tree into one
      shared namespace, so these templates are callable from every subchart
@@ -517,9 +526,19 @@ ones on key collisions:
                             block exists; values are stringified so a
                             numeric build id from --set stays a valid
                             annotation value.
-  5. extraAnnotations     - optional per-call additions
-  6. argocd.argoproj.io/sync-wave     - resolved via krypton-lib-slim.syncWave
-  7. argocd.argoproj.io/sync-options  - resolved via krypton-lib-slim.syncOptions
+  5. extraAnnotations     - optional per-call dict of additions
+  6. annotation           - optional per-call single "key=value"
+  7. annotationsFrom      - optional per-call dotted path below .Values to
+                            a map for exactly this resource:
+                            "route.annotations", or (printf
+                            "routes.%s.annotations" $name) inside a range,
+                            so ONE Route of many gets its HAProxy timeout.
+                            A missing path contributes nothing (a range
+                            over instances may annotate only some); a path
+                            that is not a map fails the render. Values are
+                            stringified.
+  8. argocd.argoproj.io/sync-wave     - resolved via krypton-lib-slim.syncWave
+  9. argocd.argoproj.io/sync-options  - resolved via krypton-lib-slim.syncOptions
 
 The two ArgoCD annotations are applied LAST, so a configured wave or sync
 option can never be shadowed; each is omitted entirely when unconfigured.
@@ -534,6 +553,13 @@ Usage:
 
     with ad-hoc extras:
       {{- include "krypton-lib-slim.annotations" (dict "ctx" . "component" "route" "extraAnnotations" (dict "haproxy.router.openshift.io/timeout" "30s")) | nindent 4 }}
+
+    one annotation for exactly this resource:
+      {{- include "krypton-lib-slim.metadata" (dict "ctx" . "component" "route" "annotation" "haproxy.router.openshift.io/timeout=300s") | nindent 2 }}
+
+    annotations from a values path - per instance inside a range, so only
+    the Routes that have a routes.<name>.annotations block get one:
+      {{- include "krypton-lib-slim.metadata" (dict "ctx" $ "component" "route" "instance" $name "annotationsFrom" (printf "routes.%s.annotations" $name)) | nindent 2 }}
 */}}
 {{- define "krypton-lib-slim.annotations" -}}
 {{- $ctx := .ctx -}}
@@ -553,12 +579,44 @@ Usage:
 {{- end -}}
 {{- end -}}
 {{- end -}}
+{{- /* annotation: ONE "key=value" for exactly this resource */ -}}
+{{- $single := dict -}}
+{{- with .annotation -}}
+{{- $kv := regexSplit "=" (toString .) 2 -}}
+{{- if or (ne (len $kv) 2) (eq (index $kv 0 | trim) "") -}}
+{{- fail (printf "krypton-lib-slim.annotations: 'annotation' must be a \"key=value\" string, got %q (chart %q)" (toString .) $ctx.Chart.Name) -}}
+{{- end -}}
+{{- $_ := set $single (index $kv 0 | trim) (index $kv 1 | trim) -}}
+{{- end -}}
+{{- /* annotationsFrom: dotted path below .Values - a missing path contributes nothing, a non-map fails */ -}}
+{{- $fromValues := dict -}}
+{{- with .annotationsFrom -}}
+{{- $node := $ctx.Values -}}
+{{- $missing := false -}}
+{{- range splitList "." (toString .) -}}
+{{- if and (not $missing) (kindIs "map" $node) (hasKey $node .) -}}
+{{- $node = index $node . -}}
+{{- else -}}
+{{- $missing = true -}}
+{{- end -}}
+{{- end -}}
+{{- if and (not $missing) (not (kindIs "invalid" $node)) -}}
+{{- if not (kindIs "map" $node) -}}
+{{- fail (printf "krypton-lib-slim.annotations: annotationsFrom %q must point to a map of annotations, got %s (chart %q)" (toString .) (kindOf $node) $ctx.Chart.Name) -}}
+{{- end -}}
+{{- range $k, $v := $node -}}
+{{- $_ := set $fromValues $k (toString $v) -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
 {{- $annotations := mergeOverwrite (dict)
       $standard
       (deepCopy ($global.annotations | default dict))
       (deepCopy ($ctx.Values.annotations | default dict))
       $jenkinsAnnotations
       (deepCopy (.extraAnnotations | default dict))
+      $single
+      $fromValues
 -}}
 {{- $wave := include "krypton-lib-slim.syncWave" (dict "ctx" $ctx "component" $component) -}}
 {{- if $wave -}}
@@ -579,7 +637,7 @@ Usage:
 {{/*
 Complete metadata block - name, labels and annotations - in one include.
 Accepts every argument of the granular helpers (component, instance,
-extraLabels, extraAnnotations).
+shared, extraLabels, extraAnnotations, annotation, annotationsFrom).
 
 Usage:
     metadata:

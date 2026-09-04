@@ -2,12 +2,14 @@
 Mock of the OpenShift Route (route.openshift.io/v1). Wave "2" in the
 subchart defaults, overridden to "3" by the umbrella - either way it is the
 last component of this subchart to sync: the service is never exposed before
-Secret and Deployment are applied and healthy.
+Secret and Deployment are applied and healthy. route.annotations reach this
+resource - and only this one - through annotationsFrom: merged after the
+global and CI annotations, below the two ArgoCD keys.
 */ -}}
 apiVersion: route.openshift.io/v1
 kind: Route
 metadata:
-  {{- include "krypton-lib.metadata" (dict "ctx" . "component" "route") | nindent 2 }}
+  {{- include "krypton-lib.metadata" (dict "ctx" . "component" "route" "annotationsFrom" "route.annotations") | nindent 2 }}
 spec:
   {{- with .Values.route.host }}
   host: {{ tpl . $ }}

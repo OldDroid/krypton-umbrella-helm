@@ -42,6 +42,23 @@
         }
       }
     },
+    "networkPolicy": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "description": "Namespace-wide ingress isolation: every pod in the namespace accepts traffic from the same namespace and the OpenShift router only; egress is untouched.",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "allowRouterHostNetwork": {
+          "type": "boolean",
+          "description": "Adds the openshift-host-network namespace as a peer, for routers that run on the host network."
+        },
+        "extraRules": {
+          "type": ["array", "null"],
+          "items": { "type": "object" },
+          "description": "NetworkPolicyIngressRule objects appended verbatim."
+        }
+      }
+    },
     "syncWaves": { "$ref": "#/definitions/syncWaves" },
     "syncWaveOffset": { "$ref": "#/definitions/wave" },
     "syncPrune": {
