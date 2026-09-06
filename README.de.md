@@ -159,7 +159,7 @@ erste Treffer gewinnt:
 
 `krypton-lib.annotations` setzt die Wave als `argocd.argoproj.io/sync-wave`
 ganz am Ende seiner Merge-Kette (Standard → `global.annotations` →
-`<subchart>.jenkins.annotations` → `extra`/`annotation`/`annotationsFrom` pro Aufruf → Wave) und lässt sie
+`extra`/`annotation`/`annotationsFrom` pro Aufruf → Wave) und lässt sie
 weg, wenn keine Wave konfiguriert ist.
 Aktuelle Reihenfolge für krypton-banking: VaultStaticSecret `-1` →
 ConfigMap `0` → Deployment/Service `1` → Route `3` — das von Vault
@@ -171,14 +171,6 @@ Readiness-/Liveness-Probes tragen (`probes:` je Subchart, pro Lane
 eine `checksum/config`-Annotation, damit ConfigMap-Änderungen die Pods neu
 ausrollen.
 
-**CI-Annotations** – `<subchart>.jenkins.annotations` wird direkt nach
-`global.annotations` in jede Ressource des Subcharts gemergt, und zwar nur,
-wenn der Block existiert; ein normales Rendern trägt also keine
-CI-Annotations. Jenkins setzt ihn pro Sync, z. B. über ArgoCD-Helm-Parameter
-`krypton-banking.jenkins.annotations.jenkins\.io/build-number=1234`;
-skalare Werte werden stringifiziert, eine numerische Build-ID ist also
-sicher.
-
 **Annotations je Ressource** – `krypton-lib.metadata`/`annotations` nehmen
 drei optionale Argumente pro Aufruf für Annotations, die genau einer
 Ressource gehören: `extra` (ein Dict), `annotation` (ein einzelner
@@ -186,7 +178,7 @@ Ressource gehören: `extra` (ein Dict), `annotation` (ein einzelner
 `.Values` auf eine Map, z. B. `"route.annotations"` oder
 `(printf "routes.%s.annotations" $name)` in einem `range`, sodass von
 mehreren Routes genau eine ihr `haproxy.router.openshift.io/timeout`
-bekommt). Sie werden in dieser Reihenfolge nach den CI-Annotations und
+bekommt). Sie werden in dieser Reihenfolge nach `global.annotations` und
 unterhalb der beiden ArgoCD-Keys gemergt; ein fehlender
 `annotationsFrom`-Pfad trägt nichts bei, ein Pfad, der keine Map ist, lässt
 das Rendern fehlschlagen. Die banking-Route verdrahtet `route.annotations`

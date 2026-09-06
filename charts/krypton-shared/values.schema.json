@@ -65,18 +65,6 @@
       "type": ["object", "null"],
       "propertyNames": { "$ref": "#/definitions/componentType" },
       "additionalProperties": { "type": "boolean" }
-    },
-    "jenkins": {
-      "type": ["object", "null"],
-      "description": "CI-injected block. jenkins.annotations is merged into every resource's annotations of this subchart when present; other keys are left to the pipeline.",
-      "properties": {
-        "annotations": {
-          "type": ["object", "null"],
-          "additionalProperties": {
-            "oneOf": [{ "type": "string" }, { "type": "number" }, { "type": "boolean" }]
-          }
-        }
-      }
     }
   },
   "definitions": {

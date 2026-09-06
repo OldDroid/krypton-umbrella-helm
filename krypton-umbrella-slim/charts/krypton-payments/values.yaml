@@ -90,12 +90,3 @@ syncWaves:
 # from the umbrella's krypton-payments block (which adds krypton.io/team).
 labels: {}
 annotations: {}
-
-# Optional CI block. When jenkins.annotations exists (usually injected from
-# the umbrella as krypton-payments.jenkins.annotations via ArgoCD helm
-# parameters), its entries are merged into every resource's annotations;
-# when absent, nothing is rendered. Deliberately not declared here, so the
-# default manifests carry no CI annotations.
-# jenkins:
-#   annotations:
-#     jenkins.io/build-number: "1234"

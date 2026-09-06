@@ -197,20 +197,15 @@ a selector.
 2. `global.annotations`
 3. `<subchart>.annotations` (krypton-notifier gets `krypton.io/on-call` from
    the umbrella)
-4. `<subchart>.jenkins.annotations` — CI-injected, **only when the block
-   exists**; absent by default, so plain renders carry no CI annotations.
-   Jenkins sets it per sync, e.g. via ArgoCD helm parameters
-   `krypton-payments.jenkins.annotations.jenkins\.io/build-number=1234`;
-   scalar values are stringified, so a numeric build id is safe.
-5. `extraAnnotations` — per call; the Route passes `.Values.route.annotations`
+4. `extraAnnotations` — per call; the Route passes `.Values.route.annotations`
    (`haproxy.router.openshift.io/timeout`)
-6. `annotation` — per call, one `"key=value"` string for exactly this resource
-7. `annotationsFrom` — per call, a dotted path below `.Values` to a map
+5. `annotation` — per call, one `"key=value"` string for exactly this resource
+6. `annotationsFrom` — per call, a dotted path below `.Values` to a map
    (`"route.annotations"`, or `(printf "routes.%s.annotations" $name)` inside
    a `range`, so one Route of many gets its timeout); a missing path
    contributes nothing, a path that is not a map fails the render
-8. `argocd.argoproj.io/sync-wave`
-9. `argocd.argoproj.io/sync-options`
+7. `argocd.argoproj.io/sync-wave`
+8. `argocd.argoproj.io/sync-options`
 
 The two ArgoCD annotations are applied last and cannot be shadowed; each is
 omitted when nothing is configured.
@@ -262,7 +257,6 @@ Route. Other useful entries: `Replace=true`, `ServerSideApply=true`,
 | `global.labels` / `global.annotations` | umbrella | static maps for every resource |
 | `global.syncWaves` / `global.syncOptions` | umbrella | platform defaults per component type |
 | `labels` / `annotations` | subchart | custom maps for every resource of the subchart |
-| `jenkins.annotations` | subchart, optional | CI-injected annotations; merged only when present |
 | `syncWaves` / `syncOptions` | subchart | per-type overrides, win over global |
 | `syncWaveOffset` | subchart | shifts the whole band, default `0` |
 | `enabled` | umbrella block | deploy switch via `condition:` in the umbrella `Chart.yaml` |

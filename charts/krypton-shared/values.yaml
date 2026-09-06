@@ -75,8 +75,3 @@ networkPolicy:
 # lane workload that references them as long as the shared Application is
 # synced first - ordering across Applications is not a Helm concern.
 syncWaves: {}
-
-# Optional CI block, see the application subcharts.
-# jenkins:
-#   annotations:
-#     jenkins.io/build-number: "1234"

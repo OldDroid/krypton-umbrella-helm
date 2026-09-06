@@ -148,9 +148,9 @@ hit wins:
 2. `global.syncWaves.<component>` — platform-wide defaults
 
 `krypton-lib.annotations` applies the wave as `argocd.argoproj.io/sync-wave`
-last in its merge chain (standard → `global.annotations` →
-`<subchart>.jenkins.annotations` → per-call `extra`/`annotation`/`annotationsFrom` → wave), and omits it
-when no wave is configured. Current order for
+last in its merge chain (standard → `global.annotations` → per-call
+`extra`/`annotation`/`annotationsFrom` → wave), and omits it when no wave
+is configured. Current order for
 krypton-banking: VaultStaticSecret `-1` → ConfigMap `0` → Deployment/Service
 `1` → Route `3`, so the Vault-materialised Secret exists before the
 Deployment mounts it, and the Route goes live last. The waves only gate on
@@ -159,20 +159,13 @@ readiness/liveness probes (`probes:` in each subchart, overridable per
 lane); by default the banking pod template additionally carries a
 `checksum/config` annotation so ConfigMap changes roll the pods.
 
-**CI annotations** - `<subchart>.jenkins.annotations` is merged into every
-resource of that subchart right after `global.annotations`, and only when
-the block exists, so plain renders carry no CI annotations. Jenkins sets it
-per sync, e.g. via ArgoCD helm parameters
-`krypton-banking.jenkins.annotations.jenkins\.io/build-number=1234`; scalar
-values are stringified, so a numeric build id is safe.
-
 **Per-resource annotations** - `krypton-lib.metadata`/`annotations` take
 three optional per-call arguments for annotations that belong to exactly
 one resource: `extra` (a dict), `annotation` (one `"key=value"` string) and
 `annotationsFrom` (a dotted path below `.Values` to a map, e.g.
 `"route.annotations"`, or `(printf "routes.%s.annotations" $name)` inside a
 `range`, so one Route of many gets its `haproxy.router.openshift.io/timeout`
-and the others do not). They merge in that order after the CI annotations
+and the others do not). They merge in that order after `global.annotations`
 and below the two ArgoCD keys; a missing `annotationsFrom` path contributes
 nothing, a path that is not a map fails the render. The banking Route wires
 `route.annotations` this way.

@@ -526,18 +526,9 @@ ones on key collisions:
 
   1. chart-generated standard annotations (<labelDomain>/source-chart)
   2. global.annotations              - static annotations from the umbrella
-  3. .Values.jenkins.annotations     - CI-injected annotations (build number,
-                                       commit, job URL, ...), set per subchart
-                                       from the umbrella as
-                                       <subchart-name>.jenkins.annotations,
-                                       typically via ArgoCD helm parameters.
-                                       Only merged when the block exists;
-                                       values are stringified so a numeric
-                                       build id from --set stays a valid
-                                       annotation value.
-  4. extra                           - optional per-call dict of additions
-  5. annotation                      - optional per-call single "key=value"
-  6. annotationsFrom                 - optional per-call dotted path below
+  3. extra                           - optional per-call dict of additions
+  4. annotation                      - optional per-call single "key=value"
+  5. annotationsFrom                 - optional per-call dotted path below
                                        .Values to a map for exactly this
                                        resource: "route.annotations", or
                                        (printf "routes.%s.annotations" $name)
@@ -547,8 +538,8 @@ ones on key collisions:
                                        over instances may annotate only
                                        some); a path that is not a map fails
                                        the render. Values are stringified.
-  7. argocd.argoproj.io/sync-wave    - resolved via krypton-lib.syncWave
-  8. argocd.argoproj.io/sync-options - resolved via krypton-lib.syncOptions
+  6. argocd.argoproj.io/sync-wave    - resolved via krypton-lib.syncWave
+  7. argocd.argoproj.io/sync-options - resolved via krypton-lib.syncOptions
      (per-component prune protection via syncPrune values)
 
 The two ArgoCD annotations are applied LAST, so a configured wave or sync
@@ -581,15 +572,6 @@ Usage:
 {{- $standard := dict
       (printf "%s/source-chart" $domain) (include "krypton-lib.chart" .)
 -}}
-{{- /* jenkins.annotations is optional: absent block -> nothing is merged */ -}}
-{{- $jenkinsAnnotations := dict -}}
-{{- with $ctx.Values.jenkins -}}
-{{- if kindIs "map" . -}}
-{{- range $k, $v := .annotations | default dict -}}
-{{- $_ := set $jenkinsAnnotations $k (toString $v) -}}
-{{- end -}}
-{{- end -}}
-{{- end -}}
 {{- /* annotation: ONE "key=value" for exactly this resource */ -}}
 {{- $single := dict -}}
 {{- with .annotation -}}
@@ -623,7 +605,6 @@ Usage:
 {{- $annotations := mergeOverwrite (dict)
       $standard
       (deepCopy ($global.annotations | default dict))
-      $jenkinsAnnotations
       (deepCopy (.extra | default dict))
       $single
       $fromValues

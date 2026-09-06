@@ -204,22 +204,16 @@ aufnehmen.
 2. `global.annotations`
 3. `<subchart>.annotations` (krypton-notifier bekommt `krypton.io/on-call`
    aus dem Umbrella)
-4. `<subchart>.jenkins.annotations` — von der CI injiziert, **nur wenn der
-   Block existiert**; per Default nicht vorhanden, ein einfacher Render trägt
-   also keine CI-Annotations. Jenkins setzt ihn pro Sync, z. B. über
-   ArgoCD-Helm-Parameter
-   `krypton-payments.jenkins.annotations.jenkins\.io/build-number=1234`;
-   skalare Werte werden zu Strings, eine numerische Build-ID ist damit sicher.
-5. `extraAnnotations` — je Aufruf; die Route reicht `.Values.route.annotations`
+4. `extraAnnotations` — je Aufruf; die Route reicht `.Values.route.annotations`
    durch (`haproxy.router.openshift.io/timeout`)
-6. `annotation` — je Aufruf, ein einzelner `"key=value"`-String für genau diese Ressource
-7. `annotationsFrom` — je Aufruf, ein Punkt-Pfad unterhalb von `.Values` auf eine Map
+5. `annotation` — je Aufruf, ein einzelner `"key=value"`-String für genau diese Ressource
+6. `annotationsFrom` — je Aufruf, ein Punkt-Pfad unterhalb von `.Values` auf eine Map
    (`"route.annotations"` oder `(printf "routes.%s.annotations" $name)` in einem
    `range`, sodass von mehreren Routes genau eine ihr Timeout bekommt); ein
    fehlender Pfad trägt nichts bei, ein Pfad, der keine Map ist, lässt das
    Rendern fehlschlagen
-8. `argocd.argoproj.io/sync-wave`
-9. `argocd.argoproj.io/sync-options`
+7. `argocd.argoproj.io/sync-wave`
+8. `argocd.argoproj.io/sync-options`
 
 Die beiden ArgoCD-Annotations kommen zuletzt und lassen sich nicht
 überdecken; jede entfällt, wenn nichts konfiguriert ist.
@@ -273,7 +267,6 @@ Route. Weitere nützliche Einträge: `Replace=true`, `ServerSideApply=true`,
 | `global.labels` / `global.annotations` | Umbrella | statische Maps für jede Ressource |
 | `global.syncWaves` / `global.syncOptions` | Umbrella | Plattform-Defaults je Komponententyp |
 | `labels` / `annotations` | Subchart | eigene Maps für jede Ressource des Subcharts |
-| `jenkins.annotations` | Subchart, optional | CI-injizierte Annotations; nur gemergt, wenn vorhanden |
 | `syncWaves` / `syncOptions` | Subchart | Overrides je Typ, gewinnen gegen global |
 | `syncWaveOffset` | Subchart | verschiebt das ganze Band, Default `0` |
 | `enabled` | Umbrella-Block | Deploy-Schalter via `condition:` in der Umbrella-`Chart.yaml` |

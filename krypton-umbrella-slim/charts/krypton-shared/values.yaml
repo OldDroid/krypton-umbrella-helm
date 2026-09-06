@@ -49,8 +49,3 @@ syncWaves: {}
 # Custom labels / annotations for every resource of this subchart.
 labels: {}
 annotations: {}
-
-# Optional CI block, see krypton-payments.
-# jenkins:
-#   annotations:
-#     jenkins.io/build-number: "1234"

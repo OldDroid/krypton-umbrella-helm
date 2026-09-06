@@ -9,7 +9,7 @@
 #   global.laneName, global.namePrefix, global.partOfPrefix, global.labelDomain,
 #   global.labels, global.annotations, global.syncWaves, global.syncOptions
 # and per subchart:
-#   labels, annotations, jenkins.annotations (optional), syncWaves,
+#   labels, annotations, syncWaves,
 #   syncWaveOffset, syncOptions
 # =============================================================================
 
@@ -112,18 +112,6 @@ krypton-payments:
   sharedEnvFrom:
     configMaps: [common]
     secrets: [gateway]
-
-  # CI-injected annotations, merged into every resource of this subchart
-  # right after the subchart's own annotations - ONLY when the block exists;
-  # nothing is rendered otherwise. Jenkins typically sets these per sync via
-  # ArgoCD helm parameters, e.g.
-  #   --set krypton-payments.jenkins.annotations.jenkins\.io/build-number=1234
-  #   --set krypton-payments.jenkins.annotations.jenkins\.io/git-commit=abc1234
-  # Scalar values are stringified at render time.
-  # jenkins:
-  #   annotations:
-  #     jenkins.io/build-number: "1234"
-  #     jenkins.io/job-url: https://jenkins.example.com/job/payments/1234/
 
 # -----------------------------------------------------------------------------
 # Subchart: krypton-notifier

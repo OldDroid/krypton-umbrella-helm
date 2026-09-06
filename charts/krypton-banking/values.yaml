@@ -81,7 +81,7 @@ route:
     insecureEdgeTerminationPolicy: Redirect
   # Route-specific annotations, e.g. a longer HAProxy timeout. Handed to the
   # metadata helper as annotationsFrom "route.annotations": merged after
-  # global.annotations and jenkins.annotations, below the two ArgoCD keys.
+  # global.annotations, below the two ArgoCD keys.
   # With several Routes per subchart the same mechanism annotates exactly
   # one of them: (printf "routes.%s.annotations" $name) inside the range.
   annotations: {}
@@ -188,12 +188,3 @@ syncWaves:
 # rendered resource with argocd.argoproj.io/sync-options: Prune=false.
 # Nothing is set here on purpose - vaultStaticSecret inherits the platform
 # default from global.syncPrune, and the umbrella adds route: false on top.
-
-# Optional CI block. When jenkins.annotations exists (usually injected from
-# the umbrella as krypton-banking.jenkins.annotations via ArgoCD helm
-# parameters), its entries are merged into every resource's annotations;
-# when absent, nothing is rendered. Deliberately not declared here, so the
-# default manifests carry no CI annotations.
-# jenkins:
-#   annotations:
-#     jenkins.io/build-number: "1234"
