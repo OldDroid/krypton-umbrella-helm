@@ -80,8 +80,6 @@
 
        .Values.labels           subchart-wide custom labels (umbrella may override)
        .Values.annotations      subchart-wide custom annotations
-       .Values.jenkins.annotations
-                                CI-injected annotations, merged only when present
        .Values.syncWaves        per-type waves of this subchart (win over global)
        .Values.syncWaveOffset   shifts every wave of this subchart, default 0
        .Values.syncOptions      per-type sync options of this subchart (win over global)
@@ -518,17 +516,9 @@ ones on key collisions:
   3. .Values.annotations  - custom annotations of the subchart (umbrella
                             overrides via <subchart-name>.annotations are
                             already coalesced in)
-  4. .Values.jenkins.annotations
-                          - CI-injected annotations (build number, commit,
-                            job URL, ...), set per subchart from the umbrella
-                            as <subchart-name>.jenkins.annotations, typically
-                            via ArgoCD helm parameters. Only merged when the
-                            block exists; values are stringified so a
-                            numeric build id from --set stays a valid
-                            annotation value.
-  5. extraAnnotations     - optional per-call dict of additions
-  6. annotation           - optional per-call single "key=value"
-  7. annotationsFrom      - optional per-call dotted path below .Values to
+  4. extraAnnotations     - optional per-call dict of additions
+  5. annotation           - optional per-call single "key=value"
+  6. annotationsFrom      - optional per-call dotted path below .Values to
                             a map for exactly this resource:
                             "route.annotations", or (printf
                             "routes.%s.annotations" $name) inside a range,
@@ -537,8 +527,8 @@ ones on key collisions:
                             over instances may annotate only some); a path
                             that is not a map fails the render. Values are
                             stringified.
-  8. argocd.argoproj.io/sync-wave     - resolved via krypton-lib-slim.syncWave
-  9. argocd.argoproj.io/sync-options  - resolved via krypton-lib-slim.syncOptions
+  7. argocd.argoproj.io/sync-wave     - resolved via krypton-lib-slim.syncWave
+  8. argocd.argoproj.io/sync-options  - resolved via krypton-lib-slim.syncOptions
 
 The two ArgoCD annotations are applied LAST, so a configured wave or sync
 option can never be shadowed; each is omitted entirely when unconfigured.
@@ -570,15 +560,6 @@ Usage:
 {{- $standard := dict
       (printf "%s/source-chart" $domain) (include "krypton-lib-slim.chart" .)
 -}}
-{{- /* jenkins.annotations is optional: absent block -> nothing is merged */ -}}
-{{- $jenkinsAnnotations := dict -}}
-{{- with $ctx.Values.jenkins -}}
-{{- if kindIs "map" . -}}
-{{- range $k, $v := .annotations | default dict -}}
-{{- $_ := set $jenkinsAnnotations $k (toString $v) -}}
-{{- end -}}
-{{- end -}}
-{{- end -}}
 {{- /* annotation: ONE "key=value" for exactly this resource */ -}}
 {{- $single := dict -}}
 {{- with .annotation -}}
@@ -613,7 +594,6 @@ Usage:
       $standard
       (deepCopy ($global.annotations | default dict))
       (deepCopy ($ctx.Values.annotations | default dict))
-      $jenkinsAnnotations
       (deepCopy (.extraAnnotations | default dict))
       $single
       $fromValues

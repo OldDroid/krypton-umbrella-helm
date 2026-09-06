@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Krypton Umbrella Docs</title>
-<meta name="description" content="Helm umbrella chart platform for Kubernetes/OpenShift, deployed via ArgoCD - configuration reference with rendered outputs.">
+<meta name="description" content="Helm umbrella chart platform for Kubernetes/OpenShift, deployed via ArgoCD - configuration reference with rendered outputs (full variant).">
 <script>
 (function(){try{
   var t=localStorage.getItem('ku-theme'); if(t==='dark'||t==='light'){document.documentElement.dataset.theme=t;}
@@ -14,201 +14,17 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<style>
-/* ---------- tokens: light (default) ---------- */
-:root{
-  --bg:#fafafc; --surface:#f1f2f7; --surface-2:#e8eaf3; --border:#dde0eb; --border-strong:#c8ccdc;
-  --text:#232839; --muted:#5c637b; --faint:#8b91a8;
-  --accent:#5b55d6; --accent-ink:#4a45c0; --accent-soft:#ecebfb; --accent-border:#c9c6f2;
-  --band-b:#5b55d6; --band-a:#0e8c96; --band-a-soft:#e0f2f4; --band-a-border:#b5dfe3;
-  --err:#b3382f; --err-soft:#faecea; --err-border:#ecc7c2;
-  --code-bg:#161a2b; --code-border:#232a44; --code-text:#d7dbec; --code-comment:#69719083;
-  --code-comment-c:#7d85a6; --code-key:#a5a0ff; --code-str:#8fd0aa; --code-cap:#9aa2c4;
-  --shadow:0 1px 2px rgba(28,32,54,.05),0 8px 24px -18px rgba(28,32,54,.25);
-  color-scheme:light;
-}
-/* ---------- tokens: dark (system) ---------- */
-@media (prefers-color-scheme: dark){
-  :root:not([data-theme="light"]){
-    --bg:#0f1220; --surface:#161a2b; --surface-2:#1c2136; --border:#262c45; --border-strong:#343b5c;
-    --text:#e7e9f4; --muted:#9aa1bd; --faint:#6d7492;
-    --accent:#9d97ff; --accent-ink:#b3aeff; --accent-soft:#232047; --accent-border:#3a3670;
-    --band-b:#9d97ff; --band-a:#4cc3cd; --band-a-soft:#12333a; --band-a-border:#1e4f57;
-    --err:#e07a70; --err-soft:#361d1c; --err-border:#5c2f2b;
-    --code-bg:#131728; --code-border:#232a44; --code-text:#d7dbec;
-    --code-comment-c:#7d85a6; --code-key:#a5a0ff; --code-str:#8fd0aa; --code-cap:#9aa2c4;
-    --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px -18px rgba(0,0,0,.6);
-    color-scheme:dark;
-  }
-}
-/* ---------- tokens: dark (explicit toggle) ---------- */
-:root[data-theme="dark"]{
-  --bg:#0f1220; --surface:#161a2b; --surface-2:#1c2136; --border:#262c45; --border-strong:#343b5c;
-  --text:#e7e9f4; --muted:#9aa1bd; --faint:#6d7492;
-  --accent:#9d97ff; --accent-ink:#b3aeff; --accent-soft:#232047; --accent-border:#3a3670;
-  --band-b:#9d97ff; --band-a:#4cc3cd; --band-a-soft:#12333a; --band-a-border:#1e4f57;
-  --err:#e07a70; --err-soft:#361d1c; --err-border:#5c2f2b;
-  --code-bg:#131728; --code-border:#232a44; --code-text:#d7dbec;
-  --code-comment-c:#7d85a6; --code-key:#a5a0ff; --code-str:#8fd0aa; --code-cap:#9aa2c4;
-  --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px -18px rgba(0,0,0,.6);
-  color-scheme:dark;
-}
-
-/* ---------- language toggle ---------- */
-html[data-locale="en"] [data-lang="de"]{display:none !important;}
-html[data-locale="de"] [data-lang="en"]{display:none !important;}
-
-/* ---------- base ---------- */
-*{box-sizing:border-box;}
-html{scroll-behavior:smooth;scroll-padding-top:84px;}
-@media (prefers-reduced-motion: reduce){ html{scroll-behavior:auto;} *,*::before,*::after{transition:none !important;animation:none !important;} }
-body{
-  margin:0; background:var(--bg); color:var(--text);
-  font-family:'IBM Plex Sans',system-ui,'Segoe UI',sans-serif;
-  font-size:16px; line-height:1.65;
-  -webkit-font-smoothing:antialiased;
-}
-h1,h2,h3,h4{font-family:'Archivo',ui-sans-serif,system-ui,sans-serif;line-height:1.15;text-wrap:balance;margin:0;}
-p{margin:0;max-width:68ch;}
-a{color:var(--accent-ink);text-decoration:none;}
-a:hover{text-decoration:underline;}
-:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px;}
-code{font-family:'IBM Plex Mono',ui-monospace,Consolas,monospace;font-size:.86em;background:var(--surface-2);border:1px solid var(--border);border-radius:5px;padding:.08em .35em;white-space:nowrap;}
-.eyebrow{font-family:'IBM Plex Mono',ui-monospace,Consolas,monospace;font-size:.72rem;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--accent-ink);}
-
-/* ---------- header ---------- */
-.site-head{
-  position:sticky;top:0;z-index:40;
-  display:flex;align-items:center;gap:14px;
-  padding:10px clamp(16px,4vw,32px);
-  background:color-mix(in srgb,var(--bg) 86%,transparent);
-  backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
-  border-bottom:1px solid var(--border);
-}
-.kr-tile{
-  width:38px;height:38px;flex:none;border:1.5px solid var(--accent);border-radius:8px;
-  display:grid;place-items:center;position:relative;color:var(--accent-ink);
-  font-family:'Archivo',sans-serif;font-weight:700;font-size:1.05rem;background:var(--accent-soft);
-}
-.kr-tile small{position:absolute;top:2px;right:4px;font-size:.5rem;font-weight:600;font-family:'IBM Plex Mono',monospace;color:var(--muted);}
-.site-title{font-family:'Archivo',sans-serif;font-weight:600;font-size:1.02rem;letter-spacing:-.01em;}
-.site-title span{color:var(--muted);font-weight:500;}
-.head-spacer{flex:1;}
-.seg{display:inline-flex;border:1px solid var(--border-strong);border-radius:8px;overflow:hidden;background:var(--surface);}
-.seg button{
-  appearance:none;border:0;background:transparent;color:var(--muted);cursor:pointer;
-  font-family:'IBM Plex Mono',monospace;font-size:.78rem;font-weight:600;letter-spacing:.06em;
-  padding:6px 12px;transition:background .15s,color .15s;
-}
-.seg button[aria-pressed="true"]{background:var(--accent);color:#fff;}
-:root[data-theme="dark"] .seg button[aria-pressed="true"]{color:#14122e;}
-@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .seg button[aria-pressed="true"]{color:#14122e;} }
-.theme-btn{
-  appearance:none;cursor:pointer;border:1px solid var(--border-strong);border-radius:8px;
-  background:var(--surface);color:var(--text);width:36px;height:33px;display:grid;place-items:center;
-  font-size:.95rem;transition:background .15s;
-}
-.theme-btn:hover,.seg button:hover:not([aria-pressed="true"]){background:var(--surface-2);}
-.icon-sun{display:none;}
-@media (prefers-color-scheme: dark){
-  html:not([data-theme="light"]) .icon-sun{display:inline;}
-  html:not([data-theme="light"]) .icon-moon{display:none;}
-}
-html[data-theme="dark"] .icon-sun{display:inline;}
-html[data-theme="dark"] .icon-moon{display:none;}
-html[data-theme="light"] .icon-sun{display:none;}
-html[data-theme="light"] .icon-moon{display:inline;}
-
-/* ---------- hero ---------- */
-.hero{padding:clamp(36px,7vw,72px) clamp(16px,4vw,32px) clamp(24px,4vw,40px);max-width:1200px;margin:0 auto;}
-.hero h1{font-size:clamp(2rem,5vw,3.1rem);font-weight:700;letter-spacing:-.025em;margin:.45rem 0 .9rem;}
-.hero .lead{font-size:1.06rem;color:var(--muted);max-width:62ch;}
-.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:1.2rem;}
-.chip{
-  font-family:'IBM Plex Mono',monospace;font-size:.74rem;font-weight:500;color:var(--muted);
-  border:1px solid var(--border);border-radius:999px;padding:4px 12px;background:var(--surface);
-}
-.chip b{color:var(--text);font-weight:600;}
-
-/* ---------- layout ---------- */
-.shell{display:grid;grid-template-columns:230px minmax(0,1fr);gap:clamp(20px,3vw,44px);max-width:1200px;margin:0 auto;padding:0 clamp(16px,4vw,32px) 80px;}
-.toc{position:sticky;top:76px;align-self:start;font-size:.87rem;padding-top:8px;}
-.toc .eyebrow{color:var(--faint);display:block;margin-bottom:10px;}
-.toc a{display:block;color:var(--muted);padding:5px 10px;border-left:2px solid var(--border);transition:color .12s,border-color .12s;}
-.toc a:hover{color:var(--text);text-decoration:none;}
-.toc a.active{color:var(--accent-ink);border-left-color:var(--accent);font-weight:500;}
-main{min-width:0;}
-section{padding-top:2.6rem;}
-section+section{margin-top:1.6rem;border-top:1px solid var(--border);}
-section>h2{font-size:1.55rem;font-weight:700;letter-spacing:-.02em;margin:.4rem 0 1rem;}
-section>p{color:var(--muted);margin-bottom:1rem;}
-@media (max-width: 920px){ .shell{grid-template-columns:1fr;} .toc{display:none;} }
-
-/* ---------- code ---------- */
-figure.code{margin:0;border:1px solid var(--code-border);border-radius:10px;overflow:hidden;background:var(--code-bg);box-shadow:var(--shadow);}
-figure.code figcaption{
-  display:flex;align-items:center;gap:10px;
-  padding:7px 12px;border-bottom:1px solid var(--code-border);
-  font-family:'IBM Plex Mono',monospace;font-size:.72rem;color:var(--code-cap);letter-spacing:.04em;
-}
-figure.code figcaption .dot{width:8px;height:8px;border-radius:50%;flex:none;}
-.dot-in{background:var(--band-a);}
-.dot-out{background:var(--band-b);}
-.dot-err{background:var(--err);}
-figure.code .copy{
-  margin-left:auto;appearance:none;border:1px solid var(--code-border);background:transparent;color:var(--code-cap);
-  border-radius:6px;font-family:'IBM Plex Mono',monospace;font-size:.68rem;padding:2px 9px;cursor:pointer;
-}
-figure.code .copy:hover{color:var(--code-text);border-color:var(--code-comment-c);}
-figure.code pre{margin:0;padding:13px 16px;overflow-x:auto;font-family:'IBM Plex Mono',ui-monospace,Consolas,monospace;font-size:.8rem;line-height:1.62;color:var(--code-text);tab-size:2;}
-pre .k{color:var(--code-key);}
-pre .s{color:var(--code-str);}
-pre .c{color:var(--code-comment-c);font-style:italic;}
-.cmd{
-  font-family:'IBM Plex Mono',monospace;font-size:.76rem;color:var(--muted);
-  background:var(--surface);border:1px solid var(--border);border-radius:8px;
-  padding:7px 12px;overflow-x:auto;white-space:nowrap;
-}
-.cmd::before{content:"$";color:var(--accent-ink);margin-right:8px;font-weight:600;}
-
-/* ---------- example cards ---------- */
-.example{border:1px solid var(--border);border-radius:14px;background:var(--surface);padding:clamp(16px,2.5vw,26px);margin-top:1.4rem;box-shadow:var(--shadow);}
-.example h3{font-size:1.13rem;font-weight:650;letter-spacing:-.01em;margin-bottom:.35rem;}
-.example>p{color:var(--muted);font-size:.94rem;margin-bottom:1.1rem;max-width:75ch;}
-.io{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px;align-items:start;}
-.io .stack{display:grid;gap:10px;min-width:0;}
-@media (max-width: 1020px){ .io{grid-template-columns:1fr;} }
-.note{
-  margin-top:12px;padding:10px 14px;border:1px solid var(--accent-border);border-left-width:3px;
-  background:var(--accent-soft);border-radius:8px;font-size:.88rem;color:var(--text);max-width:none;
-}
-.note b{color:var(--accent-ink);}
-
-/* ---------- wave band diagram ---------- */
-.waveband-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:12px;background:var(--surface);padding:18px 16px 12px;margin-top:1.2rem;}
-.waveband{display:grid;grid-template-columns:110px repeat(14,minmax(46px,1fr));gap:6px 4px;min-width:820px;align-items:stretch;font-family:'IBM Plex Mono',monospace;font-size:.68rem;}
-.wb-rowlabel{grid-column:1;display:flex;align-items:center;font-weight:600;color:var(--muted);font-size:.7rem;}
-.wb-cell{border-radius:6px;border:1px dashed var(--border);min-height:34px;}
-.wb-block{display:grid;place-items:center;text-align:center;border-radius:6px;font-weight:600;padding:4px 2px;min-height:34px;line-height:1.25;}
-.wb-b{background:var(--accent-soft);border:1px solid var(--accent-border);color:var(--accent-ink);}
-.wb-a{background:var(--band-a-soft);border:1px solid var(--band-a-border);color:var(--band-a);}
-.wb-axis{display:grid;place-items:center;color:var(--faint);padding-top:4px;font-size:.68rem;}
-.wb-axis.hl{color:var(--text);font-weight:600;}
-.wb-legend{display:flex;gap:16px;margin-top:10px;font-size:.74rem;color:var(--muted);font-family:'IBM Plex Mono',monospace;}
-.wb-legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;vertical-align:-1px;}
-
-/* ---------- misc ---------- */
-.err-fig pre{color:var(--err);}
-.err-fig{border-color:var(--err-border);}
-footer{border-top:1px solid var(--border);color:var(--faint);font-size:.82rem;padding:26px clamp(16px,4vw,32px);text-align:center;}
-footer .eyebrow{color:var(--faint);}
-</style>
+<link rel="stylesheet" href="assets/site.css">
 </head>
 <body>
 
 <header class="site-head">
   <div class="kr-tile" aria-hidden="true">Kr<small>36</small></div>
   <div class="site-title">krypton-umbrella <span>/ docs</span></div>
+  <nav class="seg pages" aria-label="Chart variant">
+    <a href="index.html" aria-current="page"><span data-lang="en">Full</span><span data-lang="de">Voll</span></a>
+    <a href="slim.html">Slim</a>
+  </nav>
   <div class="head-spacer"></div>
   <div class="seg" role="group" aria-label="Language">
     <button type="button" id="lang-en" aria-pressed="true">EN</button>
@@ -231,7 +47,7 @@ footer .eyebrow{color:var(--faint);}
     <div class="chip"><b>ArgoCD</b> sync waves</div>
     <div class="chip"><b>OpenShift</b> Routes</div>
     <div class="chip"><b>Vault</b> Secrets Operator</div>
-    <div class="chip"><b>Slim</b> <span data-lang="en">variant</span><span data-lang="de">Variante</span> &middot; <a href="#slim" style="color:inherit">krypton-umbrella-slim/</a></div>
+    <div class="chip"><b>Slim</b> <span data-lang="en">variant</span><span data-lang="de">Variante</span> &middot; <a href="slim.html" style="color:inherit">slim.html</a></div>
     <div class="chip" data-lang="en">All outputs below are real <code style="border:0;background:transparent;padding:0">helm template</code> output</div>
     <div class="chip" data-lang="de">Alle Ausgaben unten sind echte <code style="border:0;background:transparent;padding:0">helm template</code>-Ausgaben</div>
   </div>
@@ -246,7 +62,6 @@ footer .eyebrow{color:var(--faint);}
   <a href="#waves"><span data-lang="en">Sync order</span><span data-lang="de">Sync-Reihenfolge</span></a>
   <a href="#examples"><span data-lang="en">Config examples</span><span data-lang="de">Konfig-Beispiele</span></a>
   <a href="#guardrails"><span data-lang="en">Guardrails</span><span data-lang="de">Leitplanken</span></a>
-  <a href="#slim"><span data-lang="en">Slim variant</span><span data-lang="de">Schlanke Variante</span></a>
   <a href="#argocd">ArgoCD</a>
 </aside>
 
@@ -469,14 +284,14 @@ kind: Deployment   # krypton-banking-release, referencing both</pre>
         </figure>
       </div>
     </div>
-    <div class="note"><span data-lang="en"><b>Ownership:</b> one Application per namespace enables <code>krypton-shared</code> &mdash; the owning lane, or a dedicated shared Application via <code>values-shared-only.yaml</code> (see <a href="#argocd">ArgoCD</a>); every other lane keeps the default. Service-scoped sharing still exists: krypton-banking's <code>config.shared</code> renders its own ConfigMap as <code>krypton-banking</code>, gated by <code>config.create</code>. The slim umbrella ships the same <code>krypton-shared</code> subchart (see <a href="#slim">slim variant</a>).</span><span data-lang="de"><b>Eigent&uuml;merschaft:</b> eine Application pro Namespace aktiviert <code>krypton-shared</code> &mdash; die Eigent&uuml;mer-Lane oder eine eigene shared-Application &uuml;ber <code>values-shared-only.yaml</code> (siehe <a href="#argocd">ArgoCD</a>); jede andere Lane beh&auml;lt den Default. Service-bezogenes Teilen gibt es weiterhin: <code>config.shared</code> von krypton-banking rendert dessen ConfigMap als <code>krypton-banking</code>, geschaltet &uuml;ber <code>config.create</code>. Das schlanke Umbrella bringt dasselbe <code>krypton-shared</code>-Subchart mit (siehe <a href="#slim">schlanke Variante</a>).</span></div>
+    <div class="note"><span data-lang="en"><b>Ownership:</b> one Application per namespace enables <code>krypton-shared</code> &mdash; the owning lane, or a dedicated shared Application via <code>values-shared-only.yaml</code> (see <a href="#argocd">ArgoCD</a>); every other lane keeps the default. Service-scoped sharing still exists: krypton-banking's <code>config.shared</code> renders its own ConfigMap as <code>krypton-banking</code>, gated by <code>config.create</code>. The slim umbrella ships the same <code>krypton-shared</code> subchart (see the <a href="slim.html">slim docs</a>).</span><span data-lang="de"><b>Eigent&uuml;merschaft:</b> eine Application pro Namespace aktiviert <code>krypton-shared</code> &mdash; die Eigent&uuml;mer-Lane oder eine eigene shared-Application &uuml;ber <code>values-shared-only.yaml</code> (siehe <a href="#argocd">ArgoCD</a>); jede andere Lane beh&auml;lt den Default. Service-bezogenes Teilen gibt es weiterhin: <code>config.shared</code> von krypton-banking rendert dessen ConfigMap als <code>krypton-banking</code>, geschaltet &uuml;ber <code>config.create</code>. Das schlanke Umbrella bringt dasselbe <code>krypton-shared</code>-Subchart mit (siehe <a href="slim.html">Slim-Doku</a>).</span></div>
   </article>
 
   <!-- E2 metadata -->
   <article class="example" id="ex-metadata">
     <h3 data-lang="en">Labels &amp; annotations merge</h3><h3 data-lang="de">Labels- &amp; Annotations-Merge</h3>
-    <p data-lang="en">Chart-generated standard keys merge with the static <code>global.labels</code> / <code>global.annotations</code>; CI annotations from Jenkins slot in right after (next card); the ArgoCD keys are applied last so they can never be shadowed. One <code>krypton-lib.metadata</code> include produces the whole block. Annotations for exactly one resource go into that call: <code>extra</code> (a dict), <code>annotation</code> (one <code>key=value</code> string) or <code>annotationsFrom</code> (a dotted values path such as <code>route.annotations</code>, or <code>routes.&lt;name&gt;.annotations</code> per instance inside a range, so one Route of many gets its HAProxy timeout) &mdash; merged after the CI annotations, below the ArgoCD keys.</p>
-    <p data-lang="de">Chart-generierte Standard-Keys verschmelzen mit den statischen <code>global.labels</code> / <code>global.annotations</code>; CI-Annotations aus Jenkins reihen sich direkt danach ein (n&auml;chste Karte); die ArgoCD-Keys kommen zuletzt und k&ouml;nnen nie &uuml;berdeckt werden. Ein einziges <code>krypton-lib.metadata</code>-Include erzeugt den ganzen Block. Annotations f&uuml;r genau eine Ressource wandern in diesen Aufruf: <code>extra</code> (ein Dict), <code>annotation</code> (ein <code>key=value</code>-String) oder <code>annotationsFrom</code> (ein Punkt-Pfad in die Values wie <code>route.annotations</code>, oder <code>routes.&lt;name&gt;.annotations</code> je Instanz in einem range, sodass von mehreren Routes genau eine ihr HAProxy-Timeout bekommt) &mdash; gemergt nach den CI-Annotations, unterhalb der ArgoCD-Keys.</p>
+    <p data-lang="en">Chart-generated standard keys merge with the static <code>global.labels</code> / <code>global.annotations</code>; the ArgoCD keys are applied last so they can never be shadowed. One <code>krypton-lib.metadata</code> include produces the whole block. Annotations for exactly one resource go into that call: <code>extra</code> (a dict), <code>annotation</code> (one <code>key=value</code> string) or <code>annotationsFrom</code> (a dotted values path such as <code>route.annotations</code>, or <code>routes.&lt;name&gt;.annotations</code> per instance inside a range, so one Route of many gets its HAProxy timeout) &mdash; merged after <code>global.annotations</code>, below the ArgoCD keys.</p>
+    <p data-lang="de">Chart-generierte Standard-Keys verschmelzen mit den statischen <code>global.labels</code> / <code>global.annotations</code>; die ArgoCD-Keys kommen zuletzt und k&ouml;nnen nie &uuml;berdeckt werden. Ein einziges <code>krypton-lib.metadata</code>-Include erzeugt den ganzen Block. Annotations f&uuml;r genau eine Ressource wandern in diesen Aufruf: <code>extra</code> (ein Dict), <code>annotation</code> (ein <code>key=value</code>-String) oder <code>annotationsFrom</code> (ein Punkt-Pfad in die Values wie <code>route.annotations</code>, oder <code>routes.&lt;name&gt;.annotations</code> je Instanz in einem range, sodass von mehreren Routes genau eine ihr HAProxy-Timeout bekommt) &mdash; gemergt nach <code>global.annotations</code>, unterhalb der ArgoCD-Keys.</p>
     <div class="io">
       <figure class="code">
         <figcaption><span class="dot dot-in"></span>values.yaml &middot; umbrella</figcaption>
@@ -514,8 +329,8 @@ kind: Deployment   # krypton-banking-release, referencing both</pre>
   <!-- E2b per-resource annotations -->
   <article class="example" id="ex-annotation">
     <h3 data-lang="en">Annotations for exactly one resource</h3><h3 data-lang="de">Annotations f&uuml;r genau eine Ressource</h3>
-    <p data-lang="en"><code>global.annotations</code> and <code>&lt;subchart&gt;.annotations</code> reach every resource. For a single one &mdash; the HAProxy timeout of one Route, not of the Deployment next to it &mdash; the <code>metadata</code> call takes three optional arguments: <code>extra</code> (a dict; the slim library calls it <code>extraAnnotations</code>), <code>annotation</code> (one <code>key=value</code> string, the one-liner form of the same thing) and <code>annotationsFrom</code> (a dotted path below <code>.Values</code>). The path form is what a template uses when the annotations belong in the values: it tolerates a missing path, so inside a <code>range</code> over several Routes only the instances that carry a <code>routes.&lt;name&gt;.annotations</code> block get one, and it fails the render when the path holds anything but a map. All three merge after the CI annotations and below the two ArgoCD keys.</p>
-    <p data-lang="de"><code>global.annotations</code> und <code>&lt;subchart&gt;.annotations</code> erreichen jede Ressource. F&uuml;r eine einzelne &mdash; das HAProxy-Timeout einer Route, nicht des Deployments daneben &mdash; nimmt der <code>metadata</code>-Aufruf drei optionale Argumente: <code>extra</code> (ein Dict; das schlanke Library-Chart nennt es <code>extraAnnotations</code>), <code>annotation</code> (ein <code>key=value</code>-String, die Einzeiler-Form desselben) und <code>annotationsFrom</code> (ein Punkt-Pfad unterhalb von <code>.Values</code>). Die Pfad-Form nimmt ein Template, wenn die Annotations in die Values geh&ouml;ren: Sie toleriert einen fehlenden Pfad, in einem <code>range</code> &uuml;ber mehrere Routes bekommen also nur die Instanzen mit einem <code>routes.&lt;name&gt;.annotations</code>-Block eine, und sie l&auml;sst das Rendern fehlschlagen, wenn der Pfad etwas anderes als eine Map enth&auml;lt. Alle drei werden nach den CI-Annotations und unterhalb der beiden ArgoCD-Keys gemergt.</p>
+    <p data-lang="en"><code>global.annotations</code> and <code>&lt;subchart&gt;.annotations</code> reach every resource. For a single one &mdash; the HAProxy timeout of one Route, not of the Deployment next to it &mdash; the <code>metadata</code> call takes three optional arguments: <code>extra</code> (a dict; the slim library calls it <code>extraAnnotations</code>), <code>annotation</code> (one <code>key=value</code> string, the one-liner form of the same thing) and <code>annotationsFrom</code> (a dotted path below <code>.Values</code>). The path form is what a template uses when the annotations belong in the values: it tolerates a missing path, so inside a <code>range</code> over several Routes only the instances that carry a <code>routes.&lt;name&gt;.annotations</code> block get one, and it fails the render when the path holds anything but a map. All three merge after <code>global.annotations</code> and below the two ArgoCD keys.</p>
+    <p data-lang="de"><code>global.annotations</code> und <code>&lt;subchart&gt;.annotations</code> erreichen jede Ressource. F&uuml;r eine einzelne &mdash; das HAProxy-Timeout einer Route, nicht des Deployments daneben &mdash; nimmt der <code>metadata</code>-Aufruf drei optionale Argumente: <code>extra</code> (ein Dict; das schlanke Library-Chart nennt es <code>extraAnnotations</code>), <code>annotation</code> (ein <code>key=value</code>-String, die Einzeiler-Form desselben) und <code>annotationsFrom</code> (ein Punkt-Pfad unterhalb von <code>.Values</code>). Die Pfad-Form nimmt ein Template, wenn die Annotations in die Values geh&ouml;ren: Sie toleriert einen fehlenden Pfad, in einem <code>range</code> &uuml;ber mehrere Routes bekommen also nur die Instanzen mit einem <code>routes.&lt;name&gt;.annotations</code>-Block eine, und sie l&auml;sst das Rendern fehlschlagen, wenn der Pfad etwas anderes als eine Map enth&auml;lt. Alle drei werden nach <code>global.annotations</code> und unterhalb der beiden ArgoCD-Keys gemergt.</p>
     <div class="io">
       <div class="stack">
         <figure class="code">
@@ -643,60 +458,6 @@ spec:
       </figure>
     </div>
     <div class="note"><span data-lang="en"><b>One-way door:</b> a Deployment selector is immutable. Renaming the lane creates a new Deployment anyway, but changing <code>global.partOfPrefix</code> on a lane that already runs changes only the selector and the apply is rejected &mdash; delete that lane's Deployments once, then sync again. Never add chart version or custom labels to the selector.</span><span data-lang="de"><b>Einbahnstra&szlig;e:</b> ein Deployment-Selektor ist unver&auml;nderlich. Eine Lane-Umbenennung erzeugt ohnehin ein neues Deployment, aber <code>global.partOfPrefix</code> auf einer bereits laufenden Lane zu &auml;ndern ver&auml;ndert nur den Selektor und der Apply wird abgelehnt &mdash; die Deployments dieser Lane einmalig l&ouml;schen, dann erneut syncen. Nie Chart-Version oder eigene Labels in den Selektor aufnehmen.</span></div>
-  </article>
-
-  <!-- E2a jenkins annotations -->
-  <article class="example" id="ex-jenkins">
-    <h3 data-lang="en">CI annotations from Jenkins</h3><h3 data-lang="de">CI-Annotations aus Jenkins</h3>
-    <p data-lang="en"><code>&lt;subchart&gt;.jenkins.annotations</code> is merged into every resource of that subchart right after <code>global.annotations</code> &mdash; and only when the block exists, so a plain render carries no CI annotations. Jenkins sets it per sync through ArgoCD Helm parameters (dots inside a key are escaped as <code>\.</code>); scalar values are stringified, so a numeric build id is safe. Other subcharts are untouched.</p>
-    <p data-lang="de"><code>&lt;subchart&gt;.jenkins.annotations</code> wird direkt nach <code>global.annotations</code> in jede Ressource des Subcharts gemergt &mdash; und nur, wenn der Block existiert; ein normales Rendern tr&auml;gt also keine CI-Annotations. Jenkins setzt ihn pro Sync &uuml;ber ArgoCD-Helm-Parameter (Punkte innerhalb eines Keys werden als <code>\.</code> escaped); skalare Werte werden stringifiziert, eine numerische Build-ID ist also sicher. Andere Subcharts bleiben unber&uuml;hrt.</p>
-    <div class="io">
-      <div class="stack">
-        <div class="cmd">helm template krypton krypton-umbrella --set krypton-banking.jenkins.annotations.jenkins\.io/build-number=1234 --set krypton-banking.jenkins.annotations.jenkins\.io/git-commit=abc1234</div>
-        <figure class="code">
-          <figcaption><span class="dot dot-in"></span>application.yaml &middot; <span data-lang="en">ArgoCD Helm parameters (same effect)</span><span data-lang="de">ArgoCD-Helm-Parameter (gleiche Wirkung)</span></figcaption>
-          <pre data-hl="yaml">spec:
-  source:
-    helm:
-      parameters:
-        - name: krypton-banking.jenkins.annotations.jenkins\.io/build-number
-          value: "1234"
-        - name: krypton-banking.jenkins.annotations.jenkins\.io/git-commit
-          value: abc1234</pre>
-        </figure>
-        <figure class="code">
-          <figcaption><span class="dot dot-in"></span>values.yaml &middot; <span data-lang="en">umbrella (same effect)</span><span data-lang="de">Umbrella (gleiche Wirkung)</span></figcaption>
-          <pre data-hl="yaml">krypton-banking:
-  jenkins:
-    annotations:
-      jenkins.io/build-number: 1234    # number is fine - stringified at render time
-      jenkins.io/git-commit: abc1234</pre>
-        </figure>
-      </div>
-      <figure class="code">
-        <figcaption><span class="dot dot-out"></span><span data-lang="en">rendered &middot; every krypton-banking resource</span><span data-lang="de">gerendert &middot; jede krypton-banking-Ressource</span></figcaption>
-        <pre data-hl="yaml">kind: ConfigMap
-metadata:
-  name: krypton-banking-release
-  annotations:
-    argocd.argoproj.io/sync-wave: "0"
-    jenkins.io/build-number: "1234"
-    jenkins.io/git-commit: abc1234
-    krypton.io/git-repository: https://git.example.com/krypton/krypton-umbrella
-    krypton.io/owner: platform-team
-    krypton.io/source-chart: krypton-banking-0.1.0
----
-kind: Deployment
-metadata:
-  name: krypton-auth-release          # krypton-auth has no jenkins block
-  annotations:
-    argocd.argoproj.io/sync-wave: "11"
-    krypton.io/git-repository: https://git.example.com/krypton/krypton-umbrella
-    krypton.io/owner: platform-team
-    krypton.io/source-chart: krypton-auth-0.1.0</pre>
-      </figure>
-    </div>
-    <div class="note"><span data-lang="en"><b>Merge order:</b> standard &rarr; <code>global.annotations</code> &rarr; <code>jenkins.annotations</code> &rarr; per-call <code>extra</code> &rarr; ArgoCD sync-wave / sync-options. The ArgoCD keys always win. The slim library merges <code>jenkins.annotations</code> at the same position, after the subchart&rsquo;s own <code>annotations</code> block.</span><span data-lang="de"><b>Merge-Reihenfolge:</b> Standard &rarr; <code>global.annotations</code> &rarr; <code>jenkins.annotations</code> &rarr; <code>extra</code> pro Aufruf &rarr; ArgoCD Sync-Wave / Sync-Options. Die ArgoCD-Keys gewinnen immer. Die schlanke Library mergt <code>jenkins.annotations</code> an derselben Stelle, nach dem eigenen <code>annotations</code>-Block des Subcharts.</span></div>
   </article>
 
   <!-- E2b config delivery -->
@@ -1123,115 +884,6 @@ krypton-banking:
   <div class="note"><span data-lang="en"><b>Deliberately tolerated:</b> configuring a <em>catalogued</em> type that a subchart does not (yet) render is allowed and has no effect &mdash; waves and prune flags can be staged before the manifest exists.</span><span data-lang="de"><b>Bewusst toleriert:</b> einen <em>katalogisierten</em> Typ zu konfigurieren, den ein Subchart (noch) nicht rendert, ist erlaubt und wirkungslos &mdash; Waves und Prune-Flags lassen sich vor dem Manifest anlegen.</span></div>
 </section>
 
-<!-- ============================ SLIM ============================ -->
-<section id="slim">
-  <span class="eyebrow" data-lang="en">Variant</span><span class="eyebrow" data-lang="de">Variante</span>
-  <h2 data-lang="en">Slim variant</h2><h2 data-lang="de">Schlanke Variante</h2>
-  <p data-lang="en"><code>krypton-umbrella-slim/</code> is a second, self-contained umbrella whose library <code>krypton-lib-slim</code> generates <em>metadata only</em>: unified names with an optional <b>instance identifier</b> for several ConfigMaps / Secrets / VaultStaticSecrets per subchart, merged labels and annotations (global &rarr; subchart &rarr; call site), ArgoCD sync waves with the offset mechanism, and generic ArgoCD sync options. Everything below <code>metadata:</code> is written by the subchart itself. Both variants share the component catalog and the naming scheme (<code>&lt;subchart&gt;-&lt;lane&gt;[-&lt;instance&gt;]</code>, lane label <code>app.kubernetes.io/part-of</code>), so the names are identical. Written for the Helm&nbsp;3 line ArgoCD runs.</p>
-  <p data-lang="de"><code>krypton-umbrella-slim/</code> ist ein zweites, eigenst&auml;ndiges Umbrella, dessen Library <code>krypton-lib-slim</code> <em>nur Metadata</em> erzeugt: einheitliche Namen mit optionalem <b>Instanz-Bezeichner</b> f&uuml;r mehrere ConfigMaps / Secrets / VaultStaticSecrets je Subchart, zusammengef&uuml;hrte Labels und Annotations (global &rarr; Subchart &rarr; Aufrufstelle), ArgoCD-Sync-Waves samt Offset-Mechanik und generische ArgoCD-Sync-Options. Alles unterhalb von <code>metadata:</code> schreibt das Subchart selbst. Beide Varianten teilen sich den Komponentenkatalog und das Namensschema (<code>&lt;subchart&gt;-&lt;lane&gt;[-&lt;instance&gt;]</code>, Lane-Label <code>app.kubernetes.io/part-of</code>), die Namen sind also identisch. Geschrieben f&uuml;r die Helm-3-Linie, die ArgoCD nutzt.</p>
-  <div class="stack" style="display:grid;gap:14px;margin-top:1.2rem">
-  <figure class="code">
-    <figcaption><span class="dot dot-in"></span>charts/krypton-payments/templates/configmaps.yaml</figcaption>
-    <pre data-hl="yaml">{{- $root := . -}}
-{{- range $name, $data := .Values.configMaps }}
----
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  {{- include "krypton-lib-slim.metadata" (dict "ctx" $root "component" "configMap" "instance" $name) | nindent 2 }}
-data:
-  {{- $data | toYaml | nindent 2 }}
-{{- end }}</pre>
-  </figure>
-  <figure class="code">
-    <figcaption><span class="dot dot-in"></span>values.yaml <span data-lang="en">(umbrella)</span><span data-lang="de">(Umbrella)</span></figcaption>
-    <pre data-hl="yaml">global:
-  syncOptions:
-    vaultStaticSecret: ["Prune=false"]           # platform rule, any ArgoCD sync option goes here
-krypton-payments:
-  syncWaves:
-    route: "3"
-  syncOptions:
-    route: ["Prune=false", "Delete=false"]
-  labels:
-    krypton.io/team: payments                     # subchart-wide custom labels</pre>
-  </figure>
-  <figure class="code">
-    <figcaption><span class="dot dot-out"></span>helm template krypton krypton-umbrella-slim</figcaption>
-    <pre data-hl="yaml">kind: ConfigMap
-metadata:
-  name: krypton-payments-release-app             # instance "app"
-  annotations:
-    argocd.argoproj.io/sync-wave: "0"
----
-kind: ConfigMap
-metadata:
-  name: krypton-payments-release-logging         # instance "logging"
----
-kind: VaultStaticSecret
-metadata:
-  name: krypton-payments-release-database
-  annotations:
-    argocd.argoproj.io/sync-options: Prune=false
-    argocd.argoproj.io/sync-wave: "-1"
----
-kind: Route
-metadata:
-  name: krypton-payments-release                 # no instance - same name as Deployment, Service, SA
-  labels:
-    app.kubernetes.io/part-of: release
-    krypton.io/team: payments
-  annotations:
-    argocd.argoproj.io/sync-options: Prune=false,Delete=false
-    argocd.argoproj.io/sync-wave: "3"
-    haproxy.router.openshift.io/timeout: 30s   # extraAnnotations from the Route template</pre>
-  </figure>
-  </div>
-  <p data-lang="en" style="margin-top:1.4rem">Shared resources and CI annotations work the same way here. The slim umbrella ships its own <code>krypton-shared</code> subchart (ConfigMaps, Secrets, VaultStaticSecrets rendered with <code>"shared" true</code>, owned by exactly one Application via <code>krypton-shared.enabled</code>); krypton-payments references them through <code>sharedEnvFrom</code> with the same helper plus <code>chart</code>. <code>&lt;subchart&gt;.jenkins.annotations</code> is merged right after the subchart&rsquo;s own <code>annotations</code> block &mdash; only when it exists.</p>
-  <p data-lang="de" style="margin-top:1.4rem">Geteilte Ressourcen und CI-Annotations funktionieren hier genauso. Das schlanke Umbrella bringt ein eigenes <code>krypton-shared</code>-Subchart mit (ConfigMaps, Secrets, VaultStaticSecrets mit <code>"shared" true</code> gerendert, Eigent&uuml;mer ist genau eine Application &uuml;ber <code>krypton-shared.enabled</code>); krypton-payments referenziert sie &uuml;ber <code>sharedEnvFrom</code> mit demselben Helper plus <code>chart</code>. <code>&lt;subchart&gt;.jenkins.annotations</code> wird direkt nach dem eigenen <code>annotations</code>-Block des Subcharts gemergt &mdash; nur, wenn er existiert.</p>
-  <div class="stack" style="display:grid;gap:14px;margin-top:1.2rem">
-  <figure class="code">
-    <figcaption><span class="dot dot-in"></span>charts/krypton-payments/templates/deployment.yaml &middot; <span data-lang="en">reference into krypton-shared</span><span data-lang="de">Referenz auf krypton-shared</span></figcaption>
-    <pre data-hl="yaml">{{- range $sharedEnvFrom.secrets }}
-- secretRef:
-    name: {{ include "krypton-lib-slim.componentName" (dict "ctx" $ "chart" "krypton-shared" "component" "secret" "instance" . "shared" true) }}
-{{- end }}
-# krypton-shared/templates/secrets.yaml names the object with the identical call minus "chart":
-#   (dict "ctx" $root "component" "secret" "instance" $name "shared" true)</pre>
-  </figure>
-  <div class="cmd">helm template krypton-shared krypton-umbrella-slim -f krypton-umbrella-slim/values-shared-only.yaml</div>
-  <figure class="code">
-    <figcaption><span class="dot dot-out"></span><span data-lang="en">rendered &middot; dedicated shared Application</span><span data-lang="de">gerendert &middot; eigene shared-Application</span></figcaption>
-    <pre data-hl="yaml">kind: Secret
-metadata:
-  name: krypton-shared-gateway                   # no lane segment, no app.kubernetes.io/part-of label
----
-kind: ConfigMap
-metadata:
-  name: krypton-shared-common
-# every lane deployment (krypton-shared.enabled: false) references exactly these names:
-#   - configMapRef: { name: krypton-shared-common }
-#   - secretRef:    { name: krypton-shared-gateway }</pre>
-  </figure>
-  <div class="cmd">helm template krypton krypton-umbrella-slim --set krypton-payments.jenkins.annotations.jenkins\.io/build-number=1234</div>
-  <figure class="code">
-    <figcaption><span class="dot dot-out"></span><span data-lang="en">rendered &middot; Route (krypton-payments)</span><span data-lang="de">gerendert &middot; Route (krypton-payments)</span></figcaption>
-    <pre data-hl="yaml">kind: Route
-metadata:
-  name: krypton-payments-release
-  annotations:
-    argocd.argoproj.io/sync-options: Prune=false,Delete=false
-    argocd.argoproj.io/sync-wave: "3"
-    haproxy.router.openshift.io/timeout: 30s
-    jenkins.io/build-number: "1234"            # after payments.annotations, before extraAnnotations
-    krypton.io/git-repository: https://git.example.com/krypton/krypton-umbrella
-    krypton.io/owner: platform-team
-    krypton.io/source-chart: krypton-payments-0.1.0</pre>
-  </figure>
-  </div>
-  <div class="note"><span data-lang="en">Full reference: <code>krypton-umbrella-slim/README.md</code>. The slim umbrella is excluded from the full chart via <code>.helmignore</code> and deployed as its own ArgoCD Application (<code>path: krypton-umbrella-slim</code>).</span><span data-lang="de">Vollst&auml;ndige Referenz: <code>krypton-umbrella-slim/README.de.md</code>. Das schlanke Umbrella ist per <code>.helmignore</code> aus dem vollen Chart ausgenommen und wird als eigene ArgoCD-Application deployt (<code>path: krypton-umbrella-slim</code>).</span></div>
-</section>
-
 <!-- ============================ ARGOCD ============================ -->
 <section id="argocd">
   <span class="eyebrow">GitOps</span>
@@ -1303,86 +955,6 @@ spec:
   <span data-lang="de">krypton-umbrella Plattform-Doku &middot; alle gerenderten Ausgaben stammen aus <code style="border:0;background:transparent;padding:0">helm template</code> v4.2.4 &middot; das Chart ist Helm-3-kompatibel &middot; siehe README.md / README.de.md im Repository</span>
 </footer>
 
-<script>
-(function(){
-  var root=document.documentElement;
-
-  /* ---- language toggle ---- */
-  var bEn=document.getElementById('lang-en'), bDe=document.getElementById('lang-de');
-  function setLang(l){
-    root.dataset.locale=l; root.lang=l;
-    bEn.setAttribute('aria-pressed', l==='en');
-    bDe.setAttribute('aria-pressed', l==='de');
-    try{localStorage.setItem('ku-lang',l);}catch(e){}
-  }
-  bEn.addEventListener('click',function(){setLang('en');});
-  bDe.addEventListener('click',function(){setLang('de');});
-  setLang(root.dataset.locale==='de'?'de':'en');
-
-  /* ---- theme toggle ---- */
-  document.getElementById('theme-toggle').addEventListener('click',function(){
-    var cur=root.dataset.theme;
-    if(cur!=='dark'&&cur!=='light'){
-      cur=(window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light';
-    }
-    var next=cur==='dark'?'light':'dark';
-    root.dataset.theme=next;
-    try{localStorage.setItem('ku-theme',next);}catch(e){}
-  });
-
-  /* ---- tiny yaml/bash highlighter (display only) ---- */
-  document.querySelectorAll('pre[data-hl]').forEach(function(pre){
-    var lang=pre.getAttribute('data-hl');
-    if(lang==='none') return;
-    var esc=pre.innerHTML;
-    pre.innerHTML=esc.split('\n').map(function(line){
-      if(lang==='bash'){
-        if(/^\s*#/.test(line)) return '<span class="c">'+line+'</span>';
-        return line.replace(/^(\s*)(helm|kubectl|oc|git|mkdir)(\s|$)/,'$1<span class="k">$2</span>$3');
-      }
-      /* yaml */
-      var ci=-1;
-      for(var i=0;i<line.length;i++){
-        if(line[i]==='#'&&(i===0||/\s/.test(line[i-1]))){ci=i;break;}
-      }
-      var head=ci>-1?line.slice(0,ci):line, comment=ci>-1?line.slice(ci):'';
-      /* strings first, keys second - the key span's own class="k" attribute
-         must never be visible to the string regex */
-      head=head.replace(/"([^"]*)"/g,'<span class="s">"$1"</span>');
-      head=head.replace(/^(\s*(?:- )?)([A-Za-z0-9_.\/{}-]+)(:)(?=\s|$)/,'$1<span class="k">$2</span>$3');
-      return head+(comment?'<span class="c">'+comment+'</span>':'');
-    }).join('\n');
-  });
-
-  /* ---- copy buttons ---- */
-  document.querySelectorAll('figure.code').forEach(function(fig){
-    var cap=fig.querySelector('figcaption'), pre=fig.querySelector('pre');
-    if(!cap||!pre) return;
-    var btn=document.createElement('button');
-    btn.className='copy'; btn.type='button';
-    btn.innerHTML='<span data-lang="en">copy</span><span data-lang="de">kopieren</span>';
-    btn.addEventListener('click',function(){
-      var ok=function(){btn.innerHTML='<span data-lang="en">copied</span><span data-lang="de">kopiert</span>';setTimeout(function(){btn.innerHTML='<span data-lang="en">copy</span><span data-lang="de">kopieren</span>';},1400);};
-      if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(pre.textContent).then(ok,function(){});}
-    });
-    cap.appendChild(btn);
-  });
-
-  /* ---- active TOC link ---- */
-  var links=[].slice.call(document.querySelectorAll('.toc a'));
-  var secs=links.map(function(a){return document.querySelector(a.getAttribute('href'));}).filter(Boolean);
-  if('IntersectionObserver' in window){
-    var active=null;
-    var io=new IntersectionObserver(function(entries){
-      entries.forEach(function(en){
-        if(en.isIntersecting){
-          links.forEach(function(a){a.classList.toggle('active',a.getAttribute('href')==='#'+en.target.id);});
-        }
-      });
-    },{rootMargin:'-20% 0px -70% 0px'});
-    secs.forEach(function(s){io.observe(s);});
-  }
-})();
-</script>
+<script src="assets/site.js"></script>
 </body>
 </html>
