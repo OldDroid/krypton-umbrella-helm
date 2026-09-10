@@ -45,6 +45,7 @@ global:
   # Static labels stamped onto every resource of every subchart.
   # Merge order in krypton-lib-slim.labels (later wins):
   #   standard labels -> global.labels -> <subchart>.labels -> extraLabels
+  #   -> reserved name, instance and part-of identity labels
   labels:
     krypton.io/platform: krypton
     krypton.io/cost-center: "cc-4711"
@@ -120,10 +121,10 @@ krypton-notifier:
   enabled: true
 
   # Shift notifier's ENTIRE wave band behind krypton-payments (which spans
-  # -1..3): every resolved component wave gets +10, and components without
+  # -2..3): every resolved component wave gets +10, and components without
   # a configured wave (implicitly 0) are annotated with the bare offset -
-  # the subchart moves as one block, internal order preserved. Use offset
-  # steps of 10 per subchart so bands never overlap.
+  # the subchart moves as one block, internal order preserved. Choose offsets
+  # from the actual wave ranges so adjacent subcharts do not overlap.
   syncWaveOffset: 10
 
   # Custom annotations for every resource of this subchart.

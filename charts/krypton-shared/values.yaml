@@ -48,12 +48,10 @@ vault:
 
 # Namespace-wide NetworkPolicy (component type networkPolicy), one per
 # namespace like every other object here: named krypton-shared, no lane
-# segment, no lane label. It selects EVERY pod in the namespace and denies
-# exactly one thing - ingress from other namespaces. Pods of the same
-# namespace and the OpenShift router stay allowed on every port, so Routes
-# keep working and the Route is the only way in from outside; egress is not
-# restricted at all. Enabled by the shared owner (umbrella krypton-shared
-# block).
+# segment, no lane label. Selects every Pod and allows ingress from the same
+# namespace and selected OpenShift ingress namespaces. Other policies are
+# additive; this is not a Route-only guarantee. This policy does not restrict
+# egress, but other policies may. Enabled by the shared owner.
 networkPolicy:
   enabled: false
   # true when the router runs on the host network (HostNetwork endpoint

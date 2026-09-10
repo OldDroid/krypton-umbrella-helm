@@ -58,7 +58,7 @@ spec:
                 name: {{ include "krypton-lib-slim.componentName" (dict "ctx" $ "chart" "krypton-shared" "component" "secret" "instance" . "shared" true) }}
             {{- end }}
             # Secrets materialised by the VaultStaticSecrets (wave -1), so
-            # they already exist when this Deployment (wave 1) syncs.
+            # creation is asynchronous; an earlier wave alone does not ensure readiness.
             {{- range $name, $_ := .Values.vault.secrets }}
             - secretRef:
                 name: {{ include "krypton-lib-slim.componentName" (dict "ctx" $ "component" "vaultStaticSecret" "instance" $name) }}

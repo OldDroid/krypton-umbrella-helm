@@ -4,12 +4,10 @@ Namespace-wide NetworkPolicy (component type networkPolicy), rendered with
 no lane segment, no lane label - one per namespace, owned by the shared
 Application.
 
-It selects EVERY pod in the namespace and denies exactly one thing: ingress
-from other namespaces. Pods of the same namespace stay allowed on every
-port, and so does the OpenShift router (it only ever reaches Service target
-ports), so Routes keep working and the Route is the only way in from
-outside the namespace. Egress is not touched - policyTypes lists Ingress
-only, outbound traffic stays unrestricted.
+It selects every Pod in the namespace. Ingress is allowed from this namespace
+and the selected OpenShift ingress namespaces on all ports. These namespace
+permissions do not enforce Route-only access. This policy does not restrict
+egress; other policies may. Enforcement depends on the network plugin.
 
 Rules across NetworkPolicies are additive. A workload that must accept
 traffic from another namespace (Prometheus in openshift-monitoring, a

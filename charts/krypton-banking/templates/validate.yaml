@@ -1,0 +1,1 @@
+{{- include "krypton-lib.validateResourceNames" (dict "ctx" . "shared" false) -}}

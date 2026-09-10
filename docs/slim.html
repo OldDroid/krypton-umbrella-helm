@@ -22,7 +22,7 @@
   <div class="kr-tile" aria-hidden="true">Kr<small>36</small></div>
   <div class="site-title">krypton-umbrella-slim <span>/ docs</span></div>
   <nav class="seg pages" aria-label="Chart variant">
-    <a href="index.html"><span data-lang="en">Full</span><span data-lang="de">Voll</span></a>
+    <a href="index.html"><span data-lang="en">Full</span><span data-lang="de">Standard</span></a>
     <a href="slim.html" aria-current="page">Slim</a>
   </nav>
   <div class="head-spacer"></div>
@@ -40,16 +40,18 @@
   <span class="eyebrow" data-lang="en">Platform documentation &middot; slim variant</span>
   <span class="eyebrow" data-lang="de">Plattform-Dokumentation &middot; schlanke Variante</span>
   <h1>krypton-umbrella-slim</h1>
-  <p class="lead" data-lang="en">The metadata-only umbrella. Its library <code>krypton-lib-slim</code> generates <b>names, labels, annotations, ArgoCD sync waves and sync options</b> &mdash; nothing below <code>metadata:</code>. The subcharts own their manifests; the platform gets consistent naming, labelling and ordering. This page pairs every configuration option with the manifest it renders and ends with the complete values and helper reference.</p>
-  <p class="lead" data-lang="de">Das Umbrella, das nur Metadata erzeugt. Seine Library <code>krypton-lib-slim</code> generiert <b>Namen, Labels, Annotations, ArgoCD-Sync-Waves und Sync-Options</b> &mdash; nichts unterhalb von <code>metadata:</code>. Die Subcharts besitzen ihre Manifeste, die Plattform bekommt konsistentes Naming, Labelling und Ordering. Diese Seite stellt jeder Konfigurationsoption das gerenderte Manifest gegen&uuml;ber und endet mit der vollst&auml;ndigen Values- und Helper-Referenz.</p>
+  <p class="lead" data-lang="en">This independent umbrella uses the smaller krypton-lib-slim library for names, labels, annotations and Argo CD settings. It also provides selector labels and name validation. Workload settings remain in subchart templates.</p>
+  <p class="lead" data-lang="de">Dieses eigenständige Umbrella verwendet die kleinere Library <code>krypton-lib-slim</code>. Sie erzeugt Namen, Labels und Annotations mit Argo-CD-Einstellungen und stellt Selektorlabels sowie eine Namensprüfung bereit. Workload-Einstellungen bleiben in den Templates der Subcharts.</p>
+  <div class="note"><span data-lang="en"><b>Library validation:</b> resource names longer than 63 characters or with an invalid format fail rendering. The combined <code>partOfPrefix</code>/<code>laneName</code> label must also fit within 63 characters. Existing configurations that relied on name truncation need an explicit migration. Decimal wave strings such as <code>"08"</code> mean <code>8</code>; invalid integers and signed 64-bit overflow are rejected. Quote padded and very large numbers in YAML. The dedicated library references are in <code>krypton-umbrella-slim/charts/krypton-lib-slim/README.md</code> and <code>README.de.md</code>.</span><span data-lang="de"><b>Library-Prüfungen:</b> Ressourcennamen mit mehr als 63 Zeichen oder ungültigem Format führen zum Fehler. Das zusammengesetzte Label aus <code>partOfPrefix</code>/<code>laneName</code> darf ebenfalls höchstens 63 Zeichen lang sein. Bisher gekürzte Namen benötigen eine geplante Migration. Dezimale Wave-Strings wie <code>"08"</code> ergeben <code>8</code>; ungültige Ganzzahlen und 64-Bit-Überläufe werden abgelehnt. Zahlen mit führenden Nullen und sehr große Zahlen in YAML als Strings angeben. Die eigenen Library-Referenzen stehen in <code>krypton-umbrella-slim/charts/krypton-lib-slim/README.md</code> und <code>README.de.md</code>.</span></div>
+
   <div class="chips">
     <div class="chip"><b>Helm</b> 3 <span data-lang="en">line</span><span data-lang="de">Linie</span> &middot; <span data-lang="en">verified with</span><span data-lang="de">verifiziert mit</span> v4.2.4</div>
     <div class="chip"><b>metadata:</b> <span data-lang="en">only</span><span data-lang="de">ausschlie&szlig;lich</span></div>
     <div class="chip"><b>ArgoCD</b> sync waves &middot; sync options</div>
     <div class="chip"><b>instance</b> <span data-lang="en">identifiers</span><span data-lang="de">Bezeichner</span></div>
     <div class="chip"><b>Full</b> <span data-lang="en">variant</span><span data-lang="de">Variante</span> &middot; <a href="index.html" style="color:inherit">index.html</a></div>
-    <div class="chip" data-lang="en">All outputs below are real <code style="border:0;background:transparent;padding:0">helm template</code> output</div>
-    <div class="chip" data-lang="de">Alle Ausgaben unten sind echte <code style="border:0;background:transparent;padding:0">helm template</code>-Ausgaben</div>
+    <div class="chip" data-lang="en">Illustrative excerpts from <code style="border:0;background:transparent;padding:0">helm template</code> output</div>
+    <div class="chip" data-lang="de">Beispielhafte Ausschnitte aus <code style="border:0;background:transparent;padding:0">helm template</code>-Ausgaben</div>
   </div>
 </div>
 
@@ -58,22 +60,23 @@
   <span class="eyebrow" data-lang="en">On this page</span>
   <span class="eyebrow" data-lang="de">Auf dieser Seite</span>
   <a href="#overview"><span data-lang="en">Overview</span><span data-lang="de">&Uuml;berblick</span></a>
-  <a href="#commands"><span data-lang="en">Getting started</span><span data-lang="de">Loslegen</span></a>
+  <a href="#commands"><span data-lang="en">Getting started</span><span data-lang="de">Einstieg</span></a>
   <a href="#waves"><span data-lang="en">Sync order</span><span data-lang="de">Sync-Reihenfolge</span></a>
-  <a href="#examples"><span data-lang="en">Config examples</span><span data-lang="de">Konfig-Beispiele</span></a>
+  <a href="#examples"><span data-lang="en">Config examples</span><span data-lang="de">Konfigurationsbeispiele</span></a>
   <a href="#reference"><span data-lang="en">Reference</span><span data-lang="de">Referenz</span></a>
-  <a href="#guardrails"><span data-lang="en">Guardrails</span><span data-lang="de">Leitplanken</span></a>
+  <a href="#guardrails"><span data-lang="en">Guardrails</span><span data-lang="de">Validierung</span></a>
   <a href="#argocd">ArgoCD</a>
 </aside>
 
 <main>
+<div class="note"><span data-lang="de">Begriffe, Voraussetzungen und vollständige Anleitung stehen in der README.de.md der jeweiligen Variante im Repository.</span><span data-lang="en">See each variant’s README.md in the repository for terms, prerequisites and complete instructions.</span></div>
 
 <!-- ============================ OVERVIEW ============================ -->
 <section id="overview">
   <span class="eyebrow" data-lang="en">Structure</span><span class="eyebrow" data-lang="de">Struktur</span>
   <h2 data-lang="en">Overview</h2><h2 data-lang="de">&Uuml;berblick</h2>
-  <p data-lang="en">A second, self-contained umbrella next to the full one. Subcharts live under <code>charts/</code> and declare <code>krypton-lib-slim</code> as a local dependency (<code>file://../krypton-lib-slim</code>); under the umbrella Helm loads every chart&rsquo;s templates into one namespace, so the helpers resolve without vendoring. Pick this variant when the app teams own their manifests and the platform only needs consistent naming, labelling and ordering; pick the <a href="index.html">full umbrella</a> when the platform should also standardise the workload spec. Both share the component catalog and the naming scheme, so the rendered names are identical.</p>
-  <p data-lang="de">Ein zweites, eigenst&auml;ndiges Umbrella neben dem vollen. Subcharts liegen unter <code>charts/</code> und deklarieren <code>krypton-lib-slim</code> als lokale Abh&auml;ngigkeit (<code>file://../krypton-lib-slim</code>); unter dem Umbrella l&auml;dt Helm die Templates aller Charts in einen Namensraum, die Helper sind also ohne Vendoring aufl&ouml;sbar. Diese Variante passt, wenn die App-Teams ihre Manifeste selbst besitzen und die Plattform nur konsistentes Naming, Labelling und Ordering braucht; das <a href="index.html">volle Umbrella</a> passt, wenn die Plattform auch die Workload-Spec standardisieren soll. Beide teilen sich Komponentenkatalog und Namensschema, die gerenderten Namen sind identisch.</p>
+  <p data-lang="en">Subcharts use krypton-lib-slim as a local dependency, loaded directly when the umbrella renders. Slim keeps workload templates with application teams. Both variants use the same naming scheme and component catalog; different subchart names still produce different resource names.</p>
+  <p data-lang="de">Die Subcharts liegen unter <code>charts/</code> und verwenden <code>krypton-lib-slim</code> als lokale Abhängigkeit. Beim Rendern des Umbrellas lädt Helm die gemeinsame Library direkt. Slim eignet sich für Teams, die ihre Workload-Templates selbst pflegen. Beide Varianten verwenden dasselbe Namensschema und dieselben Komponententypen; unterschiedliche Subchart-Namen ergeben natürlich unterschiedliche Ressourcennamen.</p>
   <div class="io">
     <figure class="code">
       <figcaption><span class="dot dot-in"></span>krypton-umbrella-slim/</figcaption>
@@ -118,9 +121,9 @@ spec:                           # &lt;- the subchart, verbatim
 <!-- ============================ COMMANDS ============================ -->
 <section id="commands">
   <span class="eyebrow">CLI</span>
-  <h2 data-lang="en">Getting started</h2><h2 data-lang="de">Loslegen</h2>
-  <p data-lang="en">Everything on this page can be reproduced with these commands. Standalone subchart work additionally vendors the library and supplies a lane. The generated <code>charts/*/charts/</code> and <code>Chart.lock</code> files are gitignored.</p>
-  <p data-lang="de">Alles auf dieser Seite l&auml;sst sich mit diesen Kommandos reproduzieren. Eigenst&auml;ndige Subchart-Arbeit vendort zus&auml;tzlich die Library und gibt eine Lane mit. Die erzeugten <code>charts/*/charts/</code>- und <code>Chart.lock</code>-Dateien sind gitignored.</p>
+  <h2 data-lang="en">Getting started</h2><h2 data-lang="de">Einstieg</h2>
+  <p data-lang="en">Run these commands from the repository root. Rendering produces YAML without installing it. Standalone subcharts need their library dependency built first. Gitignored library copies can still be loaded by Helm; remove stale copies before umbrella tests or use a fresh checkout.</p>
+  <p data-lang="de">Die Befehle gelten ab dem Stammverzeichnis dieses Repositorys. <code>helm template</code> erzeugt YAML, installiert aber nichts. Für ein einzelnes Subchart muss zuerst seine Library-Abhängigkeit gebaut werden. Erzeugte Library-Kopien können trotz <code>.gitignore</code> später von Helm geladen werden; vor Umbrella-Tests alte Kopien entfernen oder eine frische Arbeitskopie verwenden.</p>
   <figure class="code">
     <figcaption><span class="dot dot-in"></span>shell</figcaption>
     <pre data-hl="bash">helm lint krypton-umbrella-slim
@@ -139,8 +142,8 @@ helm template t krypton-umbrella-slim/charts/krypton-payments --set global.laneN
 <section id="waves">
   <span class="eyebrow" data-lang="en">Ordering</span><span class="eyebrow" data-lang="de">Reihenfolge</span>
   <h2 data-lang="en">Sync order at a glance</h2><h2 data-lang="de">Sync-Reihenfolge auf einen Blick</h2>
-  <p data-lang="en">ArgoCD applies resources wave by wave and waits for health in between. Waves resolve per component <em>type</em> (subchart value first, then <code>global.syncWaves</code>) and every instance of a type shares the wave: both VaultStaticSecrets of krypton-payments sync at <code>-1</code>, both Secrets and both ConfigMaps at <code>0</code>. <code>syncWaveOffset</code> shifts a whole subchart&rsquo;s band &mdash; krypton-notifier runs at offset&nbsp;+10, entirely after krypton-payments.</p>
-  <p data-lang="de">ArgoCD wendet Ressourcen Wave f&uuml;r Wave an und wartet dazwischen auf Health. Waves l&ouml;sen pro Komponenten-<em>Typ</em> auf (Subchart-Wert zuerst, dann <code>global.syncWaves</code>), alle Instanzen eines Typs teilen sich die Wave: beide VaultStaticSecrets von krypton-payments syncen bei <code>-1</code>, beide Secrets und beide ConfigMaps bei <code>0</code>. <code>syncWaveOffset</code> verschiebt das gesamte Band eines Subcharts &mdash; krypton-notifier l&auml;uft mit Offset&nbsp;+10 vollst&auml;ndig nach krypton-payments.</p>
+  <p data-lang="en">Argo CD orders resources within an Application by sync phase and wave. Subchart values override global waves, then syncWaveOffset is added. Earlier VaultStaticSecrets do not by themselves guarantee ready destination Secrets: use an appropriate health assessment.</p>
+  <p data-lang="de">Argo CD verarbeitet Ressourcen innerhalb einer Application nach Sync-Phase und Wave. Kleinere Waves kommen zuerst. Der Subchart-Wert hat Vorrang vor <code>global.syncWaves</code>; <code>syncWaveOffset</code> wird addiert. Mit den Standardwerten folgt Notifier auf Payments. Eine frühere VaultStaticSecret-Wave garantiert allein noch kein fertiges Ziel-Secret: Dafür ist eine geeignete Zustandsprüfung nötig.</p>
   <div class="waveband-wrap">
     <div class="waveband">
       <div class="wb-rowlabel">krypton-payments</div>
@@ -170,14 +173,14 @@ helm template t krypton-umbrella-slim/charts/krypton-payments --set global.laneN
 <section id="examples">
   <span class="eyebrow" data-lang="en">Config &rarr; outcome</span><span class="eyebrow" data-lang="de">Konfig &rarr; Ergebnis</span>
   <h2 data-lang="en">Configuration examples</h2><h2 data-lang="de">Konfigurationsbeispiele</h2>
-  <p data-lang="en">Each card pairs a configuration with the manifest it renders. Every output block was captured verbatim from <code>helm template krypton krypton-umbrella-slim</code> (v4.2.4) &mdash; nothing is hand-written; <code># ...</code> marks lines left out for brevity.</p>
-  <p data-lang="de">Jede Karte stellt einer Konfiguration das gerenderte Manifest gegen&uuml;ber. Jeder Output-Block wurde w&ouml;rtlich aus <code>helm template krypton krypton-umbrella-slim</code> (v4.2.4) &uuml;bernommen &mdash; nichts ist handgeschrieben; <code># ...</code> markiert der K&uuml;rze halber ausgelassene Zeilen.</p>
+  <p data-lang="en">Each card pairs configuration with illustrative YAML excerpts. Comments and omissions explain the relevant parts. Run the command with the shown overrides for complete output.</p>
+  <p data-lang="de">Jede Karte zeigt Konfiguration und zugehörige YAML-Ausschnitte. Auslassungen und Kommentare dienen der Erklärung. Für vollständige Ausgaben den angegebenen Befehl mit den jeweiligen Overrides ausführen.</p>
 
   <!-- S1 metadata -->
   <article class="example" id="ex-metadata">
     <h3 data-lang="en">One include for the whole metadata block</h3><h3 data-lang="de">Ein Include f&uuml;r den ganzen Metadata-Block</h3>
     <p data-lang="en">The core use-case. A manifest calls <code>krypton-lib-slim.metadata</code> once and receives <code>name:</code>, <code>labels:</code> and <code>annotations:</code>; everything else in the file is the subchart&rsquo;s own YAML. The same names are reused for cross-references through <code>componentName</code> &mdash; the ServiceAccount the pod runs as, the ConfigMaps and Secrets it consumes &mdash; so a reference can never drift from the resource it points at.</p>
-    <p data-lang="de">Der Kern-Anwendungsfall. Ein Manifest ruft <code>krypton-lib-slim.metadata</code> einmal auf und bekommt <code>name:</code>, <code>labels:</code> und <code>annotations:</code>; alles andere in der Datei ist das eigene YAML des Subcharts. Dieselben Namen werden &uuml;ber <code>componentName</code> f&uuml;r Querverweise wiederverwendet &mdash; der ServiceAccount, unter dem der Pod l&auml;uft, die ConfigMaps und Secrets, die er konsumiert &mdash;, eine Referenz kann so nie von der Ressource abdriften, auf die sie zeigt.</p>
+    <p data-lang="de">Ein Aufruf von <code>krypton-lib-slim.metadata</code> erzeugt <code>name</code>, <code>labels</code> und <code>annotations</code>. Das restliche Manifest bleibt im Subchart. Referenzen verwenden <code>componentName</code> mit denselben Argumenten, damit die Namen übereinstimmen.</p>
     <div class="io">
       <figure class="code">
         <figcaption><span class="dot dot-in"></span>charts/krypton-payments/templates/deployment.yaml</figcaption>
@@ -264,7 +267,7 @@ spec:
   <article class="example" id="ex-naming">
     <h3 data-lang="en">Names, lanes &amp; instance identifiers</h3><h3 data-lang="de">Namen, Lanes &amp; Instanz-Bezeichner</h3>
     <p data-lang="en">Every resource is named <code>[&lt;namePrefix&gt;-]&lt;subchart&gt;-&lt;laneName&gt;[-&lt;instance&gt;]</code>. The component type is not part of the name &mdash; the kind already tells the Deployment from the Service called <code>krypton-payments-release</code>. Several resources of one kind get an <code>instance</code>: krypton-payments renders its ConfigMaps, Secrets and VaultStaticSecrets from maps and uses the map key, normalised to a DNS-1123 label (camelCase boundaries become dashes, everything is lowercased, other characters become dashes). <code>global.namePrefix</code> prefixes every name, <code>global.partOfPrefix</code> prefixes only the <code>app.kubernetes.io/part-of</code> lane label. Switching the lane renames everything consistently.</p>
-    <p data-lang="de">Jede Ressource hei&szlig;t <code>[&lt;namePrefix&gt;-]&lt;subchart&gt;-&lt;laneName&gt;[-&lt;instance&gt;]</code>. Der Komponententyp ist nicht Teil des Namens &mdash; der Kind unterscheidet das Deployment ohnehin vom Service namens <code>krypton-payments-release</code>. Mehrere Ressourcen einer Art bekommen eine <code>instance</code>: krypton-payments rendert seine ConfigMaps, Secrets und VaultStaticSecrets aus Maps und nutzt den Map-Key, normalisiert auf ein DNS-1123-Label (camelCase-Grenzen werden zu Bindestrichen, alles wird kleingeschrieben, andere Zeichen werden zu Bindestrichen). <code>global.namePrefix</code> stellt jedem Namen etwas voran, <code>global.partOfPrefix</code> nur dem Lane-Label <code>app.kubernetes.io/part-of</code>. Ein Lane-Wechsel benennt alles konsistent um.</p>
+    <p data-lang="de">Eine Lane ist eine Umgebung wie <code>release</code> oder <code>test</code>. Namen folgen dem Schema <code>[&lt;namePrefix&gt;-]&lt;subchart&gt;-&lt;lane&gt;[-&lt;instance&gt;]</code>. Deployment und Service dürfen gleich heißen, weil ihre Ressourcentypen verschieden sind. Mehrere Ressourcen desselben Typs brauchen unterschiedliche Instanzen. Namen mit mehr als 63 Zeichen oder ungültigem Format führen zu einer Fehlermeldung. <code>namePrefix</code> betrifft Namen; <code>partOfPrefix</code> betrifft nur das Lane-Label. Ein Lane-Wechsel ändert nicht automatisch Ressourcenlimits oder Replikazahlen.</p>
     <div class="io">
       <div class="stack">
         <figure class="code">
@@ -344,14 +347,14 @@ name: krypton-payments-release-feature-flags  # ConfigMap "featureFlags"</pre>
         </figure>
       </div>
     </div>
-    <div class="note"><span data-lang="en"><b>Guards:</b> an empty or malformed <code>global.laneName</code> fails the umbrella schema (see <a href="#guardrails">guardrails</a>); a key that appears in both <code>secrets</code> and <code>vault.secrets</code> would produce two Secrets of one name and is refused by the subchart. Names are truncated to 63 characters.</span><span data-lang="de"><b>Absicherungen:</b> ein leeres oder ung&uuml;ltiges <code>global.laneName</code> scheitert am Umbrella-Schema (siehe <a href="#guardrails">Leitplanken</a>); ein Key, der in <code>secrets</code> und <code>vault.secrets</code> zugleich vorkommt, erg&auml;be zwei Secrets eines Namens und wird vom Subchart abgelehnt. Namen werden auf 63 Zeichen gek&uuml;rzt.</span></div>
+    <div class="note"><span data-lang="en"><b>Guards:</b> an empty or malformed <code>global.laneName</code> fails the umbrella schema (see <a href="#guardrails">guardrails</a>); a key that appears in both <code>secrets</code> and <code>vault.secrets</code> would produce two Secrets of one name and is refused by the subchart. Names longer than 63 characters or with an invalid format fail rendering.</span><span data-lang="de"><b>Absicherungen:</b> ein leeres oder ung&uuml;ltiges <code>global.laneName</code> scheitert am Umbrella-Schema (siehe <a href="#guardrails">Validierung</a>); ein Key, der in <code>secrets</code> und <code>vault.secrets</code> zugleich vorkommt, erg&auml;be zwei Secrets eines Namens und wird vom Subchart abgelehnt. Namen mit mehr als 63 Zeichen oder ungültigem Format werden abgelehnt.</span></div>
   </article>
 
   <!-- S3 shared -->
   <article class="example" id="ex-shared">
     <h3 data-lang="en">Shared resources without the lane</h3><h3 data-lang="de">Geteilte Ressourcen ohne Lane</h3>
     <p data-lang="en">ConfigMaps and Secrets that every lane deployment in a namespace consumes only have to exist once. The <code>krypton-shared</code> subchart renders them with <code>shared: true</code>: the name drops the lane segment (<code>krypton-shared-&lt;key&gt;</code>) and the <code>app.kubernetes.io/part-of</code> label is omitted. Exactly one ArgoCD Application per namespace may own them, so ownership is the plain deploy switch <code>krypton-shared.enabled</code>. Consumers reference the objects with the <em>same</em> helper call plus <code>chart: krypton-shared</code> &mdash; the reference can never drift from the rendered name.</p>
-    <p data-lang="de">ConfigMaps und Secrets, die jedes Lane-Deployment in einem Namespace nutzt, m&uuml;ssen nur einmal existieren. Das Subchart <code>krypton-shared</code> rendert sie mit <code>shared: true</code>: Der Name verliert das Lane-Segment (<code>krypton-shared-&lt;key&gt;</code>), das <code>app.kubernetes.io/part-of</code>-Label entf&auml;llt. Genau eine ArgoCD-Application pro Namespace darf sie besitzen, die Eigent&uuml;merschaft ist deshalb der gew&ouml;hnliche Deploy-Schalter <code>krypton-shared.enabled</code>. Konsumenten referenzieren die Objekte mit <em>demselben</em> Helper-Aufruf plus <code>chart: krypton-shared</code> &mdash; die Referenz kann nie vom gerenderten Namen abdriften.</p>
+    <p data-lang="de">Gemeinsame ConfigMaps und Secrets werden von <code>krypton-shared</code> mit <code>shared: true</code> erzeugt. Dadurch entfallen Lane-Segment und Lane-Label. Pro Ressourcennamen ist genau ein Bereitsteller zuständig. Andere Applications referenzieren das Objekt über <code>chart: krypton-shared</code>; benötigte Objekte müssen vorher vorhanden sein.</p>
     <div class="io">
       <div class="stack">
         <figure class="code">
@@ -453,8 +456,8 @@ kind: Deployment   # krypton-notifier-release
   <!-- S4 labels & annotations -->
   <article class="example" id="ex-labels">
     <h3 data-lang="en">Labels &amp; annotations: global &rarr; subchart &rarr; call site</h3><h3 data-lang="de">Labels &amp; Annotations: global &rarr; Subchart &rarr; Aufrufstelle</h3>
-    <p data-lang="en">Chart-generated standard keys merge with the static <code>global.labels</code> / <code>global.annotations</code>, then with the subchart&rsquo;s own <code>labels:</code> / <code>annotations:</code> block &mdash; which the umbrella can fill or override per subchart (<code>krypton-payments.labels</code>, <code>krypton-notifier.annotations</code>) &mdash; then with per-call extras. Later wins on key collisions; the two ArgoCD annotations are applied last and can never be shadowed. The generated annotation <code>&lt;labelDomain&gt;/source-chart</code> records which chart version produced the resource.</p>
-    <p data-lang="de">Chart-generierte Standard-Keys verschmelzen mit den statischen <code>global.labels</code> / <code>global.annotations</code>, dann mit dem eigenen <code>labels:</code>-/<code>annotations:</code>-Block des Subcharts &mdash; den das Umbrella je Subchart f&uuml;llen oder &uuml;berschreiben kann (<code>krypton-payments.labels</code>, <code>krypton-notifier.annotations</code>) &mdash;, dann mit den Extras je Aufruf. Bei Key-Kollisionen gewinnt der sp&auml;tere; die beiden ArgoCD-Annotations kommen zuletzt und k&ouml;nnen nie &uuml;berdeckt werden. Die generierte Annotation <code>&lt;labelDomain&gt;/source-chart</code> h&auml;lt fest, welche Chart-Version die Ressource erzeugt hat.</p>
+    <p data-lang="en">Labels merge globals, subchart labels and per-call extras, then the library applies reserved Pod identity labels. Annotations follow the same layers with optional single values and values paths. Configured Argo CD values take precedence; all resulting values are strings.</p>
+    <p data-lang="de">Eigene Labels werden in der Reihenfolge <code>global.labels</code> → Subchart-<code>labels</code> → <code>extraLabels</code> zusammengeführt. Anschließend setzt die Library die reservierten Pod-Identitätslabels. Annotations folgen derselben Ebenenfolge, ergänzt um Einzelwert und Values-Pfad. Konfigurierte Argo-CD-Werte haben Vorrang; alle Werte werden als Strings ausgegeben.</p>
     <div class="io">
       <figure class="code">
         <figcaption><span class="dot dot-in"></span>values.yaml &middot; umbrella</figcaption>
@@ -518,7 +521,7 @@ krypton-notifier:
   <article class="example" id="ex-annotation">
     <h3 data-lang="en">Annotations for exactly one resource</h3><h3 data-lang="de">Annotations f&uuml;r genau eine Ressource</h3>
     <p data-lang="en">The maps above reach every resource. For a single one &mdash; the HAProxy timeout of the Route, not of the Deployment next to it &mdash; the <code>metadata</code> (or <code>annotations</code>) call takes three optional arguments: <code>extraAnnotations</code> (a dict), <code>annotation</code> (one <code>key=value</code> string) and <code>annotationsFrom</code> (a dotted path below <code>.Values</code>). The path form tolerates a missing path, so inside a <code>range</code> over several Routes only the instances that carry a <code>routes.&lt;name&gt;.annotations</code> block get one; a path that holds anything but a map fails the render. The krypton-payments Route uses the dict form.</p>
-    <p data-lang="de">Die Maps oben erreichen jede Ressource. F&uuml;r eine einzelne &mdash; das HAProxy-Timeout der Route, nicht des Deployments daneben &mdash; nimmt der <code>metadata</code>- (oder <code>annotations</code>-) Aufruf drei optionale Argumente: <code>extraAnnotations</code> (ein Dict), <code>annotation</code> (ein <code>key=value</code>-String) und <code>annotationsFrom</code> (ein Punkt-Pfad unterhalb von <code>.Values</code>). Die Pfad-Form toleriert einen fehlenden Pfad, in einem <code>range</code> &uuml;ber mehrere Routes bekommen also nur die Instanzen mit einem <code>routes.&lt;name&gt;.annotations</code>-Block eine; ein Pfad, der etwas anderes als eine Map enth&auml;lt, l&auml;sst das Rendern fehlschlagen. Die krypton-payments-Route nutzt die Dict-Form.</p>
+    <p data-lang="de">Für Annotations einer einzelnen Ressource stehen <code>extraAnnotations</code> als Map, <code>annotation</code> als String <code>key=value</code> und <code>annotationsFrom</code> als Punktpfad unter <code>.Values</code> bereit. Ein fehlender Pfad wird ignoriert; ein vorhandener skalarer Zielwert lässt das Rendern fehlschlagen. Payments reicht die Route-Annotations als Map weiter.</p>
     <div class="io">
       <div class="stack">
         <figure class="code">
@@ -568,8 +571,8 @@ spec:
   <!-- S6 selectors -->
   <article class="example" id="ex-selector">
     <h3 data-lang="en">Pod selectors: Deployment &harr; Service</h3><h3 data-lang="de">Pod-Selektoren: Deployment &harr; Service</h3>
-    <p data-lang="en"><code>selectorLabels</code> is the identity subset that Deployment and Service selectors match pods by: exactly <code>app.kubernetes.io/name</code>, <code>app.kubernetes.io/instance</code> (the Helm release, i.e. the ArgoCD Application) and <code>app.kubernetes.io/part-of</code> (the lane), each carrying the value the pod template receives from <code>labels</code>. The lane is part of the identity so one lane&rsquo;s Service can never select another lane&rsquo;s pods in a shared namespace. Pods are never <code>shared</code>, so the selector always carries the lane.</p>
-    <p data-lang="de"><code>selectorLabels</code> ist die Identit&auml;ts-Teilmenge, &uuml;ber die Deployment- und Service-Selektoren Pods finden: genau <code>app.kubernetes.io/name</code>, <code>app.kubernetes.io/instance</code> (das Helm-Release, also die ArgoCD-Application) und <code>app.kubernetes.io/part-of</code> (die Lane), jeweils mit dem Wert, den das Pod-Template aus <code>labels</code> bekommt. Die Lane geh&ouml;rt zur Identit&auml;t, damit der Service einer Lane in einem geteilten Namespace nie die Pods einer anderen Lane ausw&auml;hlt. Pods sind nie <code>shared</code>, der Selektor tr&auml;gt die Lane also immer.</p>
+    <p data-lang="en">Selectors use the same three reserved identity labels as Pod templates. The instance label is the Helm release name, which defaults to the Argo CD Application name unless helm.releaseName overrides it. Deployment selectors are immutable.</p>
+    <p data-lang="de">Deployment- und Service-Selektoren verwenden die Labels <code>app.kubernetes.io/name</code>, <code>app.kubernetes.io/instance</code> und <code>app.kubernetes.io/part-of</code>. Die Library setzt diese Werte auch am Pod-Template und schützt sie vor Überschreiben. Der Release-Name ist standardmäßig der Argo-CD-Application-Name, kann aber mit <code>helm.releaseName</code> abweichen. Deployment-Selektoren sind unveränderlich; Änderungen am Lane-Label benötigen eine geplante Neuerstellung.</p>
     <div class="io">
       <figure class="code">
         <figcaption><span class="dot dot-in"></span>templates/service.yaml &middot; deployment.yaml</figcaption>
@@ -606,14 +609,14 @@ spec:
         </figure>
       </div>
     </div>
-    <div class="note"><span data-lang="en"><b>One-way door:</b> a Deployment selector is immutable. Renaming the lane creates a new Deployment anyway, but changing <code>global.partOfPrefix</code> on a lane that already runs changes only the selector and the apply is rejected &mdash; delete that lane&rsquo;s Deployments once, then sync again. Never add chart version or custom labels to the selector.</span><span data-lang="de"><b>Einbahnstra&szlig;e:</b> ein Deployment-Selektor ist unver&auml;nderlich. Eine Lane-Umbenennung erzeugt ohnehin ein neues Deployment, aber <code>global.partOfPrefix</code> auf einer bereits laufenden Lane zu &auml;ndern ver&auml;ndert nur den Selektor und der Apply wird abgelehnt &mdash; die Deployments dieser Lane einmalig l&ouml;schen, dann erneut syncen. Nie Chart-Version oder eigene Labels in den Selektor aufnehmen.</span></div>
+    <div class="note"><span data-lang="en"><b>Selector changes:</b> a Deployment selector is immutable. Renaming the lane creates a new Deployment anyway, but changing <code>global.partOfPrefix</code> on a lane that already runs changes only the selector and the apply is rejected &mdash; plan recreation of affected Deployments and account for possible downtime. Never add chart version or custom labels to the selector.</span><span data-lang="de"><b>Selektoränderungen:</b> ein Deployment-Selektor ist unveränderlich. Eine Lane-Umbenennung erzeugt ohnehin ein neues Deployment, aber <code>global.partOfPrefix</code> auf einer bereits laufenden Lane zu &auml;ndern ver&auml;ndert nur den Selektor und der Apply wird abgelehnt &mdash; die Neuerstellung betroffener Deployments planen und mögliche Ausfallzeiten berücksichtigen. Nie Chart-Version oder eigene Labels in den Selektor aufnehmen.</span></div>
   </article>
 
   <!-- S7 waves -->
   <article class="example" id="ex-waves">
-    <h3 data-lang="en">Sync waves: subchart &rarr; umbrella &rarr; global</h3><h3 data-lang="de">Sync-Waves: Subchart &rarr; Umbrella &rarr; global</h3>
-    <p data-lang="en">A wave is resolved per component type, first hit wins: the subchart&rsquo;s <code>syncWaves.&lt;component&gt;</code> (into which Helm has already coalesced the umbrella&rsquo;s <code>krypton-payments.syncWaves</code> override), then <code>global.syncWaves.&lt;component&gt;</code>. krypton-payments ships <code>route: "2"</code>, the umbrella bumps it to <code>"3"</code>; every other component falls back to the platform defaults. Nothing configured anywhere means no annotation at all.</p>
-    <p data-lang="de">Eine Wave wird pro Komponententyp aufgel&ouml;st, der erste Treffer gewinnt: <code>syncWaves.&lt;component&gt;</code> des Subcharts (in das Helm den Umbrella-Override <code>krypton-payments.syncWaves</code> bereits koalesziert hat), dann <code>global.syncWaves.&lt;component&gt;</code>. krypton-payments bringt <code>route: "2"</code> mit, das Umbrella hebt auf <code>"3"</code>; jede andere Komponente f&auml;llt auf die Plattform-Defaults zur&uuml;ck. Nirgends konfiguriert hei&szlig;t: gar keine Annotation.</p>
+    <h3 data-lang="en">Sync waves: subchart values (with umbrella overrides) &rarr; global</h3><h3 data-lang="de">Sync-Waves: Subchart-Werte (mit Umbrella-Overrides) &rarr; global</h3>
+    <p data-lang="en">Subchart waves, including umbrella overrides, take precedence over global waves. Without a wave or offset no wave annotation is generated.</p>
+    <p data-lang="de">Für eine Komponente gilt zuerst <code>syncWaves.&lt;component&gt;</code> im Subchart einschließlich Umbrella-Overrides, danach <code>global.syncWaves.&lt;component&gt;</code>. Ohne Wave und ohne Offset wird keine Wave-Annotation erzeugt. Die Zahl <code>0</code> und negative Zahlen sind gültig; YAML-<code>null</code> ist kein Zahlenwert.</p>
     <div class="io">
       <div class="stack">
         <figure class="code">
@@ -661,8 +664,8 @@ kind: Route
   <!-- S8 offset -->
   <article class="example" id="ex-offset">
     <h3 data-lang="en">Cross-subchart ordering with syncWaveOffset</h3><h3 data-lang="de">Subchart-&uuml;bergreifende Reihenfolge mit syncWaveOffset</h3>
-    <p data-lang="en">To sync one subchart entirely after another, shift its band: <code>syncWaveOffset</code> (per subchart, set from the umbrella) is added to every resolved wave. Components without a configured wave &mdash; implicitly wave 0 in ArgoCD &mdash; are annotated with the bare offset, so they move with the block instead of escaping to wave 0. Keep component waves inside <code>-9..9</code> and step offsets by 10, then bands never overlap.</p>
-    <p data-lang="de">Soll ein Subchart vollst&auml;ndig nach einem anderen syncen, verschiebt man sein Band: <code>syncWaveOffset</code> (je Subchart, aus dem Umbrella gesetzt) wird auf jede aufgel&ouml;ste Wave addiert. Komponenten ohne konfigurierte Wave &mdash; in ArgoCD implizit Wave 0 &mdash; bekommen den blo&szlig;en Offset, sie wandern also mit dem Block statt auf Wave 0 zu entkommen. Komponenten-Waves innerhalb von <code>-9..9</code> halten und Offsets in Zehnerschritten w&auml;hlen, dann &uuml;berlappen sich B&auml;nder nie.</p>
+    <p data-lang="en">syncWaveOffset shifts all component waves, using zero as the base for unconfigured types. Choose offsets using actual ranges. Local waves -9..9 require a step of at least 19 to avoid overlap.</p>
+    <p data-lang="de"><code>syncWaveOffset</code> verschiebt alle Waves des Subcharts um denselben Wert. Eine nicht konfigurierte Wave zählt dafür als null. Die tatsächlichen Bereiche müssen getrennt bleiben: Für lokale Waves <code>-9..9</code> sind mindestens <code>19</code> Abstand nötig; Zehnerschritte würden überlappen.</p>
     <div class="io">
       <figure class="code">
         <figcaption><span class="dot dot-in"></span>values.yaml &middot; umbrella</figcaption>
@@ -686,7 +689,7 @@ kind: Service
   <article class="example" id="ex-syncoptions">
     <h3 data-lang="en">ArgoCD sync options per component</h3><h3 data-lang="de">ArgoCD-Sync-Options je Komponente</h3>
     <p data-lang="en"><code>syncOptions.&lt;component&gt;</code> takes a <b>list</b> of ArgoCD resource-level sync options (a comma-separated string works too) and renders <code>argocd.argoproj.io/sync-options</code>. Same precedence chain as the waves; the first hit <em>replaces</em>, lists never merge &mdash; so a subchart switches an inherited platform rule off with <code>[]</code>. The platform rule here: never auto-prune Vault-sourced Secrets. krypton-payments additionally keeps its public Route even if the manifest disappears from git or the Application is deleted.</p>
-    <p data-lang="de"><code>syncOptions.&lt;component&gt;</code> nimmt eine <b>Liste</b> von ArgoCD-Sync-Options auf Ressourcenebene (ein kommagetrennter String geht auch) und rendert <code>argocd.argoproj.io/sync-options</code>. Gleiche Vorrangkette wie bei den Waves; der erste Treffer <em>ersetzt</em>, Listen werden nie gemergt &mdash; ein Subchart schaltet eine geerbte Plattform-Regel also mit <code>[]</code> ab. Die Plattform-Regel hier: Vault-basierte Secrets nie automatisch prunen. krypton-payments beh&auml;lt zus&auml;tzlich seine &ouml;ffentliche Route, auch wenn das Manifest aus git verschwindet oder die Application gel&ouml;scht wird.</p>
+    <p data-lang="de"><code>syncOptions.&lt;component&gt;</code> akzeptiert eine Liste oder einen kommagetrennten String. Der Subchart-Wert ersetzt den globalen vollständig; <code>[]</code> hebt eine geerbte Liste auf. <code>Prune=false</code> schützt beim Sync-Pruning, <code>Delete=false</code> zusätzlich bei kaskadierender Application-Löschung. Payments verwendet beide Optionen für seine Route.</p>
     <div class="io">
       <div class="stack">
         <figure class="code">
@@ -738,7 +741,7 @@ kind: Route                           # the only resource left with sync options
   <article class="example" id="ex-switch">
     <h3 data-lang="en">Deploy switches per subchart</h3><h3 data-lang="de">Deploy-Schalter je Subchart</h3>
     <p data-lang="en">Every application subchart is guarded by a <code>condition:</code> in the umbrella <code>Chart.yaml</code> and switched from the umbrella values. A missing flag would count as enabled, so the flags are set explicitly and every lane can flip them. The library itself is unconditional: disabling it would drop the helper templates from the render namespace and break every enabled subchart.</p>
-    <p data-lang="de">Jedes Anwendungs-Subchart h&auml;ngt an einer <code>condition:</code> in der Umbrella-<code>Chart.yaml</code> und wird aus den Umbrella-Values geschaltet. Ein fehlendes Flag z&auml;hlte als aktiviert, die Flags sind deshalb explizit gesetzt und jede Lane kann sie umlegen. Die Library selbst ist unbedingt: Sie abzuschalten w&uuml;rde die Helper-Templates aus dem Render-Namensraum entfernen und jedes aktivierte Subchart brechen.</p>
+    <p data-lang="de">Ein <code>condition</code>-Eintrag in der Umbrella-<code>Chart.yaml</code> verbindet jedes Subchart mit seinem <code>enabled</code>-Schalter. Bei <code>false</code> werden seine Manifeste nicht mehr erzeugt. Wenn Pruning aktiviert ist, entfernt Argo CD die bisherigen Ressourcen mit Ausnahme geschützter Objekte.</p>
     <div class="io">
       <div class="stack">
         <figure class="code">
@@ -782,7 +785,7 @@ kind: Deployment   # krypton-notifier-release</pre>
   <article class="example" id="ex-vault">
     <h3 data-lang="en">VaultStaticSecrets: instances &amp; lane-aware paths</h3><h3 data-lang="de">VaultStaticSecrets: Instanzen &amp; Lane-abh&auml;ngige Pfade</h3>
     <p data-lang="en">One VaultStaticSecret per <code>vault.secrets</code> entry, the key as instance. The CRD writes a Secret of the same name (<code>destination.name</code> is computed with the identical helper call the Deployment uses for its <code>secretRef</code>), so the two can never disagree. Paths go through <code>tpl</code> in the subchart template &mdash; the library deliberately has no <code>tpl</code> helper, the spec is the subchart&rsquo;s business &mdash; so the defaults template the lane in and every lane reads its own secrets. The type-level wave <code>-1</code> and the platform rule <code>Prune=false</code> apply to every instance.</p>
-    <p data-lang="de">Ein VaultStaticSecret je <code>vault.secrets</code>-Eintrag, der Key als Instanz. Die CRD schreibt ein Secret desselben Namens (<code>destination.name</code> entsteht mit dem identischen Helper-Aufruf, den das Deployment f&uuml;r sein <code>secretRef</code> nutzt), die beiden k&ouml;nnen sich also nie widersprechen. Pfade laufen im Subchart-Template durch <code>tpl</code> &mdash; die Library hat bewusst keinen <code>tpl</code>-Helper, die Spec ist Sache des Subcharts &mdash;, die Defaults templaten also die Lane hinein und jede Lane liest ihre eigenen Secrets. Die Typ-Wave <code>-1</code> und die Plattform-Regel <code>Prune=false</code> gelten f&uuml;r jede Instanz.</p>
+    <p data-lang="de">Payments erzeugt je Eintrag in <code>vault.secrets</code> ein VaultStaticSecret. Das Ziel-Secret und die Deployment-Referenz verwenden denselben Namens-Helper. <code>tpl</code> wertet die Pfade im Subchart-Kontext aus. Die Standardpfade enthalten die Lane; eigene Pfade können davon abweichen. Die Wave und Sync-Options gelten für alle Instanzen dieses Typs.</p>
     <div class="io">
       <div class="stack">
         <figure class="code">
@@ -839,14 +842,14 @@ spec:
     create: true</pre>
       </figure>
     </div>
-    <div class="note"><span data-lang="en"><b>Guard:</b> a key present in both <code>secrets</code> and <code>vault.secrets</code> would make two Secrets fight over one name &mdash; the subchart refuses the render (see <a href="#guardrails">guardrails</a>). krypton-shared renders its Vault secrets the same way, minus the lane in name and path.</span><span data-lang="de"><b>Absicherung:</b> ein Key, der in <code>secrets</code> und <code>vault.secrets</code> zugleich vorkommt, lie&szlig;e zwei Secrets um einen Namen streiten &mdash; das Subchart verweigert das Rendern (siehe <a href="#guardrails">Leitplanken</a>). krypton-shared rendert seine Vault-Secrets genauso, nur ohne Lane in Name und Pfad.</span></div>
+    <div class="note"><span data-lang="en"><b>Guard:</b> a key present in both <code>secrets</code> and <code>vault.secrets</code> would make two Secrets fight over one name &mdash; the subchart refuses the render (see <a href="#guardrails">guardrails</a>). krypton-shared renders its Vault secrets the same way, minus the lane in name and path.</span><span data-lang="de"><b>Absicherung:</b> ein Key, der in <code>secrets</code> und <code>vault.secrets</code> zugleich vorkommt, lie&szlig;e zwei Secrets um einen Namen streiten &mdash; das Subchart verweigert das Rendern (siehe <a href="#guardrails">Validierung</a>). krypton-shared rendert seine Vault-Secrets genauso, nur ohne Lane in Name und Pfad.</span></div>
   </article>
 
   <!-- S12 labelDomain -->
   <article class="example" id="ex-domain">
     <h3 data-lang="en">Rebranding the label domain</h3><h3 data-lang="de">Label-Domain umbenennen</h3>
     <p data-lang="en">The only key the library generates under a domain is <code>&lt;labelDomain&gt;/source-chart</code>; <code>global.labelDomain</code> renames that prefix without touching the library. The static entries under <code>global.labels</code> / <code>global.annotations</code> are plain values and are edited alongside when rebranding.</p>
-    <p data-lang="de">Der einzige Key, den die Library unter einer Domain erzeugt, ist <code>&lt;labelDomain&gt;/source-chart</code>; <code>global.labelDomain</code> benennt dieses Pr&auml;fix um, ohne die Library anzufassen. Die statischen Eintr&auml;ge unter <code>global.labels</code> / <code>global.annotations</code> sind einfache Werte und werden beim Rebranding mit angepasst.</p>
+    <p data-lang="de"><code>global.labelDomain</code> bestimmt das Präfix der erzeugten Annotation <code>&lt;domain&gt;/source-chart</code>. Eigene Schlüssel unter <code>global.labels</code> und <code>global.annotations</code> müssen bei einem Domain-Wechsel separat angepasst werden.</p>
     <div class="io">
       <div class="stack">
         <div class="cmd">helm template krypton krypton-umbrella-slim --set global.labelDomain=acme.io</div>
@@ -869,11 +872,11 @@ spec:
   <span class="eyebrow" data-lang="en">Every option</span><span class="eyebrow" data-lang="de">Jede Option</span>
   <h2 data-lang="en">Reference</h2><h2 data-lang="de">Referenz</h2>
   <p data-lang="en">The complete contract between the umbrella, the subcharts and <code>krypton-lib-slim</code>: every values key the library reads, every helper argument, the precedence chains and the component catalog. Keys not listed here belong to the subchart and pass straight through.</p>
-  <p data-lang="de">Der vollst&auml;ndige Vertrag zwischen Umbrella, Subcharts und <code>krypton-lib-slim</code>: jeder Values-Key, den die Library liest, jedes Helper-Argument, die Vorrangketten und der Komponentenkatalog. Hier nicht aufgef&uuml;hrte Keys geh&ouml;ren dem Subchart und werden durchgereicht.</p>
+  <p data-lang="de">Die folgenden Tabellen zeigen die Library-bezogenen Values, Helper-Argumente und Komponententypen. Andere Einstellungen gehören den Subchart-Templates. Die aktuelle ausführliche Beschreibung steht außerdem in <code>krypton-umbrella-slim/README.de.md</code>.</p>
 
   <h3 class="sub" data-lang="en">Umbrella values &mdash; every key the library reads</h3><h3 class="sub" data-lang="de">Umbrella-Values &mdash; jeder Key, den die Library liest</h3>
   <p data-lang="en">A fully annotated <code>values.yaml</code>. <code>global.*</code> is visible to every subchart; a block named after a subchart is merged over that subchart&rsquo;s own values, the umbrella wins per key.</p>
-  <p data-lang="de">Eine vollst&auml;ndig kommentierte <code>values.yaml</code>. <code>global.*</code> sieht jedes Subchart; ein nach einem Subchart benannter Block wird &uuml;ber dessen eigene Values gemergt, das Umbrella gewinnt je Key.</p>
+  <p data-lang="de"><code>global</code> ist für jedes Subchart sichtbar. Ein nach einem Subchart benannter Block überschreibt dessen Standardwerte. Maps werden zusammengeführt, Listen ersetzt.</p>
   <figure class="code">
     <figcaption><span class="dot dot-in"></span>krypton-umbrella-slim/values.yaml &middot; <span data-lang="en">reference</span><span data-lang="de">Referenz</span></figcaption>
     <pre data-hl="yaml">global:
@@ -940,7 +943,7 @@ krypton-shared:
 
   <h3 class="sub" data-lang="en">Subchart values &mdash; what krypton-payments reads</h3><h3 class="sub" data-lang="de">Subchart-Values &mdash; was krypton-payments liest</h3>
   <p data-lang="en">The demo subchart&rsquo;s own contract, as a template for new subcharts. Only the last block is seen by the library; everything else feeds the subchart&rsquo;s manifests directly.</p>
-  <p data-lang="de">Der eigene Vertrag des Demo-Subcharts, als Vorlage f&uuml;r neue Subcharts. Nur der letzte Block wird von der Library gelesen; alles andere speist direkt die Manifeste des Subcharts.</p>
+  <p data-lang="de">Diese Beispielwerte gehören zu Payments. Workload-Werte werden in dessen Templates verarbeitet; die Library verwendet die gemeinsamen Metadata- und Sync-Einstellungen.</p>
   <figure class="code">
     <figcaption><span class="dot dot-in"></span>charts/krypton-payments/values.yaml &middot; <span data-lang="en">reference</span><span data-lang="de">Referenz</span></figcaption>
     <pre data-hl="yaml">replicaCount: 1
@@ -978,13 +981,13 @@ annotations: {}</pre>
 
   <h3 class="sub" data-lang="en">Helpers &amp; arguments</h3><h3 class="sub" data-lang="de">Helper &amp; Argumente</h3>
   <p data-lang="en">Every helper takes one dict. <code>ctx</code> is the caller&rsquo;s root context (<code>.</code> in a template, <code>$</code> inside a <code>range</code>); <code>component</code> is validated against the catalog and selects wave and sync options.</p>
-  <p data-lang="de">Jeder Helper nimmt ein Dict. <code>ctx</code> ist der Root-Kontext des Aufrufers (<code>.</code> im Template, <code>$</code> in einem <code>range</code>); <code>component</code> wird gegen den Katalog validiert und w&auml;hlt Wave und Sync-Options.</p>
+  <p data-lang="de">Helper erhalten ein Dictionary mit <code>ctx</code> als Subchart-Kontext. Innerhalb einer Schleife den Root-Kontext übergeben. <code>component</code> bezeichnet den Ressourcentyp für die Namensvalidierung und Sync-Einstellungen.</p>
   <div class="ref-wrap"><table>
     <thead><tr><th>Helper</th><th data-lang="en">Arguments</th><th data-lang="de">Argumente</th><th data-lang="en">Produces</th><th data-lang="de">Erzeugt</th></tr></thead>
     <tbody>
-      <tr><td><code>krypton-lib-slim.metadata</code></td><td><code>ctx</code>, <code>component</code>, <code>instance?</code>, <code>shared?</code>, <code>extraLabels?</code>, <code>extraAnnotations?</code>, <code>annotation?</code>, <code>annotationsFrom?</code></td><td data-lang="en"><code>name:</code> + <code>labels:</code> + <code>annotations:</code> &mdash; the whole block</td><td data-lang="de"><code>name:</code> + <code>labels:</code> + <code>annotations:</code> &mdash; der ganze Block</td></tr>
+      <tr><td><code>krypton-lib-slim.metadata</code></td><td><code>ctx</code>, <code>component</code>, <code>instance?</code>, <code>shared?</code>, <code>chart?</code>, <code>extraLabels?</code>, <code>extraAnnotations?</code>, <code>annotation?</code>, <code>annotationsFrom?</code></td><td data-lang="en"><code>name:</code> + <code>labels:</code> + <code>annotations:</code> &mdash; the whole block</td><td data-lang="de"><code>name:</code> + <code>labels:</code> + <code>annotations:</code> &mdash; der ganze Block</td></tr>
       <tr><td><code>krypton-lib-slim.componentName</code></td><td><code>ctx</code>, <code>component</code>, <code>instance?</code>, <code>shared?</code>, <code>chart?</code></td><td data-lang="en">the resource name, also for cross-references into another subchart</td><td data-lang="de">der Ressourcenname, auch f&uuml;r Querverweise in ein anderes Subchart</td></tr>
-      <tr><td><code>krypton-lib-slim.labels</code></td><td><code>ctx</code>, <code>shared?</code>, <code>extraLabels?</code></td><td data-lang="en">the merged label map (pod templates)</td><td data-lang="de">die zusammengef&uuml;hrte Label-Map (Pod-Templates)</td></tr>
+      <tr><td><code>krypton-lib-slim.labels</code></td><td><code>ctx</code>, <code>shared?</code>, <code>chart?</code>, <code>extraLabels?</code></td><td data-lang="en">the merged label map (pod templates)</td><td data-lang="de">die zusammengef&uuml;hrte Label-Map (Pod-Templates)</td></tr>
       <tr><td><code>krypton-lib-slim.selectorLabels</code></td><td><code>ctx</code></td><td data-lang="en">the immutable identity subset for selectors</td><td data-lang="de">die unver&auml;nderliche Identit&auml;ts-Teilmenge f&uuml;r Selektoren</td></tr>
       <tr><td><code>krypton-lib-slim.annotations</code></td><td><code>ctx</code>, <code>component</code>, <code>extraAnnotations?</code>, <code>annotation?</code>, <code>annotationsFrom?</code></td><td data-lang="en">the merged annotation map incl. the two ArgoCD keys</td><td data-lang="de">die zusammengef&uuml;hrte Annotation-Map inkl. der beiden ArgoCD-Keys</td></tr>
       <tr><td><code>krypton-lib-slim.syncWave</code></td><td><code>ctx</code>, <code>component</code></td><td data-lang="en">the resolved wave as a string, <code>""</code> if none</td><td data-lang="de">die aufgel&ouml;ste Wave als String, <code>""</code> wenn keine</td></tr>
@@ -998,11 +1001,11 @@ annotations: {}</pre>
       <tr><td><code>component</code> <span class="req">required</span></td><td data-lang="en">catalog key</td><td data-lang="de">Katalog-Key</td><td data-lang="en">not part of the name; validated against the catalog; selects <code>syncWaves.&lt;component&gt;</code> / <code>syncOptions.&lt;component&gt;</code></td><td data-lang="de">nicht Teil des Namens; gegen den Katalog validiert; w&auml;hlt <code>syncWaves.&lt;component&gt;</code> / <code>syncOptions.&lt;component&gt;</code></td></tr>
       <tr><td><code>instance</code> <span class="opt">optional</span></td><td data-lang="en">string</td><td data-lang="de">String</td><td data-lang="en">appended to the name for several resources of one kind; normalised to a DNS-1123 label (<code>featureFlags</code> &rarr; <code>feature-flags</code>)</td><td data-lang="de">wird f&uuml;r mehrere Ressourcen einer Art an den Namen geh&auml;ngt; auf ein DNS-1123-Label normalisiert (<code>featureFlags</code> &rarr; <code>feature-flags</code>)</td></tr>
       <tr><td><code>shared</code> <span class="opt">optional</span></td><td data-lang="en">bool</td><td data-lang="de">Bool</td><td data-lang="en">lane-independent: the name omits the lane segment, the <code>part-of</code> label is not stamped; <code>namePrefix</code> is kept</td><td data-lang="de">Lane-unabh&auml;ngig: der Name l&auml;sst das Lane-Segment weg, das <code>part-of</code>-Label wird nicht gesetzt; <code>namePrefix</code> bleibt</td></tr>
-      <tr><td><code>chart</code> <span class="opt">optional</span></td><td data-lang="en">subchart name (<code>componentName</code> only)</td><td data-lang="de">Subchart-Name (nur <code>componentName</code>)</td><td data-lang="en">names a resource OWNED by another subchart, e.g. <code>krypton-shared</code>; everything else stays identical, so both sides render the same name</td><td data-lang="de">benennt eine Ressource, die ein ANDERES Subchart besitzt, z.&nbsp;B. <code>krypton-shared</code>; alles andere bleibt gleich, beide Seiten rendern denselben Namen</td></tr>
+      <tr><td><code>chart</code> <span class="opt">optional</span></td><td data-lang="en">subchart name (<code>componentName</code> / <code>metadata</code>)</td><td data-lang="de">Subchart-Name (<code>componentName</code> / <code>metadata</code>)</td><td data-lang="en">names a resource OWNED by another subchart, e.g. <code>krypton-shared</code>; everything else stays identical, so both sides render the same name</td><td data-lang="de">benennt eine Ressource, die ein ANDERES Subchart besitzt, z.&nbsp;B. <code>krypton-shared</code>; alles andere bleibt gleich, beide Seiten rendern denselben Namen</td></tr>
       <tr><td><code>extraLabels</code> <span class="opt">optional</span></td><td data-lang="en">dict</td><td data-lang="de">Dict</td><td data-lang="en">merged last into the labels of exactly this resource</td><td data-lang="de">zuletzt in die Labels genau dieser Ressource gemergt</td></tr>
       <tr><td><code>extraAnnotations</code> <span class="opt">optional</span></td><td data-lang="en">dict</td><td data-lang="de">Dict</td><td data-lang="en">annotations for exactly this resource, above the subchart map, below the ArgoCD keys</td><td data-lang="de">Annotations f&uuml;r genau diese Ressource, &uuml;ber der Subchart-Map, unter den ArgoCD-Keys</td></tr>
       <tr><td><code>annotation</code> <span class="opt">optional</span></td><td data-lang="en"><code>"key=value"</code></td><td data-lang="de"><code>"key=value"</code></td><td data-lang="en">one annotation, the one-liner form of <code>extraAnnotations</code>; a malformed string fails the render</td><td data-lang="de">eine Annotation, die Einzeiler-Form von <code>extraAnnotations</code>; ein ung&uuml;ltiger String l&auml;sst das Rendern fehlschlagen</td></tr>
-      <tr><td><code>annotationsFrom</code> <span class="opt">optional</span></td><td data-lang="en">dotted values path</td><td data-lang="de">Punkt-Pfad in die Values</td><td data-lang="en">map below <code>.Values</code>, e.g. <code>"route.annotations"</code> or <code>(printf "routes.%s.annotations" $name)</code>; a missing path contributes nothing, a non-map fails; values are stringified</td><td data-lang="de">Map unterhalb von <code>.Values</code>, z.&nbsp;B. <code>"route.annotations"</code> oder <code>(printf "routes.%s.annotations" $name)</code>; ein fehlender Pfad tr&auml;gt nichts bei, eine Nicht-Map scheitert; Werte werden stringifiziert</td></tr>
+      <tr><td><code>annotationsFrom</code> <span class="opt">optional</span></td><td data-lang="en">dotted values path</td><td data-lang="de">Punkt-Pfad in die Values</td><td data-lang="en">map below <code>.Values</code>, e.g. <code>"route.annotations"</code> or <code>(printf "routes.%s.annotations" $name)</code>; a missing path contributes nothing, a non-map fails; values are stringified</td><td data-lang="de">Map unterhalb von <code>.Values</code>, z.&nbsp;B. <code>"route.annotations"</code> oder <code>(printf "routes.%s.annotations" $name)</code>; ein fehlender Pfad tr&auml;gt nichts bei, eine Nicht-Map scheitert; Werte werden in Strings umgewandelt</td></tr>
     </tbody>
   </table></div>
 
@@ -1010,7 +1013,7 @@ annotations: {}</pre>
   <div class="ref-wrap"><table>
     <thead><tr><th data-lang="en">Output</th><th data-lang="de">Ergebnis</th><th data-lang="en">Resolution (later wins / first hit wins)</th><th data-lang="de">Aufl&ouml;sung (sp&auml;terer gewinnt / erster Treffer gewinnt)</th></tr></thead>
     <tbody>
-      <tr><td data-lang="en"><code>metadata.name</code></td><td data-lang="de"><code>metadata.name</code></td><td><code>[&lt;global.namePrefix&gt;-]&lt;chart | .Chart.Name&gt;[-&lt;global.laneName&gt;][-&lt;instance&gt;]</code> &middot; <span data-lang="en">lane omitted when <code>shared</code>; truncated to 63 characters</span><span data-lang="de">Lane entf&auml;llt bei <code>shared</code>; auf 63 Zeichen gek&uuml;rzt</span></td></tr>
+      <tr><td data-lang="en"><code>metadata.name</code></td><td data-lang="de"><code>metadata.name</code></td><td><code>[&lt;global.namePrefix&gt;-]&lt;chart | .Chart.Name&gt;[-&lt;global.laneName&gt;][-&lt;instance&gt;]</code> &middot; <span data-lang="en">lane omitted when <code>shared</code>; names over 63 characters are rejected</span><span data-lang="de">Lane entf&auml;llt bei <code>shared</code>; Namen über 63 Zeichen werden abgelehnt</span></td></tr>
       <tr><td data-lang="en"><code>labels</code></td><td data-lang="de"><code>labels</code></td><td><span data-lang="en">standard (<code>app.kubernetes.io/name|instance|version|managed-by</code>, <code>helm.sh/chart</code>, <code>part-of</code> unless shared)</span><span data-lang="de">Standard (<code>app.kubernetes.io/name|instance|version|managed-by</code>, <code>helm.sh/chart</code>, <code>part-of</code> au&szlig;er bei shared)</span> &rarr; <code>global.labels</code> &rarr; <code>&lt;subchart&gt;.labels</code> &rarr; <code>extraLabels</code></td></tr>
       <tr><td data-lang="en"><code>annotations</code></td><td data-lang="de"><code>annotations</code></td><td><code>&lt;labelDomain&gt;/source-chart</code> &rarr; <code>global.annotations</code> &rarr; <code>&lt;subchart&gt;.annotations</code> &rarr; <code>extraAnnotations</code> &rarr; <code>annotation</code> &rarr; <code>annotationsFrom</code> &rarr; <code>argocd.argoproj.io/sync-wave</code> &rarr; <code>argocd.argoproj.io/sync-options</code></td></tr>
       <tr><td data-lang="en"><code>sync-wave</code></td><td data-lang="de"><code>sync-wave</code></td><td><code>&lt;subchart&gt;.syncWaves.&lt;component&gt;</code> &rarr; <code>global.syncWaves.&lt;component&gt;</code>, <span data-lang="en">then <code>+ syncWaveOffset</code>; nothing configured and offset 0 &rarr; no annotation</span><span data-lang="de">dann <code>+ syncWaveOffset</code>; nichts konfiguriert und Offset 0 &rarr; keine Annotation</span></td></tr>
@@ -1021,7 +1024,7 @@ annotations: {}</pre>
 
   <h3 class="sub" data-lang="en">Component catalog</h3><h3 class="sub" data-lang="de">Komponentenkatalog</h3>
   <p data-lang="en">The single source of truth for <code>component</code> arguments and <code>syncWaves</code> / <code>syncOptions</code> keys (<code>krypton-lib-slim.componentCatalog</code> in <code>_helpers.tpl</code>). An unknown string fails the render with this list in the message; a genuinely new kind is one added line. Configuring a catalogued type that a subchart does not (yet) render is allowed and has no effect.</p>
-  <p data-lang="de">Die einzige Wahrheit f&uuml;r <code>component</code>-Argumente und <code>syncWaves</code>-/<code>syncOptions</code>-Keys (<code>krypton-lib-slim.componentCatalog</code> in <code>_helpers.tpl</code>). Ein unbekannter String l&auml;sst das Rendern mit dieser Liste in der Meldung fehlschlagen; eine wirklich neue Art ist eine hinzugef&uuml;gte Zeile. Einen katalogisierten Typ zu konfigurieren, den ein Subchart (noch) nicht rendert, ist erlaubt und wirkungslos.</p>
+  <p data-lang="de">Der Komponentenkatalog legt die zulässigen Typnamen fest. Neue Typen müssen in beiden Library-Katalogen ergänzt werden. Die Kürzel dienen nur der Dokumentation und erscheinen nicht in Ressourcennamen. Ein bekannter, aber nicht gerenderter Typ hat keine Wirkung.</p>
   <div class="catalog">
     <code>buildConfig</code><code>clusterRole</code><code>clusterRoleBinding</code><code>configMap</code><code>cronJob</code><code>daemonSet</code><code>deployment</code><code>horizontalPodAutoscaler</code><code>imageStream</code><code>ingress</code><code>job</code><code>networkPolicy</code><code>persistentVolumeClaim</code><code>podDisruptionBudget</code><code>podMonitor</code><code>prometheusRule</code><code>role</code><code>roleBinding</code><code>route</code><code>secret</code><code>service</code><code>serviceAccount</code><code>serviceMonitor</code><code>statefulSet</code><code>vaultAuth</code><code>vaultConnection</code><code>vaultDynamicSecret</code><code>vaultStaticSecret</code>
   </div>
@@ -1044,9 +1047,9 @@ annotations: {}</pre>
 <!-- ============================ GUARDRAILS ============================ -->
 <section id="guardrails">
   <span class="eyebrow" data-lang="en">Fail loudly</span><span class="eyebrow" data-lang="de">Laut fehlschlagen</span>
-  <h2 data-lang="en">Guardrails</h2><h2 data-lang="de">Leitplanken</h2>
-  <p data-lang="en">Misconfiguration never degrades silently. The umbrella schema validates <code>global</code> and the library-relevant keys of every subchart block; the component catalog validates every component key at render time; the subcharts refuse name collisions they can foresee.</p>
-  <p data-lang="de">Fehlkonfiguration degradiert nie still. Das Umbrella-Schema validiert <code>global</code> und die Library-relevanten Keys jedes Subchart-Blocks; der Komponentenkatalog validiert jeden Komponenten-Key beim Rendern; die Subcharts verweigern Namenskollisionen, die sie vorhersehen k&ouml;nnen.</p>
+  <h2 data-lang="en">Guardrails</h2><h2 data-lang="de">Validierung</h2>
+  <p data-lang="en">The umbrella schema validates global and library-related values. Slim subcharts have no schemas of their own, so other workload values are not automatically validated. Payments and Shared reject final resource-map names that collide after normalization.</p>
+  <p data-lang="de">Das Umbrella-Schema prüft globale und Library-bezogene Werte. Slim-Subcharts haben keine eigenen Schemas; andere Workload-Werte sind daher nicht automatisch validiert. Payments und Shared prüfen die fertigen Namen ihrer Ressourcen-Maps auf Normalisierungskollisionen.</p>
 
   <div class="stack" style="display:grid;gap:14px;margin-top:1.2rem">
     <div class="cmd">helm template krypton krypton-umbrella-slim --set krypton-payments.syncWaves.rout=9</div>
@@ -1091,8 +1094,8 @@ krypton-umbrella-slim:
     <div class="cmd">helm template krypton krypton-umbrella-slim --set krypton-payments.secrets.app.X=1</div>
     <figure class="code err-fig">
       <figcaption><span class="dot dot-err"></span><span data-lang="en">render error &middot; two Secrets, one name</span><span data-lang="de">Render-Fehler &middot; zwei Secrets, ein Name</span></figcaption>
-      <pre data-hl="none">Error: execution error at (krypton-umbrella-slim/charts/krypton-payments/templates/secrets.yaml:14:4):
-krypton-payments: secrets.app and vault.secrets.app would both produce the Secret "krypton-payments-release-app" - use distinct keys</pre>
+      <pre data-hl="none">Error: execution error at (krypton-umbrella-slim/charts/krypton-payments/templates/validate.yaml:14:4):
+krypton-lib-slim: secrets.app and vault.secrets.app produce the same resource name "krypton-payments-release-app" (chart "krypton-payments"); use distinct names after normalization</pre>
     </figure>
   </div>
   <div class="note"><span data-lang="en"><b>Not guarded on purpose:</b> keys outside the typed set in a subchart block pass through untyped &mdash; a typo in <code>replicaCount</code> reaches the subchart as written. Add a <code>values.schema.json</code> to a subchart when its own keys should be validated too.</span><span data-lang="de"><b>Bewusst nicht abgesichert:</b> Keys au&szlig;erhalb der typisierten Menge in einem Subchart-Block werden untypisiert durchgereicht &mdash; ein Tippfehler in <code>replicaCount</code> erreicht das Subchart wie geschrieben. Ein Subchart bekommt eine eigene <code>values.schema.json</code>, wenn auch seine eigenen Keys validiert werden sollen.</span></div>
@@ -1103,7 +1106,7 @@ krypton-payments: secrets.app and vault.secrets.app would both produce the Secre
   <span class="eyebrow">GitOps</span>
   <h2>ArgoCD</h2>
   <p data-lang="en">Point one Application per lane at <code>krypton-umbrella-slim</code>; waves order resources within each sync, the lane is set via a Helm parameter or a values file. Lane Applications leave <code>krypton-shared.enabled</code> at its default (off) and merely reference the shared objects; one additional Application per namespace owns them through <code>values-shared-only.yaml</code>. The slim umbrella is excluded from the full chart via <code>.helmignore</code> and deployed as its own Application.</p>
-  <p data-lang="de">Pro Lane zeigt eine Application auf <code>krypton-umbrella-slim</code>; die Waves ordnen die Ressourcen innerhalb jedes Syncs, die Lane kommt aus einem Helm-Parameter oder einer Values-Datei. Lane-Applications lassen <code>krypton-shared.enabled</code> auf dem Default (aus) und referenzieren die geteilten Objekte nur; eine zus&auml;tzliche Application pro Namespace besitzt sie &uuml;ber <code>values-shared-only.yaml</code>. Das schlanke Umbrella ist per <code>.helmignore</code> aus dem vollen Chart ausgenommen und wird als eigene Application deployt.</p>
+  <p data-lang="de">Slim wird als eigene Application mit <code>path: krypton-umbrella-slim</code> bereitgestellt. Konsumenten lassen <code>krypton-shared.enabled</code> ausgeschaltet. Eine zuständige Application kann gemeinsame Objekte mit <code>values-shared-only.yaml</code> erzeugen. Diese müssen vor den konsumierenden Anwendungen bereitstehen.</p>
   <div class="io">
     <figure class="code">
       <figcaption><span class="dot dot-in"></span>application.yaml &middot; <span data-lang="en">one per lane</span><span data-lang="de">eine je Lane</span></figcaption>
@@ -1160,7 +1163,7 @@ spec:
       - CreateNamespace=true</pre>
     </figure>
   </div>
-  <div class="note"><span data-lang="en"><b>Dependency build:</b> ArgoCD runs <code>helm dependency build</code> before templating a git-sourced chart; with repository-less directory dependencies that step only prints &ldquo;Assuming it exists in the charts directory&rdquo; per entry and leaves the directory charts in place. No <code>Chart.lock</code> is committed on purpose &mdash; a stale one would make that step fail with &ldquo;Chart.lock is out of sync&rdquo;.</span><span data-lang="de"><b>Dependency-Build:</b> ArgoCD f&uuml;hrt vor dem Templating eines git-basierten Charts <code>helm dependency build</code> aus; bei Verzeichnis-Abh&auml;ngigkeiten ohne Repository gibt dieser Schritt nur &bdquo;Assuming it exists in the charts directory&ldquo; je Eintrag aus und l&auml;sst die Verzeichnis-Charts unangetastet. Bewusst wird kein <code>Chart.lock</code> committet &mdash; ein veraltetes lie&szlig;e diesen Schritt mit &bdquo;Chart.lock is out of sync&ldquo; fehlschlagen.</span></div>
+  <div class="note"><span data-lang="en"><b>Dependencies:</b> Umbrella dependencies are checked-in directories. Standalone subchart builds create library copies; keep these current or remove them before umbrella tests. Verify rendering with the Helm version used by your Argo CD installation.</span><span data-lang="de"><b>Abhängigkeiten:</b> Die Umbrella-Abhängigkeiten liegen als Verzeichnisse im Repository. Ein einzelner Subchart-Build erzeugt zusätzliche Library-Kopien. Diese aktuell halten oder vor Umbrella-Tests entfernen. Das Rendern auch mit der Helm-Version der Argo-CD-Installation prüfen.</span></div>
 </section>
 
 </main>
@@ -1169,7 +1172,7 @@ spec:
 <footer>
   <span class="eyebrow">Kr &middot; 36</span><br>
   <span data-lang="en">krypton-umbrella-slim platform docs &middot; all rendered outputs captured from <code style="border:0;background:transparent;padding:0">helm template</code> v4.2.4 &middot; chart is Helm&nbsp;3 compatible &middot; see krypton-umbrella-slim/README.md / README.de.md in the repository &middot; <a href="index.html">full variant</a></span>
-  <span data-lang="de">krypton-umbrella-slim Plattform-Doku &middot; alle gerenderten Ausgaben stammen aus <code style="border:0;background:transparent;padding:0">helm template</code> v4.2.4 &middot; das Chart ist Helm-3-kompatibel &middot; siehe krypton-umbrella-slim/README.md / README.de.md im Repository &middot; <a href="index.html">volle Variante</a></span>
+  <span data-lang="de">krypton-umbrella-slim Plattform-Doku &middot; Beispiele auf Basis von <code style="border:0;background:transparent;padding:0">helm template</code> v4.2.4 &middot; mit der eingesetzten Helm-Version prüfen &middot; siehe krypton-umbrella-slim/README.md / README.de.md im Repository &middot; <a href="index.html">volle Variante</a></span>
 </footer>
 
 <script src="assets/site.js"></script>

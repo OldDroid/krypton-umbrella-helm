@@ -5,313 +5,213 @@
 
 # krypton-umbrella
 
-Helm umbrella chart for the Krypton platform, deployed by ArgoCD to
-Kubernetes/OpenShift. All subcharts share one library chart (`krypton-lib`)
-that enforces the platform naming convention, standard labels, merged
-annotations and dynamic ArgoCD sync waves.
+This Helm umbrella chart groups Krypton applications for Kubernetes and OpenShift. Argo CD can render and deploy it. The `krypton-lib` library provides shared template helpers for resource names, labels, annotations, images and ServiceAccounts.
 
-## Layout
+[Deutsch](README.de.md) · [Library reference](charts/krypton-lib/README.md) · [Slim variant](krypton-umbrella-slim/README.md) · [Configuration examples](docs/index.html)
 
-```
-krypton-umbrella/
-├── Chart.yaml                  # declares all charts under charts/ (required by Helm 4)
-├── values.yaml                 # global: lane, static labels/annotations, default sync waves
-├── values.schema.json          # validates the umbrella keys, esp. global
-├── values-shared-only.yaml     # overlay for the shared owner: krypton-shared on, application subcharts off
+**Library behavior change:** Overlong names are now rejected. Before upgrading configurations that relied on truncation, shorten their inputs and compare the result with deployed resource names. The label composed from `partOfPrefix` and `laneName` must also fit within 63 characters. See the library reference for validation details and limits.
+
+## Terms and layout
+
+- **Umbrella:** the parent chart at the repository root; enables subcharts and overrides their defaults.
+- **Subchart:** a dependency such as `krypton-banking`.
+- **Library:** reusable template helpers; creates no Kubernetes resources itself.
+- **Lane:** a named deployment environment such as `release`, `test` or `dev`. A lane does not automatically create a namespace.
+- **Rendering:** combining templates and values into YAML without deploying it.
+- **Sync wave:** an integer used by Argo CD to order resources within an Application.
+
+```text
+./
+├── Chart.yaml                  # dependencies and enable conditions
+├── values.yaml                 # global values and subchart overrides
+├── values.schema.json          # umbrella validation
+├── values-shared-only.yaml      # deploy shared resources only
 ├── charts/
-│   ├── krypton-lib/            # type: library - renders nothing, provides helpers
-│   │   └── templates/_helpers.tpl
-│   ├── krypton-banking/        # Deployment, Service, ConfigMap, VaultStaticSecret, Route,
-│   │                           # ServiceAccount (+ optional PDB / HPA)
-│   ├── krypton-auth/           # Deployment, ServiceAccount
-│   └── krypton-shared/         # lane-independent ConfigMaps / Secrets / VaultStaticSecrets + namespace NetworkPolicy, one owner per namespace
-└── krypton-umbrella-slim/      # slim variant: metadata-only library with its own umbrella and
-                                # subcharts (see "Slim variant"; .helmignore keeps it out of this chart)
+│   ├── krypton-lib/             # shared helpers
+│   ├── krypton-banking/         # Deployment, Service, ConfigMap, VaultStaticSecrets,
+│   │                           # Route, ServiceAccount; optional PDB and HPA
+│   ├── krypton-auth/            # Deployment and ServiceAccount
+│   └── krypton-shared/          # shared ConfigMaps, Secrets, VaultStaticSecrets
+│                               # and a namespace NetworkPolicy
+└── krypton-umbrella-slim/        # independent chart with a smaller library
 ```
 
-Each subchart declares the library as a local dependency:
+## Getting started
 
-```yaml
-dependencies:
-  - name: krypton-lib
-    version: 0.1.0
-    repository: file://../krypton-lib
+Run all commands **from the repository root**:
+
+```bash
+helm lint .
+helm template krypton .
+helm template krypton . --set global.laneName=test
 ```
 
-When the umbrella renders, Helm loads every chart's templates into one shared
-namespace, so the `krypton-lib.*` helpers resolve without vendoring. The
-`file://` dependency additionally lets each subchart be built and rendered
-standalone (see below).
+The defaults are examples. Configure image addresses, Route hosts, Vault paths and credentials before installing. Routes require the OpenShift API. VaultStaticSecrets require the Vault Secrets Operator and a suitable VaultAuth. Rendering does not check those cluster prerequisites.
 
-## Conventions
+By default Banking references `krypton-shared-common` and `krypton-shared-gateway`, but does not create them. For a first deployment, provision shared resources separately or enable their creation in exactly one lane:
 
-**Resource names** - `krypton-lib.componentName` produces
-`[<global.namePrefix>-]<subchart-name>-<global.laneName>[-<instance>]`, e.g.
-`krypton-banking-release` for the Deployment, Service, Route and
-ServiceAccount alike - the Kubernetes kind tells them apart, so the
-component type is deliberately not part of the name. The `component`
-argument is still required: it is validated against the catalog and selects
-the sync wave and prune protection. When a subchart renders several
-resources of the same kind, an optional `instance` argument is appended,
-normalised to a DNS-1123 label (`krypton-banking-release-database` for the
-VaultStaticSecret `database`; the Secret it writes gets the same name).
-The lane is also stamped as the `app.kubernetes.io/part-of` label;
-setting `global.partOfPrefix` (e.g. `krypton-umbrella`) turns the value
-into `<partOfPrefix>-<laneName>` (`krypton-umbrella-release`) without
-touching the resource names. `global.namePrefix` is the counterpart for
-the names: empty by default, so nothing changes; set to e.g. `acme` every
-resource becomes `acme-<subchart-name>-<laneName>[-<instance>]`
-(`acme-krypton-banking-release`), shared resources included
-(`acme-krypton-shared-common`), so two umbrellas can share a namespace.
-Rendering fails loudly if `global.laneName` is unset.
+```bash
+helm template krypton-shared . -f values-shared-only.yaml
+helm template krypton . --set krypton-shared.enabled=true
+```
 
-**Shared (lane-independent) resources** - passing `shared: true` to
-`componentName`/`metadata` drops the lane segment
-(`krypton-banking`, `krypton-banking-smtp`) and omits the
-`app.kubernetes.io/part-of` label, for ConfigMaps or Secrets that several lane
-deployments in one namespace consume and that therefore only have to exist
-once. They live in their own subchart, **`krypton-shared`**, which renders
-`configMaps`, `secrets` and `vault.secrets` as `krypton-shared-<key>`, plus
-the namespace-wide `networkPolicy` (named `krypton-shared`, `podSelector: {}`):
-every pod in the namespace then accepts ingress only from its own namespace
-and from the OpenShift router, so a Route is the only way in from another
-namespace; egress is not restricted, and `networkPolicy.extraRules` opens
-further peers such as `openshift-monitoring`.
-Exactly one ArgoCD Application per namespace may own them (ArgoCD flags a
-second owner as a shared resource, Helm refuses foreign ownership), so the
-ownership is the plain deploy switch `krypton-shared.enabled`:
+## Configuring values
 
-| Application | values |
-| --- | --- |
-| consumer lane (default) | `krypton-shared.enabled: false` - workloads reference the names, nothing is created |
-| owning lane | `krypton-shared.enabled: true` next to the enabled application subcharts |
-| dedicated shared Application | `-f values-shared-only.yaml` - `krypton-shared` on, every application subchart off |
-
-The application subcharts reference the objects through the same helper that
-names them, with `chart` pinning the owner, so a reference can never drift:
-`componentName (dict "ctx" . "chart" "krypton-shared" "component" "configMap" "instance" "common" "shared" true)`
-→ `krypton-shared-common`. krypton-banking and krypton-auth expose this as
-`sharedEnvFrom.configMaps` / `.secrets` (instance keys wired in as `envFrom`).
-Service-scoped sharing stays available too: krypton-banking's `config.shared`
-renders its own ConfigMap as `krypton-banking`, gated by `config.create`.
-
-**Label domain** - the platform-generated annotation key
-(`<domain>/source-chart`) takes its
-prefix from `global.labelDomain` (default `krypton.io`), so the scaffold can
-be rebranded per project with one values key; the static keys under
-`global.labels`/`global.annotations` are plain values and are edited
-alongside. `app.kubernetes.io/instance` is the Helm release name (the
-ArgoCD Application name), not a hardcoded value.
-
-**Pod selectors** - `krypton-lib.selectorLabels` renders the identity that
-Deployment, Service, PodDisruptionBudget and NetworkPolicy selectors match
-pods by: `app.kubernetes.io/name` (subchart), `app.kubernetes.io/instance`
-(release) and `app.kubernetes.io/part-of` (the lane label, so one lane's
-Service can never select another lane's pods). The values are the same
-ones `krypton-lib.labels` stamps onto the pod template. Deployment
-selectors are immutable, so changing `global.partOfPrefix` on an existing
-lane requires deleting that lane's Deployments once before the next sync;
-a lane rename creates new Deployments anyway.
-
-**Workload configuration** - `krypton-lib.image` assembles the image
-reference from `image.registry`/`repository`/`tag` (or `digest`); setting
-`global.imageRegistry` repoints every subchart at a per-lane proxy or
-air-gapped registry with one key. Each subchart runs under its own
-ServiceAccount (component `serviceAccount`, wave `-2`, named via
-`krypton-lib.serviceAccountName` - bind VaultAuth Kubernetes roles to that
-name, or set `serviceAccount.create: false` plus `name:` to reference an
-existing SA). `vault.secrets` renders one VaultStaticSecret per entry (the
-key becomes the name's instance suffix; `authRef`/`mount`/`refreshAfter`
-are shared defaults with per-secret overrides, and `envFrom: true` wires
-the materialised Secret into the Deployment); all instances share the
-type-level sync wave and prune protection. Secret paths and `route.host`
-are rendered through `tpl`, and the default paths template the lane in, so
-every lane reads its own secrets. ConfigMap delivery is steered by the
-`config` block: `data` holds the keys, `envFrom` exposes them as env vars,
-`mountPath` additionally mounts them as kubelet-refreshed files, and
-`rollPodsOnChange` gates the checksum rollout &mdash; disable it only for
-services that hot-reload their mounted config file themselves, since env
-vars never update inside a running container. `resources:` ship per subchart and are sized per lane from the
-umbrella. Pod-level passthroughs (`extraEnv`, `extraEnvFrom`,
-`podAnnotations`, `nodeSelector`, `tolerations`, `affinity`) go verbatim
-into the pod spec, so app teams never fork a template. Optional components
-follow the enabled-flag pattern per lane: `podDisruptionBudget` (the
-release lane enables it for banking) and `autoscaling` (while enabled the
-Deployment stops rendering `spec.replicas`, so ArgoCD and the HPA never
-fight over replica counts).
-
-**Sync waves** - `krypton-lib.syncWave` resolves per component type, first
-hit wins:
-
-1. subchart `.Values.syncWaves.<component>` — already contains any umbrella
-   override from `<subchart-name>.syncWaves.<component>` (Helm coalescing)
-2. `global.syncWaves.<component>` — platform-wide defaults
-
-`krypton-lib.annotations` applies the wave as `argocd.argoproj.io/sync-wave`
-last in its merge chain (standard → `global.annotations` → per-call
-`extra`/`annotation`/`annotationsFrom` → wave), and omits it when no wave
-is configured. Current order for
-krypton-banking: VaultStaticSecret `-1` → ConfigMap `0` → Deployment/Service
-`1` → Route `3`, so the Vault-materialised Secret exists before the
-Deployment mounts it, and the Route goes live last. The waves only gate on
-real application health because the Deployments carry configurable
-readiness/liveness probes (`probes:` in each subchart, overridable per
-lane); by default the banking pod template additionally carries a
-`checksum/config` annotation so ConfigMap changes roll the pods.
-
-**Per-resource annotations** - `krypton-lib.metadata`/`annotations` take
-three optional per-call arguments for annotations that belong to exactly
-one resource: `extra` (a dict), `annotation` (one `"key=value"` string) and
-`annotationsFrom` (a dotted path below `.Values` to a map, e.g.
-`"route.annotations"`, or `(printf "routes.%s.annotations" $name)` inside a
-`range`, so one Route of many gets its `haproxy.router.openshift.io/timeout`
-and the others do not). They merge in that order after `global.annotations`
-and below the two ArgoCD keys; a missing `annotationsFrom` path contributes
-nothing, a path that is not a map fails the render. The banking Route wires
-`route.annotations` this way.
-
-**Cross-subchart ordering** - when one subchart must sync after another,
-shift its whole band with `syncWaveOffset` (per subchart, steered from the
-umbrella): every resolved wave gets the offset added, and components
-without a configured wave - implicitly wave 0 in ArgoCD - are annotated
-with the bare offset, so the subchart moves as one block with its internal
-order preserved. The umbrella deploys krypton-auth at offset `10`, i.e.
-entirely after banking (ServiceAccount `8`, Deployment `11`, while banking
-spans `-2..3`). Keep component waves inside `-9..9` and use offset steps of
-10 per subchart, then bands never overlap.
-
-**Component catalog** - `krypton-lib.componentCatalog` (in `_helpers.tpl`)
-is the single source of truth for component-type strings (the map values
-are the kinds' Kubernetes shortnames, kept as documentation - names do not
-use them). Every `component`
-argument and every configured `syncWaves`/`syncPrune` key (subchart-level
-and global) is checked against it at render time; an unknown string like
-`syncWaves.rout` fails the render with the catalog in the error message.
-Configuring a catalogued type that a subchart does not (yet) render is
-allowed and simply has no effect - waves and prune flags can be staged
-before the manifest exists. The catalog covers the common
-Kubernetes/OpenShift/VSO kinds; a genuinely new kind is one added line, no
-schema edits.
-
-**Value schemas** - every chart ships a `values.schema.json`, validated by
-Helm on each lint/template/install against the chart's *coalesced* values.
-The schemas are strict about structure (`additionalProperties: false`, so
-e.g. a misspelled `syncWave:` block is rejected - even when the typo was
-made in the umbrella's subchart block) and about value shapes (waves must
-be integers/integer strings, prune flags booleans); component-key
-*membership* is the catalog's job, see above. When you add a values key,
-extend the chart's schema in the same commit. Keys injected by external
-tooling into `global` must be added to the umbrella schema, which is strict
-there on purpose.
-
-**Prune protection** - `krypton-lib.syncOptions` resolves per component
-through the same chain (subchart/umbrella `syncPrune.<component>` first,
-then `global.syncPrune.<component>`). A value of `false` stamps the resource
-with `argocd.argoproj.io/sync-options: Prune=false`, so it survives
-app-level pruning even when its manifest disappears from git or its subchart
-is disabled; ArgoCD then reports the app OutOfSync until the resource is
-deleted manually. Setting a key to `true` re-enables pruning for a globally
-protected component. Current defaults: all VaultStaticSecrets
-(`global.syncPrune`) plus the banking Route (umbrella block) are protected.
-
-**Deploy switches** - every application subchart is gated by a
-`condition: <subchart-name>.enabled` flag on its dependency entry in the
-umbrella `Chart.yaml`, steered from the umbrella values:
+Every subchart receives `global` as `.Values.global`. A block named after a subchart overrides its own `values.yaml`. For example, save this as `values-test.yaml`:
 
 ```yaml
+global:
+  laneName: test
 krypton-banking:
-  enabled: true
+  replicaCount: 1
+  podDisruptionBudget:
+    enabled: false
+  syncWaves:
+    route: "3"
 ```
-
-Set it to `false` in a lane values file (or via ArgoCD `helm.parameters`) to
-exclude the whole subchart from the release; ArgoCD then prunes its
-resources - except components protected via `syncPrune` (see above). A missing flag counts as enabled, so the flags are declared
-explicitly. `krypton-lib` has no condition on purpose: disabling it would
-drop the shared helpers from the render namespace and break every enabled
-subchart.
-
-## Everyday commands
 
 ```bash
-helm lint krypton-umbrella
-helm template krypton krypton-umbrella                                # render the release lane
-helm template krypton krypton-umbrella --set global.laneName=test     # render another lane
+helm template krypton . -f values-test.yaml
 ```
 
-### Working on a single subchart
+Setting only `global.laneName=test` does not change replicas, resource limits or the PDB. Helm merges maps and replaces lists; schemas validate the resulting values.
 
-Standalone rendering needs the library vendored into the subchart and a lane
-supplied (there is no umbrella to provide one):
+## Names and labels
+
+`krypton-lib.componentName` produces `[<namePrefix>-]<subchart>-<lane>[-<instance>]`. Banking's Deployment, Service, Route and ServiceAccount all use `krypton-banking-release`; their Kubernetes kinds distinguish them. **Neither library appends a kind suffix such as `-cm`.**
+
+Use `instance` for multiple resources of the same kind, for example `database` produces `krypton-banking-release-database`. The helper lowercases the instance and replaces camelCase boundaries and other characters with dashes. Names longer than 63 characters or with an invalid format fail rendering. Final names must remain unique: the example charts check ConfigMap maps, plain Secrets and Vault destination Secrets for normalization collisions. Add the same validation when writing your own resource templates.
+
+| Value | Effect |
+| --- | --- |
+| `global.laneName` | lane in resource names; required by the umbrella, defaults to `release` |
+| `global.namePrefix` | optional prefix for all names, including shared resources |
+| `global.partOfPrefix` | prefix only for `app.kubernetes.io/part-of`, e.g. `krypton-release` |
+| `global.labelDomain` | prefix of `<domain>/source-chart`; defaults to `krypton.io` |
+| `global.labels` | additional resource and Pod labels |
+| `global.annotations` | additional resource annotations |
+
+The identity labels `app.kubernetes.io/name`, `app.kubernetes.io/instance` and `app.kubernetes.io/part-of` are reserved. Custom labels cannot override them, so Pod labels always match selectors. The `instance` label is the Helm release name, distinct from the helper's `instance` argument. Argo CD defaults the release name to its Application name; `spec.source.helm.releaseName` can override it. When these names differ, also account for Argo CD's resource-tracking configuration.
+
+Deployment selectors are immutable. Changing `global.partOfPrefix` requires a planned recreation of affected Deployments and can affect availability. Changing the lane creates new resource names. `namePrefix` does not isolate Pod selectors: separate releases also need distinct release/lane identities.
+
+## Shared resources
+
+Passing `shared: true` omits the lane from the name and removes `app.kubernetes.io/part-of`. The name prefix still applies. `krypton-shared` creates these objects from `configMaps`, `secrets` and `vault.secrets`.
+
+**Assign each shared resource name to exactly one Application or Helm release.** The `krypton-shared.enabled` switch controls rendering, but does not enforce ownership across Applications.
+
+| Mode | Values |
+| --- | --- |
+| Consume existing shared resources | `krypton-shared.enabled: false` (default) |
+| One lane also manages shared resources | `krypton-shared.enabled: true` |
+| Separate shared Application | use `values-shared-only.yaml` |
+
+Banking and Auth accept instance keys in `sharedEnvFrom.configMaps` and `sharedEnvFrom.secrets`. References use `chart: krypton-shared` and `shared: true`. Matching prefixes produce matching names; this does not guarantee the objects exist or are ready. Sync waves do not coordinate independent Applications.
+
+Banking can also share its own ConfigMap using `config.shared: true`. Exactly one deployment sets `config.create: true`; consumers set it to `false` and reference the same name.
+
+### NetworkPolicy
+
+The full Shared chart can create a NetworkPolicy selecting all namespace Pods. It allows ingress from the same namespace and from OpenShift ingress namespaces selected by labels. `allowRouterHostNetwork` adds the host-network namespace; `extraRules` appends rules.
+
+This is not a guarantee that external traffic can arrive only through Routes: namespace permissions are broader, NetworkPolicies are additive, and enforcement depends on the network plugin. This policy does not restrict egress, but other policies may. See [Kubernetes NetworkPolicies](https://kubernetes.io/docs/concepts/services-networking/network-policies/).
+
+## Sync waves and prune protection
+
+For each component type, the library first reads the subchart's `syncWaves.<component>` (including umbrella overrides), then `global.syncWaves.<component>`. Zero and negative waves are supported.
+
+`syncWaveOffset` is added to the resolved value. A component without a wave uses base zero when an offset is set. Without a wave or offset, no wave annotation is generated.
+
+Waves and offsets are validated as decimal integers: `"08"` produces `8`, `"010"` produces `10`. Inputs and their sum must fit in the signed 64-bit range; invalid values and overflow fail rendering. Quote padded and very large numbers in YAML. Numeric zero is valid; YAML `null` is not a substitute.
+
+| Subchart | Default order |
+| --- | --- |
+| Banking | ServiceAccount `-2`, VaultStaticSecrets `-1`, ConfigMap `0`, Deployment/Service/PDB `1`, Route `3` |
+| Auth | ServiceAccount `8`, Deployment `11` (offset `10`) |
+
+Choose offsets using actual wave ranges. Local waves `-9..9` require an offset step of at least `19` to avoid overlap; a step of `10` gives overlapping ranges `-9..9` and `1..19`.
+
+Waves order resources within one Argo CD Application and sync phase. An earlier VaultStaticSecret wave does not itself guarantee that the operator has created the destination Secret. Use an appropriate health assessment or explicit readiness check. Pod readiness probes report readiness; liveness probes trigger restarts. See [Argo CD sync waves](https://argo-cd.readthedocs.io/en/stable/user-guide/sync-waves/).
+
+`syncPrune.<component>` has the same precedence as waves. `false` generates `Prune=false`; `true` overrides inherited protection. Schemas accept booleans and the strings `"true"`/`"false"`. VaultStaticSecrets and Banking's Route are protected by default. Prune protection applies during sync; it does not automatically protect against cascading Application deletion. Slim also supports `Delete=false`.
+
+## Calling helpers
+
+Pass a dictionary with `ctx` containing the subchart context: `.` outside a loop, or a saved root context / `$` inside `range`.
+
+```yaml
+metadata:
+  {{- include "krypton-lib.metadata" (dict "ctx" . "component" "deployment") | nindent 2 }}
+```
+
+| Helper | Purpose / additional arguments |
+| --- | --- |
+| `componentName` | name; `component`, optional `instance`, `shared`, `chart` for references |
+| `metadata` | name, labels and annotations; accepts naming and annotation arguments |
+| `labels` | resource/Pod labels; optional `shared` |
+| `selectorLabels` | three Pod identity labels |
+| `annotations` | `component`, optional `extra`, `annotation`, `annotationsFrom` |
+| `syncWave` / `syncOptions` | resolved Argo CD values for `component` |
+| `image` | image reference; optional custom `image` block |
+| `serviceAccountName` | generated or existing ServiceAccount name |
+| `tplValue` | evaluate `value` as a template using `ctx` |
+| `validateResourceNames` | check `configMaps`, `secrets`, `vault.secrets` names; optional `shared` |
+
+Annotation precedence, with later entries winning: generated `<labelDomain>/source-chart` → `global.annotations` → `extra` → `annotation` → `annotationsFrom` → configured sync wave/options.
+
+`extra` is a map; `annotation` is one `key=value` string. `annotationsFrom` is a dotted path under `.Values`, such as `route.annotations`. A missing path contributes nothing; an existing scalar target fails rendering. All merged values are converted to strings. Configure the Argo CD keys through `syncWaves`/`syncPrune`; if no value resolves, a raw Argo CD annotation from an annotation map remains intact.
+
+## Workload configuration
+
+Each subchart's `values.yaml` and schema define its supported options; not every subchart implements every option.
+
+| Area | Behavior |
+| --- | --- |
+| `image` | `registry/repository:tag`; digest takes precedence, otherwise tag falls back to `Chart.appVersion` |
+| `global.imageRegistry` | overrides the registry for subcharts using the image helper |
+| `serviceAccount` | `create: true` creates an account, optionally named by `name`; `create: false` references `name` or `default` |
+| Banking `vault.secrets` | one VaultStaticSecret per key; per-entry `authRef`, `mount`, `refreshAfter`; `envFrom: true` imports its destination Secret |
+| Banking `config` | `create` controls creation, `data` supplies content, `envFrom` imports environment variables, `mountPath` mounts files |
+| Banking `config.rollPodsOnChange` | checksum of `config.data` triggers rollout; does not monitor external shared ConfigMaps or Secret updates |
+| `probes` | readiness, liveness and optional startup probes |
+| `extraEnv`, `extraEnvFrom` | extra container environment entries / references |
+| `podAnnotations` | annotations on the Pod template |
+| `nodeSelector`, `tolerations`, `affinity` | Pod scheduling |
+| Banking `autoscaling` | HPA instead of a fixed Deployment `spec.replicas` |
+| Banking `podDisruptionBudget` | optional protection against voluntary disruptions |
+
+Environment variables do not update in running containers. Mounted ConfigMap directories update asynchronously; applications must reload the files themselves. Disable checksum rollouts only when that behavior is sufficient.
+
+## Extending and testing charts
+
+For standalone subchart rendering, build its local library dependency:
 
 ```bash
-helm dependency build krypton-umbrella/charts/krypton-banking
-helm template t krypton-umbrella/charts/krypton-banking --set global.laneName=dev
+helm dependency build charts/krypton-banking
+helm template t charts/krypton-banking --set global.laneName=dev
 ```
 
-The generated `charts/*/charts/` and `charts/*/Chart.lock` are gitignored on
-purpose: a stale vendored copy of krypton-lib must never shadow the live one
-under `charts/krypton-lib` when the umbrella renders.
+This creates `charts/krypton-banking/charts/` and potentially `Chart.lock`. `.gitignore` only prevents committing these files: Helm can still load them. Remove generated library copies before umbrella tests or use a fresh checkout to avoid stale helpers.
 
-### Adding a new component type to a subchart (e.g. a ServiceMonitor)
+To add a subchart:
 
-1. Create the manifest in the subchart's `templates/` using the shared
-   metadata helper with a new component-type key:
+1. Create its `Chart.yaml`, `values.yaml`, templates and `values.schema.json`; declare `krypton-lib` with `repository: file://../krypton-lib`.
+2. Register it in umbrella dependencies with `condition: krypton-<name>.enabled`; set that flag in umbrella values.
+3. **Add its key to `properties` in the umbrella schema**, which rejects unknown keys.
+4. Use metadata/selector helpers and validate names for resource maps.
+5. Add genuinely new component types to both library catalogs. Catalog shortnames are documentation only.
+6. Run lint, render checks and the regression suite:
 
-   ```yaml
-   metadata:
-     {{- include "krypton-lib.metadata" (dict "ctx" . "component" "serviceMonitor") | nindent 2 }}
-   ```
+```bash
+python tests/test_charts.py --helm helm
+```
 
-   The resource is named like every other singleton of the subchart
-   (`krypton-banking-release`); the kind ServiceMonitor tells it apart.
-2. If (and only if) the kind is genuinely new to the platform, add it to
-   `krypton-lib.componentCatalog` in `_helpers.tpl` - one line, no schema
-   edits. Kinds already in the catalog (serviceMonitor is) need no
-   registration anywhere, and their `syncWaves`/`syncPrune` entries may even
-   be staged before the manifest exists.
-3. Give it a wave where it fits the band: `syncWaves.serviceMonitor` in the
-   subchart values, a platform default under `global.syncWaves`, or a lane
-   override in the umbrella's subchart block (e.g. `"2"` so the monitor
-   follows its Service).
-4. Optionally protect it from pruning: `syncPrune.serviceMonitor: false`.
+The umbrella and application/shared subcharts have schemas; the library does not. Component keys are checked while helpers render resources. Disabled charts without rendered resources do not run these helper checks.
 
-No library changes are needed — naming, labels, annotations, wave and prune
-resolution all key off the component string.
+## Argo CD
 
-### Adding a new subchart
-
-1. `charts/krypton-<name>/` with `Chart.yaml` (declare the `krypton-lib`
-   dependency via `file://../krypton-lib`), `values.yaml`,
-   `values.schema.json` (copy krypton-auth's as a starting point),
-   `templates/`.
-2. Add it to the umbrella `Chart.yaml` `dependencies:` list (name + version,
-   no repository field — Helm 4 requires every chart in `charts/` to be
-   declared) with `condition: krypton-<name>.enabled`, and set
-   `enabled: true` in its umbrella values block.
-3. Use `krypton-lib.metadata` for every manifest's metadata block; add
-   component types to `syncWaves` / `syncPrune` where the global defaults
-   don't fit.
-4. Optionally add a `krypton-<name>:` block to the umbrella `values.yaml`.
-
-## Slim variant
-
-`krypton-umbrella-slim/` is a second, self-contained umbrella whose library
-(`krypton-lib-slim`) does **metadata only**: unified names with an optional
-instance identifier (several ConfigMaps / Secrets / VaultStaticSecrets per
-subchart), merged labels and annotations with a subchart-level custom tier,
-ArgoCD sync waves with the offset mechanism, and generic ArgoCD sync options
-(`syncOptions.<component>: ["Prune=false", "Delete=false"]` instead of the
-`syncPrune` flag). Images, service accounts, probes and everything else
-below `metadata:` stay in the subchart's own templates. Both variants share
-the component catalog, so a `configMap` is a `-cm` in either. It is
-excluded from this chart via `.helmignore` and deployed as its own ArgoCD
-Application (`path: krypton-umbrella-slim`). See
-[krypton-umbrella-slim/README.md](krypton-umbrella-slim/README.md).
-
-## ArgoCD
-
-Point an Application at this directory; sync waves order the resources
-within each sync:
+The chart path for this repository layout is `.`. Replace the example URL and revision:
 
 ```yaml
 apiVersion: argoproj.io/v1alpha1
@@ -324,7 +224,11 @@ spec:
   source:
     repoURL: https://git.example.com/krypton/krypton-umbrella.git
     targetRevision: main
-    path: krypton-umbrella
+    path: .
+    helm:
+      parameters:
+        - name: global.laneName
+          value: release
   destination:
     server: https://kubernetes.default.svc
     namespace: krypton-release
@@ -336,23 +240,6 @@ spec:
       - CreateNamespace=true
 ```
 
-Per lane, either maintain one values file per lane and add it to
-`spec.source.helm.valueFiles`, or set the lane directly:
+A dedicated shared Application uses the same path and `helm.valueFiles: [values-shared-only.yaml]`. Provision its shared objects before consumers. Check the Helm version used by your Argo CD installation; local rendering is not a target-cluster integration test.
 
-```yaml
-    helm:
-      parameters:
-        - name: global.laneName
-          value: test
-```
-
-Verified with Helm v4.2.4. Both umbrellas target the Helm 3 line as well
-(ArgoCD currently ships Helm 3.21.x): no Helm-4-only features are used, the
-`charts/` directories are declared in the repository-less form both majors
-accept, the values schemas stay on JSON Schema draft-07, and no `Chart.lock`
-is committed (a stale one would fail ArgoCD's `helm dependency build`).
-To double-check with the ArgoCD binary:
-
-```bash
-helm version && helm lint . && helm template krypton . > /dev/null && helm lint krypton-umbrella-slim && helm template krypton krypton-umbrella-slim > /dev/null
-```
+The [Slim variant](krypton-umbrella-slim/README.md) is deployed separately with `path: krypton-umbrella-slim`. Its library focuses on metadata and selector labels; workload configuration remains in the subchart templates.

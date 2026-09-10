@@ -43,8 +43,8 @@ global:
   imageRegistry: ""
 
   # Static labels stamped onto every resource of every subchart.
-  # Merged by krypton-lib.labels; these win over the chart-generated
-  # standard labels on key collisions.
+  # Merged by krypton-lib.labels; custom values override standard labels
+  # except the reserved name, instance and part-of identity labels.
   labels:
     krypton.io/platform: krypton
     krypton.io/cost-center: "cc-4711"
@@ -135,8 +135,8 @@ krypton-auth:
   # Shift auth's ENTIRE wave band behind krypton-banking (which spans
   # -2..3): every resolved component wave gets +10, and components without
   # a configured wave (implicitly 0) are annotated with the bare offset -
-  # the subchart moves as one block, internal order preserved. Use offset
-  # steps of 10 per subchart so bands never overlap.
+  # the subchart moves as one block, internal order preserved. Choose offsets
+  # from the actual wave ranges so adjacent subcharts do not overlap.
   syncWaveOffset: 10
 
 # -----------------------------------------------------------------------------

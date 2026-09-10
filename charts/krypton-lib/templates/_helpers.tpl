@@ -1,53 +1,58 @@
-{{/* ==========================================================================
-     krypton-lib - shared helpers for all Krypton subcharts
-     ==========================================================================
+{{/*
+krypton-lib - shared template helpers for Krypton subcharts.
 
-     Call convention: every helper takes ONE argument, a dict built at the
-     call site:
+This library generates resource metadata and Argo CD annotations. It also
+provides Pod selector labels, resource-name validation, image references,
+ServiceAccount names and evaluation of templated values.
 
-         {{ include "krypton-lib.<helper>" (dict "ctx" . "component" "<type>") }}
+Calling convention: pass one dictionary containing the helper's arguments.
 
-       ctx        (required) the caller's root context (`.` inside a subchart
-                  template). Through it the helpers see the *subchart's*
-                  coalesced .Values (subchart defaults + umbrella overrides +
-                  global), its .Chart and the .Release.
-       component  the component type of the manifest, e.g. "deployment",
-                  "configMap", "route", "vaultStaticSecret". Validated
-                  against the component catalog and drives the sync-wave /
-                  prune lookup; it is NOT part of the name.
-       instance   (optional) distinguishes multiple resources of the SAME
-                  kind within one subchart (e.g. one VaultStaticSecret per
-                  vault path); appended to the resource name, normalised to
-                  a DNS-1123 label.
-       shared     (optional) true marks the resource as lane-independent:
-                  the name omits the lane segment
-                  (<subchart-name>[-<instance>]) and the
-                  app.kubernetes.io/part-of lane label is not stamped. For
-                  ConfigMaps / Secrets that several lane deployments
-                  consume, so they are created once instead of once per
-                  lane.
-       chart      (optional, krypton-lib.componentName only) name of the
-                  subchart that OWNS the resource, for templates that
-                  reference a resource rendered by another subchart - e.g.
-                  "krypton-shared" for the lane-independent ConfigMaps /
-                  Secrets. Defaults to the caller's own .Chart.Name.
-       extra      (optional, krypton-lib.annotations / metadata) dict of
-                  ad-hoc annotations for exactly this resource.
-       annotation (optional, same helpers) ONE ad-hoc annotation as a
-                  "key=value" string - the short form of extra.
-       annotationsFrom
-                  (optional, same helpers) dotted path below .Values to a
-                  map of annotations for exactly this resource, e.g.
-                  "route.annotations", or (printf "routes.%s.annotations"
-                  $name) inside a range so ONE Route of many gets its
-                  HAProxy timeout. A missing path contributes nothing, a
-                  path that is not a map fails the render.
+    {{ include "krypton-lib.metadata" (dict "ctx" . "component" "deployment") }}
 
-     Helm loads the templates of every chart in the dependency tree into one
-     shared namespace, so these templates are callable from every subchart
-     that sits next to krypton-lib underneath the umbrella - and from any
-     chart that vendors krypton-lib through its own dependencies.
-     ========================================================================== */}}
+  ctx              The calling subchart's root context. Pass . at the top
+                   level of its template. Inside range or with, use a saved
+                   root context or $ if it still refers to that root.
+                   ctx provides .Values, .Chart and .Release. Helm has
+                   already merged umbrella overrides into the subchart's
+                   values and made global values available as .Values.global.
+
+  component        Required by componentName, metadata, annotations and the
+                   sync helpers. Identifies a type such as "deployment".
+                   Each of these helpers validates it against the catalog.
+                   Sync helpers use it to look up settings. It is not part of
+                   the generated name.
+
+  instance         Optional resource identifier used by componentName and
+                   metadata. Appended to the name after normalization; use
+                   it to distinguish resources of the same kind.
+
+  shared           Optional flag for componentName, labels, metadata and
+                   validateResourceNames. When true, naming omits the lane
+                   and the labels helper omits app.kubernetes.io/part-of.
+                   This flag does not coordinate ownership or creation.
+
+  chart            Optional chart name for componentName and metadata.
+                   Replaces ctx.Chart.Name in the resource name only; labels
+                   and annotations still use the caller's context. Useful
+                   when componentName references another chart's resource.
+
+  extra
+                   Optional annotation map for annotations or metadata.
+                   See the annotations helper for the complete merge order.
+
+  annotation       Optional "key=value" string for annotations or metadata.
+                   Adds one annotation after extra.
+
+  annotationsFrom  Optional dotted path under ctx.Values for annotations or
+                   metadata, for example "route.annotations". Reads a map
+                   for this resource. See annotations for missing paths,
+                   null values and invalid targets.
+
+Helm loads named templates from the dependency tree into a shared template
+namespace. Subcharts in this umbrella can therefore call the library's
+helpers. To render a subchart on its own, first build its declared local
+library dependency.
+*/}}
 
 
 {{/* --------------------------------------------------------------------------
@@ -55,8 +60,8 @@
      -------------------------------------------------------------------------- */}}
 
 {{/*
-The lane (deployment environment) of this umbrella instance, e.g. "release"
-or "test". Fails the render loudly when the umbrella forgot to set it.
+Return global.laneName, for example "release" or "test". Rendering fails
+with an explanatory error if the value is missing or empty.
 */}}
 {{- define "krypton-lib.laneName" -}}
 {{- $global := .ctx.Values.global | default dict -}}
@@ -64,26 +69,34 @@ or "test". Fails the render loudly when the umbrella forgot to set it.
 {{- end }}
 
 {{/*
-Value of the app.kubernetes.io/part-of lane label: the lane name, prefixed
-with global.partOfPrefix when set (e.g. partOfPrefix "krypton-umbrella"
-gives krypton-umbrella-release instead of release). The prefix is a value
-because a subchart's .Chart is its own chart - the umbrella's name is not
-reachable from inside the library.
+Return the app.kubernetes.io/part-of label value:
+    [<global.partOfPrefix>-]<global.laneName>
+
+For example, partOfPrefix "krypton" and laneName "release" produce
+"krypton-release". With no prefix, the result is "release". This helper
+does not change resource names and requires a lane through laneName.
+The combined value must be a valid, nonempty Kubernetes label value of at
+most 63 characters; otherwise rendering fails.
+The prefix is configured explicitly because ctx.Chart describes the calling
+subchart, not its parent umbrella.
 */}}
 {{- define "krypton-lib.partOf" -}}
 {{- $global := .ctx.Values.global | default dict -}}
-{{- $lane := include "krypton-lib.laneName" . -}}
-{{- with $global.partOfPrefix -}}{{- printf "%s-%s" . $lane -}}{{- else -}}{{- $lane -}}{{- end -}}
+{{- $value := include "krypton-lib.laneName" . -}}
+{{- with $global.partOfPrefix -}}{{- $value = printf "%s-%s" . $value -}}{{- end -}}
+{{- if or (gt (len $value) 63) (not (regexMatch "^[a-zA-Z0-9]([a-zA-Z0-9_.-]*[a-zA-Z0-9])?$" $value)) -}}
+{{- fail (printf "krypton-lib.partOf: invalid label value %q (chart %q); global.partOfPrefix and global.laneName together must form a label of at most 63 characters, with alphanumeric ends and only letters, digits, '-', '_' or '.'" $value .ctx.Chart.Name) -}}
+{{- end -}}
+{{- $value -}}
 {{- end }}
 
 {{/*
-Optional prefix for every resource name, from global.namePrefix: "" (the
-default) keeps <subchart-name>-<laneName>[-<instance>], "acme" renders
-acme-<subchart-name>-<laneName>[-<instance>]. Applies to shared resources
-too (acme-krypton-shared-common), so an umbrella that carries a prefix
-keeps its lane-specific and its lane-independent resources apart from a
-second, unprefixed (or differently prefixed) umbrella in the same
-namespace. Consumed by krypton-lib.componentName only.
+Return global.namePrefix, or an empty string when unset.
+
+componentName uses this prefix for both lane-specific and shared resource
+names. For example, "acme" produces "acme-krypton-banking-release"
+or "acme-krypton-shared-common". This setting changes names only; it does
+not isolate Pod selectors or enforce uniqueness across releases.
 */}}
 {{- define "krypton-lib.namePrefix" -}}
 {{- $global := .ctx.Values.global | default dict -}}
@@ -91,11 +104,9 @@ namespace. Consumed by krypton-lib.componentName only.
 {{- end }}
 
 {{/*
-Domain prefix for the platform-generated annotation key
-<domain>/source-chart (the lane itself is carried by the standard
-app.kubernetes.io/part-of label). Configurable via global.labelDomain so
-the scaffold can be reused for other platforms without touching the
-library; defaults to krypton.io.
+Return the domain for the generated <domain>/source-chart annotation.
+Uses global.labelDomain, with "krypton.io" as the fallback. Custom keys in
+label and annotation maps are unaffected by this setting.
 */}}
 {{- define "krypton-lib.labelDomain" -}}
 {{- $global := .ctx.Values.global | default dict -}}
@@ -108,21 +119,18 @@ library; defaults to krypton.io.
      -------------------------------------------------------------------------- */}}
 
 {{/*
-Catalog of component types known to the platform - the single source of
-truth for what may be passed as a "component" argument and what may appear
-as a key under syncWaves / syncPrune. The values are the Kubernetes
-shortnames (kubectl api-resources) of the kinds; the naming scheme
-(<subchart>-<lane>[-<instance>]) does not use them, they are kept as
-documentation and so that both library variants carry exactly the same
-catalog.
+Return the catalog of component-type keys used by this library.
+The map values are resource abbreviations retained for documentation;
+neither library appends them to resource names.
 
-Configuring a catalogued type that a subchart does not (yet) render is
-allowed and simply has no effect - manifests pull their own settings, so
-waves/prune flags can be staged ahead of the manifest. An uncatalogued key
-fails the render instead of being silently ignored.
+Helpers with a component argument validate it against this catalog.
+validateComponentConfig checks keys in syncWaves and syncPrune when
+called by annotations. A recognized type may be configured even when the
+subchart does not render that type; the setting then has no effect.
 
-Extend this map - one camelCase line, no schema edits - when a genuinely
-new kind enters the platform.
+Add new component types to both library catalogs so their accepted keys
+remain consistent. Adding a catalog entry does not require a schema change;
+new workload values may still require changes to the relevant schema.
 */}}
 {{- define "krypton-lib.componentCatalog" -}}
 buildConfig: bc
@@ -156,24 +164,28 @@ vaultStaticSecret: ""
 {{- end }}
 
 {{/*
-Fails the render when a component string is not in the catalog.
-  ctx        caller context (for the chart name in the error message)
-  component  the string to check
-  origin     optional, names the source in the error (e.g. "syncWaves key")
+Fail rendering if component is not a key in componentCatalog.
+
+Arguments:
+  ctx        Caller context; supplies the chart name for the error message.
+  component  Component-type string to validate.
+  origin     Optional description of the source, such as "syncWaves key".
 */}}
 {{- define "krypton-lib.assertComponent" -}}
 {{- $catalog := fromYaml (include "krypton-lib.componentCatalog" .) -}}
-{{- if not (hasKey $catalog .component) -}}
+{{- if or (not (kindIs "string" .component)) (not (hasKey $catalog (.component | toString))) -}}
 {{- fail (printf "krypton-lib: unknown component type %q (chart %q, %s). Known types: %s. Genuinely new kinds are added to krypton-lib.componentCatalog in krypton-lib/templates/_helpers.tpl." .component .ctx.Chart.Name (.origin | default "component argument") (keys $catalog | sortAlpha | join ",")) -}}
 {{- end -}}
 {{- end }}
 
 {{/*
-Validates every component key configured under syncWaves / syncPrune - both
-subchart-level and global - against the catalog. Called from
-krypton-lib.annotations, so it runs for every rendered manifest: an unknown
-key can never be dropped silently, while catalogued-but-unrendered keys are
-tolerated by design (pre-staged configuration).
+Validate component keys in the calling subchart's syncWaves and syncPrune
+maps and in their global equivalents. Known types are allowed even if the
+subchart does not render resources of those types.
+
+annotations calls this helper, including when invoked through metadata.
+It does not check disabled charts or templates that never call it.
+This helper checks catalog membership, not the types of configured values.
 */}}
 {{- define "krypton-lib.validateComponentConfig" -}}
 {{- $ctx := .ctx -}}
@@ -198,68 +210,58 @@ tolerated by design (pre-staged configuration).
      -------------------------------------------------------------------------- */}}
 
 {{/*
-helm.sh/chart label value: <chart-name>-<chart-version>.
+Return the helm.sh/chart label value as <chart-name>-<chart-version>.
+Replace "+" with "_", truncate to 63 characters, and remove a trailing
+hyphen if present.
 */}}
 {{- define "krypton-lib.chart" -}}
 {{- printf "%s-%s" .ctx.Chart.Name .ctx.Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" -}}
 {{- end }}
 
 {{/*
-The one sanctioned resource-name format:
+Build a resource name using the following format:
 
-    [<prefix>-]<subchart-name>-<global-lane-name>[-<instance>]
-    e.g. krypton-banking-release             Deployment, Service, Route, SA, ...
-         krypton-banking-release-database    VaultStaticSecret, instance "database"
-         acme-krypton-banking-release        the same Deployment with
-                                             global.namePrefix "acme"
+    [<namePrefix>-]<chart>-<lane>[-<instance>]
 
-  prefix          optional, from the umbrella's global.namePrefix; empty
-                  (the default) renders no prefix segment at all
-  subchart-name   dynamic, from .Chart.Name of the calling subchart
-  lane-name       from the umbrella's global.laneName
-  instance        optional; the identifier for several resources of the
-                  same kind in one subchart. Normalised to a DNS-1123 label:
-                  camelCase boundaries become dashes ("logLevel" ->
-                  "log-level"), the result is lowercased and every other
-                  character outside [a-z0-9-] becomes a dash.
+  namePrefix  global.namePrefix; omitted when empty.
+  chart       The chart argument, falling back to ctx.Chart.Name.
+  lane        global.laneName; omitted when shared is true.
+  instance    Optional suffix for resources of the same kind.
 
-The component type is NOT part of the name - the Kubernetes kind already
-tells a Deployment from a Service of the same name. It still has to be
-passed: it is validated against the catalog and drives the sync-wave /
-prune lookup. Consequence: several resources of the SAME kind in one
-subchart need distinct instances, and a Secret written by a
-VaultStaticSecret (destination.name) must not reuse the instance of a plain
-Secret rendered by the same subchart.
+Examples with no name prefix:
+    krypton-banking-release           Deployment, Service or ServiceAccount
+    krypton-banking-release-database  VaultStaticSecret with instance "database"
+    krypton-shared-common   Shared ConfigMap with instance "common"
 
-"shared" true drops the lane segment for resources that are not lane
-specific - a ConfigMap or Secret that every lane deployment of the subchart
-consumes and that therefore only has to exist once:
-    krypton-banking
-    krypton-banking-smtp
-A configured global.namePrefix is kept (acme-krypton-banking-smtp): the
-prefix separates umbrellas, the lane segment separates lanes.
-Use the same call (with "shared" true) both where the resource is created
-and where it is referenced, and let exactly ONE deployment create it; the
-others reference the name only.
+component is required and validated, but does not affect the name. A
+Deployment and a Service can use the same name because they have different
+kinds. Two Secrets need different final names, including when one Secret
+is created by a VaultStaticSecret controller.
 
-Referencing another subchart's resource: "chart" replaces the caller's
-.Chart.Name with the owning subchart's name, everything else stays the
-same. This is how the application subcharts point at the objects of the
-krypton-shared subchart without spelling out a name - both sides call the
-helper with identical arguments, so the reference can never drift:
-    krypton-shared/templates/configmaps.yaml   (creates)
-        (dict "ctx" $root "component" "configMap" "instance" "common" "shared" true)
-    krypton-banking/templates/deployment.yaml  (references)
-        (dict "ctx" $ "chart" "krypton-shared" "component" "configMap" "instance" "common" "shared" true)
-    -> krypton-shared-common on both sides
+Instance normalization inserts a hyphen between a lowercase letter or digit
+and a following uppercase letter ("logLevel" becomes "log-level"), converts
+the result to lowercase, and replaces characters outside [a-z0-9-] with
+hyphens. The complete name must fit within 63 characters; longer names
+fail rendering instead of being truncated. One trailing hyphen is removed
+for compatibility. The result must contain only lowercase letters, digits
+and hyphens, with an alphanumeric character at each end; otherwise rendering
+fails. Normalization does not guarantee uniqueness. validateResourceNames
+checks collisions in the resource maps supported by the example charts.
 
-Truncated to 63 characters (the Kubernetes name limit for most resources).
+shared keeps namePrefix but omits the lane. Assign each shared resource to
+one managing release or Application; this helper only computes its name.
 
-Usage:
-    name: {{ include "krypton-lib.componentName" (dict "ctx" . "component" "deployment") }}
-    name: {{ include "krypton-lib.componentName" (dict "ctx" . "component" "vaultStaticSecret" "instance" "database") }}
-    name: {{ include "krypton-lib.componentName" (dict "ctx" . "component" "configMap" "shared" true) }}
-    name: {{ include "krypton-lib.componentName" (dict "ctx" . "chart" "krypton-shared" "component" "secret" "instance" "gateway" "shared" true) }}
+For references across subcharts, pass the owning chart's name. Both sides
+must use matching prefixes, instances and shared settings (and matching
+lanes for lane-specific resources). For example:
+
+    # In krypton-shared: create the ConfigMap.
+    {{ include "krypton-lib.componentName" (dict "ctx" . "component" "configMap" "instance" "common" "shared" true) }}
+    # In a consuming subchart: reference the same ConfigMap.
+    {{ include "krypton-lib.componentName" (dict "ctx" . "chart" "krypton-shared" "component" "configMap" "instance" "common" "shared" true) }}
+
+Both calls produce krypton-shared-common when namePrefix is empty.
+Neither call verifies that the referenced resource exists.
 */}}
 {{- define "krypton-lib.componentName" -}}
 {{- $ctx := .ctx -}}
@@ -277,26 +279,37 @@ Usage:
 {{- $instance = regexReplaceAll "[^a-z0-9-]" $instance "-" -}}
 {{- $name = printf "%s-%s" $name $instance -}}
 {{- end -}}
-{{- $name | trunc 63 | trimSuffix "-" -}}
+{{- if gt (len $name) 63 -}}
+{{- fail (printf "krypton-lib.componentName: resource name %q exceeds 63 characters (chart %q); shorten namePrefix, chart, laneName or instance" $name $ctx.Chart.Name) -}}
+{{- end -}}
+{{- $name = trimSuffix "-" $name -}}
+{{- if not (regexMatch "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$" $name) -}}
+{{- fail (printf "krypton-lib.componentName: invalid resource name %q (chart %q); use lowercase letters, digits and hyphens, with a letter or digit at each end" $name $ctx.Chart.Name) -}}
+{{- end -}}
+{{- $name -}}
 {{- end }}
 
 
 {{/* --------------------------------------------------------------------------
-     Images, service accounts & templated values
+     Images, service accounts and templated values
      -------------------------------------------------------------------------- */}}
 
 {{/*
-Container image reference: <registry>/<repository>{:tag|@digest}.
+Build a container image reference: [<registry>/]<repository>{:tag|@digest}.
 
-  registry  global.imageRegistry when set - ONE umbrella key repoints every
-            subchart at a per-lane proxy / air-gapped registry - otherwise
-            the subchart's image.registry; empty renders no registry prefix.
-  tag       image.tag, falling back to the subchart's Chart.AppVersion.
-            image.digest takes precedence over the tag when set.
+Read the image argument when nonempty; otherwise use ctx.Values.image.
+repository is required. The remaining fields are resolved as follows:
+  registry  Use global.imageRegistry when nonempty, otherwise image.registry.
+            If both are empty, omit the registry prefix.
+  digest    When nonempty, append @digest and ignore tag.
+  tag       Use image.tag when nonempty, otherwise ctx.Chart.AppVersion.
+            Fail rendering if neither provides a tag and no digest is set.
+
+The global registry override affects callers of this helper; it does not
+rewrite image references authored directly in subchart templates.
 
 Usage:
-    image: "{{ include "krypton-lib.image" (dict "ctx" .) }}"
-    (pass "image" to use a different image block than .Values.image)
+    image: {{ include "krypton-lib.image" (dict "ctx" .) | quote }}
 */}}
 {{- define "krypton-lib.image" -}}
 {{- $ctx := .ctx -}}
@@ -310,40 +323,46 @@ Usage:
 {{- if $image.digest -}}
 {{- printf "%s@%s" $ref $image.digest -}}
 {{- else -}}
-{{- printf "%s:%s" $ref ($image.tag | default $ctx.Chart.AppVersion | toString) -}}
+{{- $tag := required "krypton-lib.image: set image.tag, image.digest or Chart.appVersion" ($image.tag | default $ctx.Chart.AppVersion) -}}
+{{- printf "%s:%s" $ref (toString $tag) -}}
 {{- end -}}
 {{- end }}
 
 {{/*
-Name of the ServiceAccount the workload runs as:
+Return the ServiceAccount name for the workload.
 
-  serviceAccount.create=true  -> serviceAccount.name, defaulting to the
-                                 platform name (componentName of type
-                                 serviceAccount, e.g.
-                                 krypton-banking-release)
-  serviceAccount.create=false -> serviceAccount.name, defaulting to "default"
-                                 (reference an existing SA)
+  serviceAccount.create: true
+    Use serviceAccount.name when nonempty; otherwise generate a name with
+    componentName and component "serviceAccount".
 
-Bind VaultAuth Kubernetes roles against exactly this name.
+  serviceAccount.create: false (or unset)
+    Use serviceAccount.name when nonempty; otherwise return "default".
+
+This helper does not create or verify the ServiceAccount. The caller's
+templates control creation. Configure any corresponding VaultAuth bindings
+to use the actual account name.
 */}}
 {{- define "krypton-lib.serviceAccountName" -}}
 {{- $ctx := .ctx -}}
 {{- $sa := $ctx.Values.serviceAccount | default dict -}}
-{{- if $sa.create -}}
-{{- $sa.name | default (include "krypton-lib.componentName" (dict "ctx" $ctx "component" "serviceAccount")) -}}
+{{- if $sa.name -}}
+{{- $sa.name -}}
+{{- else if $sa.create -}}
+{{- include "krypton-lib.componentName" (dict "ctx" $ctx "component" "serviceAccount") -}}
 {{- else -}}
-{{- $sa.name | default "default" -}}
+{{- "default" -}}
 {{- end -}}
 {{- end }}
 
 {{/*
-Renders a string value that may contain Go template syntax against the
-caller's root context - for lane-aware values such as
-vault.path: "krypton/{{ .Values.global.laneName }}/banking" or templated
-Route hosts. Non-string values pass through as YAML.
+Evaluate a string value as a Go template using ctx as its root context.
+Non-string values are serialized as YAML without template evaluation.
 
-Usage:
-    path: {{ include "krypton-lib.tplValue" (dict "ctx" . "value" .Values.vault.path) }}
+For example, a Vault path can include {{ .Values.global.laneName }}.
+Quote the returned text at the call site when the target field is a string.
+
+Usage inside a loop over vault.secrets:
+    path: {{ include "krypton-lib.tplValue" (dict "ctx" $ "value" $secret.path) | quote }}
 */}}
 {{- define "krypton-lib.tplValue" -}}
 {{- if typeIs "string" .value -}}
@@ -359,15 +378,21 @@ Usage:
      -------------------------------------------------------------------------- */}}
 
 {{/*
-Standard labels merged with the umbrella's static labels.
+Build resource or Pod labels from the following sources, in order:
 
-Merge order (later wins on key collisions):
-  1. chart-generated standard labels (app.kubernetes.io/*, helm.sh/chart);
-     the lane is stamped as app.kubernetes.io/part-of: [<partOfPrefix>-]<laneName>
-  2. global.labels                  - static platform labels from the umbrella
+  1. Generated standard labels, including helm.sh/chart and app.kubernetes.io/*.
+  2. global.labels.
 
-The app.kubernetes.io/part-of lane label is omitted for "shared" resources
-(see componentName): a resource consumed by several lanes belongs to none.
+Later custom sources overwrite earlier values. After merging, the library
+sets the reserved identity labels independently of any custom values:
+
+    app.kubernetes.io/name       ctx.Chart.Name
+    app.kubernetes.io/instance   ctx.Release.Name
+    app.kubernetes.io/part-of    [<partOfPrefix>-]<laneName>
+
+For shared resources, part-of is removed even if a custom map supplied it.
+The other identity labels still identify the calling chart and release.
+All final values are converted to strings before YAML serialization.
 
 Usage:
     labels:
@@ -389,30 +414,38 @@ Usage:
 {{- $_ := set $labels "app.kubernetes.io/version" (. | toString) -}}
 {{- end -}}
 {{- $labels = mergeOverwrite $labels (deepCopy ($global.labels | default dict)) -}}
+{{- /* Apply reserved identity labels after merging custom labels. */ -}}
+{{- $_ := set $labels "app.kubernetes.io/name" $ctx.Chart.Name -}}
+{{- $_ := set $labels "app.kubernetes.io/instance" $ctx.Release.Name -}}
+{{- if .shared -}}
+{{- $_ := unset $labels "app.kubernetes.io/part-of" -}}
+{{- else -}}
+{{- $_ := set $labels "app.kubernetes.io/part-of" (include "krypton-lib.partOf" .) -}}
+{{- end -}}
+{{- range $key, $value := $labels -}}
+{{- $_ := set $labels $key (toString $value) -}}
+{{- end -}}
 {{- toYaml $labels -}}
 {{- end }}
 
 {{/*
-Pod selector labels - the identity subset of krypton-lib.labels that
-Deployment, Service, PodDisruptionBudget and NetworkPolicy selectors match
-pods by. Exactly three keys, each carrying the same value the pod template
-receives from krypton-lib.labels:
+Return the three identity labels used to select Pods:
 
-    app.kubernetes.io/name       <subchart-name>        (.Chart.Name)
-    app.kubernetes.io/instance   <release-name>         (.Release.Name)
+    app.kubernetes.io/name       ctx.Chart.Name
+    app.kubernetes.io/instance   ctx.Release.Name
     app.kubernetes.io/part-of    [<partOfPrefix>-]<laneName>
 
-The lane label is part of the identity so a Service or NetworkPolicy of one
-lane can never select the pods of another lane that happens to share the
-namespace and release name. It is NOT an argument: pods are never "shared",
-so the selector always carries the lane.
+These values match labels when used for a lane-specific Pod template.
+This helper always includes the lane and does not accept a shared mode.
+The instance label identifies the Helm release; it is unrelated to the
+instance argument used to distinguish resource names.
 
-A Deployment's selector is immutable, which makes every value here a
-one-way door: changing global.laneName renames the Deployment anyway (a
-new object with a new selector), but changing global.partOfPrefix on an
-existing lane changes only the selector and the apply is rejected - delete
-the Deployments of that lane once, then sync again. Never add chart
-version, custom labels or anything else that varies between syncs.
+Use this stable subset for Deployment and Service selectors. Avoid chart
+versions and other values that change during upgrades: a Deployment's
+selector is immutable. Changing partOfPrefix requires planned recreation
+of existing Deployments and may affect availability. Changing laneName
+also changes resource names. All selector values are serialized as strings.
+namePrefix does not affect these selectors.
 
 Usage:
     selector:
@@ -420,88 +453,117 @@ Usage:
         {{- include "krypton-lib.selectorLabels" (dict "ctx" .) | nindent 8 }}
 */}}
 {{- define "krypton-lib.selectorLabels" -}}
-app.kubernetes.io/name: {{ .ctx.Chart.Name }}
-app.kubernetes.io/instance: {{ .ctx.Release.Name }}
-app.kubernetes.io/part-of: {{ include "krypton-lib.partOf" . }}
+app.kubernetes.io/name: {{ .ctx.Chart.Name | toString | quote }}
+app.kubernetes.io/instance: {{ .ctx.Release.Name | toString | quote }}
+app.kubernetes.io/part-of: {{ include "krypton-lib.partOf" . | quote }}
 {{- end }}
 
 
 {{/* --------------------------------------------------------------------------
-     Annotations & ArgoCD sync waves
+     Annotations and Argo CD sync waves
      -------------------------------------------------------------------------- */}}
 
 {{/*
-Resolve the ArgoCD sync wave for a component - returned as a string, or ""
-when no wave is configured anywhere (the annotation is then omitted).
+Internal helper: validate and normalize a sync wave or offset as a signed
+64-bit decimal integer. Accept integer values or decimal strings; leading
+zeros are decimal, never octal. Reject invalid input before conversion.
+Arguments: value and origin (the setting's path for error messages).
+*/}}
+{{- define "krypton-lib.syncInteger" -}}
+{{- $text := toString .value -}}
+{{- if not (regexMatch "^-?[0-9]+$" $text) -}}
+{{- fail (printf "krypton-lib: %s must be a decimal integer, got %q" .origin $text) -}}
+{{- end -}}
+{{- $negative := hasPrefix "-" $text -}}
+{{- $digits := regexReplaceAll "^0+" (trimPrefix "-" $text) "" | default "0" -}}
+{{- $limit := "9223372036854775807" -}}
+{{- if $negative -}}{{- $limit = "9223372036854775808" -}}{{- end -}}
+{{- if or (gt (len $digits) 19) (and (eq (len $digits) 19) (gt $digits $limit)) -}}
+{{- fail (printf "krypton-lib: %s is outside the signed 64-bit range, got %q" .origin $text) -}}
+{{- end -}}
+{{- if and $negative (ne $digits "0") -}}-{{- end -}}{{- $digits -}}
+{{- end }}
 
-Lookup precedence (first hit wins):
-  1. .Values.syncWaves.<component> of the calling subchart. Helm has already
-     coalesced the umbrella's <subchart-name>.syncWaves.<component> override
-     into this map, so "umbrella beats subchart default" comes for free.
-  2. .Values.global.syncWaves.<component> - platform-wide defaults.
+{{/*
+Resolve the sync wave for component and return it as text.
 
-hasKey (not truthiness) is used so wave "0" and negative waves resolve too.
+Lookup order (first configured key wins):
+  1. ctx.Values.syncWaves.<component>, including umbrella overrides.
+  2. ctx.Values.global.syncWaves.<component>.
 
-Cross-subchart ordering: .Values.syncWaveOffset (per subchart, steered from
-the umbrella; default 0) is added to every resolved wave, shifting the
-subchart's WHOLE band relative to its siblings while preserving its
-internal order. With a non-zero offset, components without a configured
-wave - implicitly wave 0 in ArgoCD - are annotated with the bare offset, so
-they move with the block instead of escaping to wave 0. Keep component
-waves inside -9..9 and use offset steps of 10, then bands never overlap.
+The key's presence determines precedence, so an explicit zero overrides a
+global value. Positive, zero and negative waves are supported. Waves and
+offsets accept integers or decimal strings, including leading zeros ("08"
+means 8). Each value and their sum must fit in the signed 64-bit range;
+invalid values and overflow fail rendering. All instances
+of a component type within the subchart use the same resolved wave.
 
-Usage (normally called for you by krypton-lib.annotations):
+Add ctx.Values.syncWaveOffset (default zero) to the resolved wave. If no
+wave is configured, a nonzero offset is returned by itself. If neither a
+wave nor a nonzero offset is configured, return an empty string.
+
+Offsets preserve the relative order of a subchart's component waves. Choose
+them using the actual ranges: local waves -9..9 need an offset difference
+of at least 19 to avoid overlap. This calculation does not check resource
+readiness or coordinate separate Argo CD Applications.
+
+Called by annotations. Direct usage:
     {{ include "krypton-lib.syncWave" (dict "ctx" . "component" "route") }}
 */}}
 {{- define "krypton-lib.syncWave" -}}
 {{- $ctx := .ctx -}}
 {{- $component := required "krypton-lib.syncWave: 'component' is required" .component -}}
+{{- include "krypton-lib.assertComponent" (dict "ctx" $ctx "component" $component) -}}
 {{- $global := $ctx.Values.global | default dict -}}
 {{- $localWaves := $ctx.Values.syncWaves | default dict -}}
 {{- $globalWaves := $global.syncWaves | default dict -}}
 {{- $wave := "" -}}
 {{- if hasKey $localWaves $component -}}
-{{- $wave = get $localWaves $component | toString -}}
+{{- $wave = include "krypton-lib.syncInteger" (dict "value" (get $localWaves $component) "origin" (printf "syncWaves.%s" $component)) -}}
 {{- else if hasKey $globalWaves $component -}}
-{{- $wave = get $globalWaves $component | toString -}}
+{{- $wave = include "krypton-lib.syncInteger" (dict "value" (get $globalWaves $component) "origin" (printf "global.syncWaves.%s" $component)) -}}
 {{- end -}}
-{{- $offset := $ctx.Values.syncWaveOffset | default 0 | int -}}
-{{- if $wave -}}
-{{- add (int $wave) $offset -}}
-{{- else if ne $offset 0 -}}
-{{- $offset -}}
+{{- $offset := int64 0 -}}
+{{- if hasKey $ctx.Values "syncWaveOffset" -}}
+{{- $offset = include "krypton-lib.syncInteger" (dict "value" $ctx.Values.syncWaveOffset "origin" "syncWaveOffset") | int64 -}}
+{{- end -}}
+{{- if or $wave (ne $offset (int64 0)) -}}
+{{- $base := $wave | default "0" | int64 -}}
+{{- $result := add $base $offset -}}
+{{- if or (and (gt $offset (int64 0)) (lt $result $base)) (and (lt $offset (int64 0)) (gt $result $base)) -}}
+{{- fail (printf "krypton-lib.syncWave: wave plus syncWaveOffset is outside the signed 64-bit range (chart %q, component %q)" $ctx.Chart.Name $component) -}}
+{{- end -}}
+{{- $result -}}
 {{- end -}}
 {{- end }}
 
 {{/*
-Resolve the ArgoCD per-resource sync options for a component - returned as
-the comma-joined value for the argocd.argoproj.io/sync-options annotation,
-or "" when nothing is configured (the annotation is then omitted).
+Resolve prune protection for component. Return "Prune=false" when protected,
+or an empty string when the resolved setting does not enable protection.
 
-The only steered option so far is prune protection, via syncPrune values:
+Lookup order (first configured key wins):
+  1. ctx.Values.syncPrune.<component>, including umbrella overrides.
+  2. ctx.Values.global.syncPrune.<component>.
 
-    syncPrune:
-      <component>: false    ->  Prune=false: the resource survives app-level
-                                pruning (manifest removed from git, subchart
-                                disabled, ...) and must be deleted manually
-      <component>: true     ->  no option: normal app-level prune behaviour
-                                (useful to override an inherited false)
+false enables protection; true overrides inherited protection. Values are
+compared as strings, so the strings "false" and "true" behave like their
+boolean equivalents. With no configured key, return an empty string.
 
-Lookup precedence per component, first hit wins (same chain as syncWave):
-  1. .Values.syncPrune.<component> of the calling subchart (already contains
-     umbrella overrides from <subchart-name>.syncPrune.<component>)
-  2. .Values.global.syncPrune.<component> - platform-wide defaults
+Prune protection keeps a resource during Argo CD sync pruning, including
+when its manifest is removed. It does not provide Delete=false protection
+for Application deletion. This helper supports only the syncPrune setting;
+the Slim library provides a general syncOptions setting.
 
-The comparison goes through toString, so a quoted "false" in values behaves
-like the boolean. Further options (Delete=false, Replace=true, ...) can be
-appended to $options here later without touching any manifest.
+An empty result does not remove a raw sync-options annotation supplied
+through an annotation map; see annotations.
 
-Usage (normally called for you by krypton-lib.annotations):
+Called by annotations. Direct usage:
     {{ include "krypton-lib.syncOptions" (dict "ctx" . "component" "route") }}
 */}}
 {{- define "krypton-lib.syncOptions" -}}
 {{- $ctx := .ctx -}}
 {{- $component := required "krypton-lib.syncOptions: 'component' is required" .component -}}
+{{- include "krypton-lib.assertComponent" (dict "ctx" $ctx "component" $component) -}}
 {{- $global := $ctx.Values.global | default dict -}}
 {{- $localPrune := $ctx.Values.syncPrune | default dict -}}
 {{- $globalPrune := $global.syncPrune | default dict -}}
@@ -519,60 +581,58 @@ Usage (normally called for you by krypton-lib.annotations):
 {{- end }}
 
 {{/*
-The merged annotation block for a component.
+Build the annotation map for one resource. Later sources overwrite earlier
+values with the same key:
 
-One flat dict is built with mergeOverwrite; later sources overwrite earlier
-ones on key collisions:
+  1. Generated <labelDomain>/source-chart.
+  2. global.annotations.
+  3. extra from this call.
+  4. annotation from this call.
+  5. annotationsFrom from this call.
 
-  1. chart-generated standard annotations (<labelDomain>/source-chart)
-  2. global.annotations              - static annotations from the umbrella
-  3. extra                           - optional per-call dict of additions
-  4. annotation                      - optional per-call single "key=value"
-  5. annotationsFrom                 - optional per-call dotted path below
-                                       .Values to a map for exactly this
-                                       resource: "route.annotations", or
-                                       (printf "routes.%s.annotations" $name)
-                                       inside a range, so ONE Route of many
-                                       gets its HAProxy timeout. A missing
-                                       path contributes nothing (a range
-                                       over instances may annotate only
-                                       some); a path that is not a map fails
-                                       the render. Values are stringified.
-  6. argocd.argoproj.io/sync-wave    - resolved via krypton-lib.syncWave
-  7. argocd.argoproj.io/sync-options - resolved via krypton-lib.syncOptions
-     (per-component prune protection via syncPrune values)
+extra is a map supplied at the call site. annotation accepts one
+"key=value" string, splits it at the first "=", and trims whitespace from
+the key and value. An empty key or a string without "=" fails rendering.
 
-The two ArgoCD annotations are applied LAST, so a configured wave or sync
-option can never be shadowed; each is omitted entirely when unconfigured.
+annotationsFrom traverses a dotted path under ctx.Values, for example
+"route.annotations". Missing keys, paths that cannot be traversed, and
+null targets contribute nothing. A reachable, non-null target must be a
+map; a scalar or list at the final path causes rendering to fail. Dots
+separate path segments and cannot address literal dots in map keys.
 
-The dict passes through toYaml at the end, which quotes numeric strings -
-annotation values therefore always reach the API server as strings, as
-Kubernetes requires.
+Nonempty results from syncWave and syncOptions are applied after all maps.
+They override the corresponding argocd.argoproj.io/sync-wave and
+argocd.argoproj.io/sync-options entries. An empty helper result does not
+remove an entry supplied by an earlier source. Prefer syncWaves and
+syncPrune over directly setting those annotations.
+
+Every final annotation value is converted to a string before YAML
+serialization, including numbers and booleans supplied by helper callers.
 
 Usage:
     annotations:
       {{- include "krypton-lib.annotations" (dict "ctx" . "component" "deployment") | nindent 4 }}
 
-    with ad-hoc extras:
-      {{- include "krypton-lib.annotations" (dict "ctx" . "component" "deployment" "extra" (dict "checksum/config" $checksum)) | nindent 4 }}
+    # An annotation map for one resource.
+    {{- include "krypton-lib.metadata" (dict "ctx" . "component" "route" "extra" (dict "haproxy.router.openshift.io/timeout" "30s")) | nindent 2 }}
 
-    one annotation for exactly this resource:
-      {{- include "krypton-lib.metadata" (dict "ctx" . "component" "route" "annotation" "haproxy.router.openshift.io/timeout=300s") | nindent 2 }}
+    # A single annotation for one resource.
+    {{- include "krypton-lib.metadata" (dict "ctx" . "component" "route" "annotation" "haproxy.router.openshift.io/timeout=300s") | nindent 2 }}
 
-    annotations from a values path - per instance inside a range, so only
-    the Routes that have a routes.<name>.annotations block get one:
-      {{- include "krypton-lib.metadata" (dict "ctx" $ "component" "route" "instance" $name "annotationsFrom" (printf "routes.%s.annotations" $name)) | nindent 2 }}
+    # Inside range: read annotations for the current named Route.
+    {{- include "krypton-lib.metadata" (dict "ctx" $ "component" "route" "instance" $name "annotationsFrom" (printf "routes.%s.annotations" $name)) | nindent 2 }}
 */}}
 {{- define "krypton-lib.annotations" -}}
 {{- $ctx := .ctx -}}
 {{- $component := required "krypton-lib.annotations: 'component' is required" .component -}}
+{{- include "krypton-lib.assertComponent" (dict "ctx" $ctx "component" $component) -}}
 {{- include "krypton-lib.validateComponentConfig" (dict "ctx" $ctx) -}}
 {{- $global := $ctx.Values.global | default dict -}}
 {{- $domain := include "krypton-lib.labelDomain" . -}}
 {{- $standard := dict
       (printf "%s/source-chart" $domain) (include "krypton-lib.chart" .)
 -}}
-{{- /* annotation: ONE "key=value" for exactly this resource */ -}}
+{{- /* Parse one key=value annotation; preserve any later equals signs. */ -}}
 {{- $single := dict -}}
 {{- with .annotation -}}
 {{- $kv := regexSplit "=" (toString .) 2 -}}
@@ -581,7 +641,7 @@ Usage:
 {{- end -}}
 {{- $_ := set $single (index $kv 0 | trim) (index $kv 1 | trim) -}}
 {{- end -}}
-{{- /* annotationsFrom: dotted path below .Values - a missing path contributes nothing, a non-map fails */ -}}
+{{- /* Read a values path; validate a reachable, non-null target as a map. */ -}}
 {{- $fromValues := dict -}}
 {{- with .annotationsFrom -}}
 {{- $node := $ctx.Values -}}
@@ -617,16 +677,26 @@ Usage:
 {{- if $syncOptions -}}
 {{- $_ := set $annotations "argocd.argoproj.io/sync-options" $syncOptions -}}
 {{- end -}}
+{{- /* Convert every merged annotation value to a string. */ -}}
+{{- range $key, $value := $annotations -}}
+{{- $_ := set $annotations $key (toString $value) -}}
+{{- end -}}
 {{- toYaml $annotations -}}
 {{- end }}
 
 
 {{/* --------------------------------------------------------------------------
-     Convenience
+     Complete metadata
      -------------------------------------------------------------------------- */}}
 
 {{/*
-Complete metadata block - name, labels and annotations - in one include.
+Return name, labels and annotations as the contents of a metadata block.
+The caller supplies the metadata: key and indentation.
+
+Pass ctx and component. Optional arguments are instance, shared, chart,
+extra, annotation and annotationsFrom. The same argument
+dictionary is forwarded to componentName, labels and annotations.
+chart affects the name only; metadata labels still describe ctx.Chart.
 
 Usage:
     metadata:
@@ -638,4 +708,45 @@ labels:
   {{- include "krypton-lib.labels" . | nindent 2 }}
 annotations:
   {{- include "krypton-lib.annotations" . | nindent 2 }}
+{{- end }}
+
+{{/*
+Reject duplicate final names within the calling subchart's resource maps.
+Uses componentName, so comparisons include instance normalization and validated names.
+
+Arguments: ctx and optional shared. Call this helper explicitly, for example
+from templates/validate.yaml, using the same shared mode as the resources.
+It produces no output on success and fails rendering on a collision.
+
+Two groups are checked independently:
+  - configMaps: ConfigMap names must be unique within this map.
+  - secrets and vault.secrets: plain Secrets and Vault destination Secrets
+    must have unique names across both maps and within each map.
+
+A ConfigMap and a Secret may share a name. The internal component argument
+is "secret" for both groups because componentName does not include the
+component type in its output. The groups, rather than this argument,
+determine which names are compared.
+
+This helper assumes the map key is the resource's instance suffix. It does
+not inspect arbitrary templates, check other charts or releases, query the
+cluster, or perform complete Kubernetes-name validation.
+*/}}
+{{- define "krypton-lib.validateResourceNames" -}}
+{{- $args := . -}}
+{{- $values := .ctx.Values -}}
+{{- $vault := ($values.vault | default dict).secrets | default dict -}}
+{{- range $group := list (dict "configMaps" ($values.configMaps | default dict)) (dict "secrets" ($values.secrets | default dict) "vault.secrets" $vault) -}}
+{{- $seen := dict -}}
+{{- range $source, $entries := $group -}}
+{{- range $key, $_ := $entries -}}
+{{- $name := include "krypton-lib.componentName" (dict "ctx" $args.ctx "component" "secret" "instance" $key "shared" $args.shared) -}}
+{{- $origin := printf "%s.%s" $source $key -}}
+{{- if hasKey $seen $name -}}
+{{- fail (printf "krypton-lib: %s and %s produce the same resource name %q (chart %q); use distinct names after normalization" (get $seen $name) $origin $name $args.ctx.Chart.Name) -}}
+{{- end -}}
+{{- $_ := set $seen $name $origin -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
 {{- end }}

@@ -2,6 +2,7 @@
 # repository plumbing out of the full umbrella's render and package.
 krypton-umbrella-slim/
 docs/
+tests/
 .git/
 .gitignore
 *.tgz

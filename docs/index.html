@@ -22,7 +22,7 @@
   <div class="kr-tile" aria-hidden="true">Kr<small>36</small></div>
   <div class="site-title">krypton-umbrella <span>/ docs</span></div>
   <nav class="seg pages" aria-label="Chart variant">
-    <a href="index.html" aria-current="page"><span data-lang="en">Full</span><span data-lang="de">Voll</span></a>
+    <a href="index.html" aria-current="page"><span data-lang="en">Full</span><span data-lang="de">Standard</span></a>
     <a href="slim.html">Slim</a>
   </nav>
   <div class="head-spacer"></div>
@@ -41,15 +41,17 @@
   <span class="eyebrow" data-lang="de">Plattform-Dokumentation</span>
   <h1>krypton-umbrella</h1>
   <p class="lead" data-lang="en">A Helm umbrella chart for Kubernetes/OpenShift, deployed by ArgoCD. One library chart drives naming, labels, merged annotations, dynamic sync waves and prune protection for every subchart &mdash; this page shows exactly which configuration produces which rendered manifest.</p>
-  <p class="lead" data-lang="de">Ein Helm-Umbrella-Chart f&uuml;r Kubernetes/OpenShift, deployt via ArgoCD. Ein Library-Chart steuert Naming, Labels, zusammengef&uuml;hrte Annotations, dynamische Sync-Waves und Prune-Schutz f&uuml;r jedes Subchart &mdash; diese Seite zeigt exakt, welche Konfiguration welches gerenderte Manifest erzeugt.</p>
+  <p class="lead" data-lang="de">Dieses Helm-Umbrella-Chart bündelt Anwendungen für Kubernetes und OpenShift. Argo CD übernimmt die Bereitstellung. Die gemeinsame Library sorgt für einheitliche Namen, Labels, Annotations und Sync-Einstellungen. Die Beispiele zeigen, wie sich Values auf die erzeugten Manifeste auswirken.</p>
+  <div class="note"><span data-lang="en"><b>Library validation:</b> resource names longer than 63 characters or with an invalid format fail rendering. The combined <code>partOfPrefix</code>/<code>laneName</code> label must also fit within 63 characters. Existing configurations that relied on name truncation need an explicit migration. Decimal wave strings such as <code>"08"</code> mean <code>8</code>; invalid integers and signed 64-bit overflow are rejected. Quote padded and very large numbers in YAML. The dedicated library references are in <code>charts/krypton-lib/README.md</code> and <code>README.de.md</code>.</span><span data-lang="de"><b>Library-Prüfungen:</b> Ressourcennamen mit mehr als 63 Zeichen oder ungültigem Format führen zum Fehler. Das zusammengesetzte Label aus <code>partOfPrefix</code>/<code>laneName</code> darf ebenfalls höchstens 63 Zeichen lang sein. Bisher gekürzte Namen benötigen eine geplante Migration. Dezimale Wave-Strings wie <code>"08"</code> ergeben <code>8</code>; ungültige Ganzzahlen und 64-Bit-Überläufe werden abgelehnt. Zahlen mit führenden Nullen und sehr große Zahlen in YAML als Strings angeben. Die eigenen Library-Referenzen stehen in <code>charts/krypton-lib/README.md</code> und <code>README.de.md</code>.</span></div>
+
   <div class="chips">
     <div class="chip"><b>Helm</b> &ge;3 &middot; <span data-lang="en">verified with</span><span data-lang="de">verifiziert mit</span> v4.2.4</div>
     <div class="chip"><b>ArgoCD</b> sync waves</div>
     <div class="chip"><b>OpenShift</b> Routes</div>
     <div class="chip"><b>Vault</b> Secrets Operator</div>
     <div class="chip"><b>Slim</b> <span data-lang="en">variant</span><span data-lang="de">Variante</span> &middot; <a href="slim.html" style="color:inherit">slim.html</a></div>
-    <div class="chip" data-lang="en">All outputs below are real <code style="border:0;background:transparent;padding:0">helm template</code> output</div>
-    <div class="chip" data-lang="de">Alle Ausgaben unten sind echte <code style="border:0;background:transparent;padding:0">helm template</code>-Ausgaben</div>
+    <div class="chip" data-lang="en">Illustrative excerpts from <code style="border:0;background:transparent;padding:0">helm template</code> output</div>
+    <div class="chip" data-lang="de">Beispielhafte Ausschnitte aus <code style="border:0;background:transparent;padding:0">helm template</code>-Ausgaben</div>
   </div>
 </div>
 
@@ -58,21 +60,22 @@
   <span class="eyebrow" data-lang="en">On this page</span>
   <span class="eyebrow" data-lang="de">Auf dieser Seite</span>
   <a href="#overview"><span data-lang="en">Overview</span><span data-lang="de">&Uuml;berblick</span></a>
-  <a href="#commands"><span data-lang="en">Getting started</span><span data-lang="de">Loslegen</span></a>
+  <a href="#commands"><span data-lang="en">Getting started</span><span data-lang="de">Einstieg</span></a>
   <a href="#waves"><span data-lang="en">Sync order</span><span data-lang="de">Sync-Reihenfolge</span></a>
-  <a href="#examples"><span data-lang="en">Config examples</span><span data-lang="de">Konfig-Beispiele</span></a>
-  <a href="#guardrails"><span data-lang="en">Guardrails</span><span data-lang="de">Leitplanken</span></a>
+  <a href="#examples"><span data-lang="en">Config examples</span><span data-lang="de">Konfigurationsbeispiele</span></a>
+  <a href="#guardrails"><span data-lang="en">Guardrails</span><span data-lang="de">Validierung</span></a>
   <a href="#argocd">ArgoCD</a>
 </aside>
 
 <main>
+<div class="note"><span data-lang="de">Begriffe, Voraussetzungen und vollständige Anleitung stehen in der README.de.md der jeweiligen Variante im Repository.</span><span data-lang="en">See each variant’s README.md in the repository for terms, prerequisites and complete instructions.</span></div>
 
 <!-- ============================ OVERVIEW ============================ -->
 <section id="overview">
   <span class="eyebrow" data-lang="en">Structure</span><span class="eyebrow" data-lang="de">Struktur</span>
   <h2 data-lang="en">Overview</h2><h2 data-lang="de">&Uuml;berblick</h2>
   <p data-lang="en">Subcharts live as plain directories under <code>charts/</code> and declare the library as a local dependency (<code>file://../krypton-lib</code>). When the umbrella renders, Helm loads every chart&rsquo;s templates into one shared namespace, so the <code>krypton-lib.*</code> helpers resolve without vendoring.</p>
-  <p data-lang="de">Subcharts liegen als einfache Verzeichnisse unter <code>charts/</code> und deklarieren das Library-Chart als lokale Abh&auml;ngigkeit (<code>file://../krypton-lib</code>). Beim Rendern l&auml;dt Helm die Templates aller Charts in einen gemeinsamen Namensraum &mdash; die <code>krypton-lib.*</code>-Helper sind daher ohne Vendoring aufl&ouml;sbar.</p>
+  <p data-lang="de">Die Subcharts liegen unter <code>charts/</code>. Sie verwenden die gemeinsame Library <code>krypton-lib</code>. Beim Rendern des Umbrellas lädt Helm deren Helper zusammen mit den Subchart-Templates; eine zusätzliche Library-Kopie ist dafür nicht nötig.</p>
   <figure class="code">
     <figcaption><span class="dot dot-in"></span>krypton-umbrella/</figcaption>
     <pre data-hl="none">krypton-umbrella/
@@ -91,18 +94,18 @@
 <!-- ============================ COMMANDS ============================ -->
 <section id="commands">
   <span class="eyebrow" data-lang="en">CLI</span><span class="eyebrow" data-lang="de">CLI</span>
-  <h2 data-lang="en">Getting started</h2><h2 data-lang="de">Loslegen</h2>
-  <p data-lang="en">Everything on this page can be reproduced with three commands. Standalone subchart work additionally needs the library vendored in.</p>
-  <p data-lang="de">Alles auf dieser Seite l&auml;sst sich mit drei Kommandos reproduzieren. Eigenst&auml;ndige Subchart-Arbeit braucht zus&auml;tzlich das gevendorte Library-Chart.</p>
+  <h2 data-lang="en">Getting started</h2><h2 data-lang="de">Einstieg</h2>
+  <p data-lang="en">Run these commands from the repository root. Rendering produces YAML without installing it. Standalone subcharts need their library dependency built first. Gitignored library copies can still be loaded by Helm; remove stale copies before umbrella tests or use a fresh checkout.</p>
+  <p data-lang="de">Die Befehle gelten ab dem Stammverzeichnis dieses Repositorys. <code>helm template</code> erzeugt YAML, installiert aber nichts. Für ein einzelnes Subchart muss zuerst seine Library-Abhängigkeit gebaut werden. Erzeugte Library-Kopien können trotz <code>.gitignore</code> später von Helm geladen werden; vor Umbrella-Tests alte Kopien entfernen oder eine frische Arbeitskopie verwenden.</p>
   <figure class="code">
     <figcaption><span class="dot dot-in"></span>shell</figcaption>
-    <pre data-hl="bash">helm lint krypton-umbrella
-helm template krypton krypton-umbrella                                # render the release lane
-helm template krypton krypton-umbrella --set global.laneName=test     # render another lane
+    <pre data-hl="bash">helm lint .
+helm template krypton .                                # render the release lane
+helm template krypton . --set global.laneName=test     # render another lane
 
 # work on a single subchart (vendors krypton-lib via file://../krypton-lib)
-helm dependency build krypton-umbrella/charts/krypton-banking
-helm template t krypton-umbrella/charts/krypton-banking --set global.laneName=dev</pre>
+helm dependency build charts/krypton-banking
+helm template t charts/krypton-banking --set global.laneName=dev</pre>
   </figure>
 </section>
 
@@ -110,8 +113,8 @@ helm template t krypton-umbrella/charts/krypton-banking --set global.laneName=de
 <section id="waves">
   <span class="eyebrow" data-lang="en">Ordering</span><span class="eyebrow" data-lang="de">Reihenfolge</span>
   <h2 data-lang="en">Sync order at a glance</h2><h2 data-lang="de">Sync-Reihenfolge auf einen Blick</h2>
-  <p data-lang="en">ArgoCD applies resources wave by wave and waits for health in between. Component waves resolve per type (subchart value first, then <code>global.syncWaves</code>), and <code>syncWaveOffset</code> shifts a whole subchart&rsquo;s band &mdash; krypton-auth runs at offset&nbsp;+10, entirely after krypton-banking.</p>
-  <p data-lang="de">ArgoCD wendet Ressourcen Wave f&uuml;r Wave an und wartet dazwischen auf Health. Komponenten-Waves l&ouml;sen pro Typ auf (Subchart-Wert zuerst, dann <code>global.syncWaves</code>), und <code>syncWaveOffset</code> verschiebt das gesamte Band eines Subcharts &mdash; krypton-auth l&auml;uft mit Offset&nbsp;+10 vollst&auml;ndig nach krypton-banking.</p>
+  <p data-lang="en">Argo CD orders resources within an Application by sync phase and wave. Subchart values override global waves, then syncWaveOffset is added. Earlier VaultStaticSecrets do not by themselves guarantee ready destination Secrets: use an appropriate health assessment.</p>
+  <p data-lang="de">Argo CD verarbeitet Ressourcen innerhalb einer Application nach Sync-Phase und Wave. Kleinere Waves kommen zuerst. Der Subchart-Wert hat Vorrang vor <code>global.syncWaves</code>; <code>syncWaveOffset</code> wird addiert. Mit den Standardwerten folgt Auth auf Banking. Eine frühere VaultStaticSecret-Wave garantiert allein noch kein fertiges Ziel-Secret: Dafür ist eine geeignete Zustandsprüfung nötig.</p>
   <div class="waveband-wrap">
     <div class="waveband">
       <div class="wb-rowlabel">krypton-banking</div>
@@ -143,14 +146,14 @@ helm template t krypton-umbrella/charts/krypton-banking --set global.laneName=de
 <section id="examples">
   <span class="eyebrow" data-lang="en">Config &rarr; outcome</span><span class="eyebrow" data-lang="de">Konfig &rarr; Ergebnis</span>
   <h2 data-lang="en">Configuration examples</h2><h2 data-lang="de">Konfigurationsbeispiele</h2>
-  <p data-lang="en">Each card pairs a configuration with the manifest it renders. Every output block was captured verbatim from <code>helm template krypton krypton-umbrella</code> (v4.2.4) &mdash; nothing is hand-written.</p>
-  <p data-lang="de">Jede Karte stellt einer Konfiguration das gerenderte Manifest gegen&uuml;ber. Jeder Output-Block wurde w&ouml;rtlich aus <code>helm template krypton krypton-umbrella</code> (v4.2.4) &uuml;bernommen &mdash; nichts ist handgeschrieben.</p>
+  <p data-lang="en">Each card pairs configuration with illustrative YAML excerpts. Comments and omissions explain the relevant parts. Run the command with the shown overrides for complete output.</p>
+  <p data-lang="de">Jede Karte zeigt Konfiguration und zugehörige YAML-Ausschnitte. Auslassungen und Kommentare dienen der Erklärung. Für vollständige Ausgaben den angegebenen Befehl mit den jeweiligen Overrides ausführen.</p>
 
   <!-- E1 naming -->
   <article class="example" id="ex-naming">
     <h3 data-lang="en">Resource naming &amp; lanes</h3><h3 data-lang="de">Ressourcennamen &amp; Lanes</h3>
     <p data-lang="en">Every resource is named <code>&lt;subchart&gt;-&lt;laneName&gt;[-&lt;instance&gt;]</code>. The component type is deliberately not part of the name &mdash; the Kubernetes kind already tells the Deployment from the Service called <code>krypton-banking-release</code>; it is still passed to every helper because it selects the sync wave and prune protection. Several resources of one kind get an instance suffix, normalised to a DNS-1123 label. The lane is also stamped as <code>app.kubernetes.io/part-of</code>; an optional <code>global.partOfPrefix</code> prepends the umbrella name to that label (<code>krypton-umbrella-release</code>) without touching the names. The names get their own optional <code>global.namePrefix</code>: empty by default, <code>acme</code> renders <code>acme-krypton-banking-release</code> (shared resources included). Switching the lane renames everything consistently.</p>
-    <p data-lang="de">Jede Ressource hei&szlig;t <code>&lt;subchart&gt;-&lt;laneName&gt;[-&lt;instance&gt;]</code>. Der Komponententyp ist bewusst nicht Teil des Namens &mdash; der Kubernetes-Kind unterscheidet das Deployment ohnehin vom Service namens <code>krypton-banking-release</code>; er wird trotzdem jedem Helper &uuml;bergeben, weil er Sync-Wave und Prune-Schutz ausw&auml;hlt. Mehrere Ressourcen einer Art erhalten einen Instance-Suffix, normalisiert auf ein DNS-1123-Label. Die Lane wird zus&auml;tzlich als <code>app.kubernetes.io/part-of</code> gesetzt; ein optionales <code>global.partOfPrefix</code> stellt diesem Label den Umbrella-Namen voran (<code>krypton-umbrella-release</code>), die Namen bleiben unber&uuml;hrt. Die Namen haben ihr eigenes optionales <code>global.namePrefix</code>: per Default leer, <code>acme</code> rendert <code>acme-krypton-banking-release</code> (geteilte Ressourcen eingeschlossen). Ein Lane-Wechsel benennt alles konsistent um.</p>
+    <p data-lang="de">Eine Lane ist eine Umgebung wie <code>release</code> oder <code>test</code>. Namen folgen dem Schema <code>[&lt;namePrefix&gt;-]&lt;subchart&gt;-&lt;lane&gt;[-&lt;instance&gt;]</code>. Deployment und Service dürfen gleich heißen, weil ihre Ressourcentypen verschieden sind. Mehrere Ressourcen desselben Typs brauchen unterschiedliche Instanzen. Namen mit mehr als 63 Zeichen oder ungültigem Format führen zu einer Fehlermeldung. <code>namePrefix</code> betrifft Namen; <code>partOfPrefix</code> betrifft nur das Lane-Label. Ein Lane-Wechsel ändert nicht automatisch Ressourcenlimits oder Replikazahlen.</p>
     <div class="io">
       <div class="stack">
         <figure class="code">
@@ -160,7 +163,7 @@ helm template t krypton-umbrella/charts/krypton-banking --set global.laneName=de
   namePrefix: ""      # "acme" -&gt; name: acme-krypton-banking-release
   partOfPrefix: ""    # "krypton-umbrella" -&gt; part-of: krypton-umbrella-release</pre>
         </figure>
-        <div class="cmd">helm template krypton krypton-umbrella --set global.laneName=test</div>
+        <div class="cmd">helm template krypton . --set global.laneName=test</div>
         <figure class="code">
           <figcaption><span class="dot dot-out"></span><span data-lang="en">rendered names &middot; lane test</span><span data-lang="de">gerenderte Namen &middot; Lane test</span></figcaption>
           <pre data-hl="yaml">name: krypton-banking-test             # ServiceAccount
@@ -184,14 +187,14 @@ name: krypton-banking-release-app      # VaultStaticSecret, instance "app"
 name: krypton-banking-release-database # VaultStaticSecret, instance "database"</pre>
       </figure>
     </div>
-    <div class="note"><span data-lang="en"><b>Guard:</b> an unset or empty <code>global.laneName</code> fails the render loudly &mdash; no lane-specific resource can ever be created without a lane in its name. Only resources explicitly marked <code>shared</code> (next card) drop it.</span><span data-lang="de"><b>Absicherung:</b> ein fehlendes oder leeres <code>global.laneName</code> l&auml;sst das Rendern laut fehlschlagen &mdash; keine Lane-spezifische Ressource entsteht je ohne Lane im Namen. Nur explizit als <code>shared</code> markierte Ressourcen (n&auml;chste Karte) lassen sie weg.</span></div>
+    <div class="note"><span data-lang="en"><b>Guard:</b> an unset or empty <code>global.laneName</code> fails the render loudly &mdash; no lane-specific resource can ever be created without a lane in its name. Only resources explicitly marked <code>shared</code> (next card) drop it.</span><span data-lang="de"><b>Absicherung:</b> ein fehlendes oder leeres <code>global.laneName</code> bricht das Rendern mit einer Fehlermeldung ab &mdash; keine Lane-spezifische Ressource entsteht je ohne Lane im Namen. Nur explizit als <code>shared</code> markierte Ressourcen (n&auml;chste Karte) lassen sie weg.</span></div>
   </article>
 
   <!-- E1b shared resources -->
   <article class="example" id="ex-shared">
     <h3 data-lang="en">Shared resources without the lane</h3><h3 data-lang="de">Geteilte Ressourcen ohne Lane</h3>
-    <p data-lang="en">ConfigMaps and Secrets that every lane deployment in a namespace consumes only have to exist once. They live in their own subchart, <code>krypton-shared</code>, whose templates pass <code>shared: true</code> to <code>metadata</code>: the name drops the lane segment (<code>krypton-shared-&lt;key&gt;</code>) and the <code>app.kubernetes.io/part-of</code> label is omitted. Exactly one ArgoCD Application per namespace may own them &mdash; ArgoCD flags a second owner as a shared resource, Helm refuses it &mdash; so ownership is the plain deploy switch <code>krypton-shared.enabled</code>. The application subcharts reference the objects with the <em>same</em> helper call plus <code>chart: krypton-shared</code>, so a reference can never drift from the rendered name. The same subchart carries the namespace-wide NetworkPolicy (named <code>krypton-shared</code>, <code>podSelector: {}</code>): every pod in the namespace accepts ingress only from its own namespace and from the OpenShift router, so a Route is the only way in from another namespace; egress stays open, and <code>networkPolicy.extraRules</code> admits further peers such as <code>openshift-monitoring</code>.</p>
-    <p data-lang="de">ConfigMaps und Secrets, die jedes Lane-Deployment in einem Namespace nutzt, m&uuml;ssen nur einmal existieren. Sie leben in einem eigenen Subchart, <code>krypton-shared</code>, dessen Templates <code>shared: true</code> an <code>metadata</code> &uuml;bergeben: Der Name verliert das Lane-Segment (<code>krypton-shared-&lt;key&gt;</code>), das <code>app.kubernetes.io/part-of</code>-Label entf&auml;llt. Genau eine ArgoCD-Application pro Namespace darf sie besitzen &mdash; ArgoCD meldet einen zweiten Eigent&uuml;mer als Shared Resource, Helm verweigert ihn &mdash;, die Eigent&uuml;merschaft ist deshalb der gew&ouml;hnliche Deploy-Schalter <code>krypton-shared.enabled</code>. Die Anwendungs-Subcharts referenzieren die Objekte mit <em>demselben</em> Helper-Aufruf plus <code>chart: krypton-shared</code>, eine Referenz kann so nie vom gerenderten Namen abdriften. Dasselbe Subchart tr&auml;gt die namespace-weite NetworkPolicy (Name <code>krypton-shared</code>, <code>podSelector: {}</code>): Jeder Pod im Namespace akzeptiert Ingress nur aus dem eigenen Namespace und vom OpenShift-Router, aus einem anderen Namespace f&uuml;hrt der Weg also nur &uuml;ber die Route; Egress bleibt offen, weitere Peers wie <code>openshift-monitoring</code> &ouml;ffnet <code>networkPolicy.extraRules</code>.</p>
+    <p data-lang="en">Shared objects omit the lane and must have exactly one managing Application per resource name. Consumers reference the same helper with chart: krypton-shared; this computes names but does not check readiness. The shared NetworkPolicy allows ingress from its own and selected ingress namespaces. It does not enforce Route-only access: permissions are additive and depend on network configuration. It does not restrict egress itself; other policies may.</p>
+    <p data-lang="de"><code>krypton-shared</code> erzeugt gemeinsam genutzte Objekte ohne Lane im Namen. Für jeden solchen Namen darf nur eine Application die Erzeugung übernehmen; der Schalter <code>krypton-shared.enabled</code> koordiniert das nicht automatisch. Konsumenten verwenden denselben Namens-Helper mit <code>chart: krypton-shared</code>. Die gemeinsame NetworkPolicy erlaubt Verkehr aus dem eigenen und ausgewählten Ingress-Namespaces. Sie garantiert keinen ausschließlich über Routes laufenden Zugang: Regeln sind additiv und von der Netzwerkkonfiguration abhängig. Diese Policy beschränkt Egress nicht; andere Policies können das tun.</p>
     <div class="io">
       <div class="stack">
         <figure class="code">
@@ -237,7 +240,7 @@ krypton-shared:
         </figure>
       </div>
       <div class="stack">
-        <div class="cmd">helm template krypton krypton-umbrella</div>
+        <div class="cmd">helm template krypton .</div>
         <figure class="code">
           <figcaption><span class="dot dot-out"></span><span data-lang="en">rendered &middot; consumer lane (default)</span><span data-lang="de">gerendert &middot; Konsumenten-Lane (Default)</span></figcaption>
           <pre data-hl="yaml"># no krypton-shared object in the output - the Deployment references them
@@ -251,7 +254,7 @@ envFrom:
   - secretRef:
       name: krypton-shared-gateway</pre>
         </figure>
-        <div class="cmd">helm template krypton-shared krypton-umbrella -f values-shared-only.yaml</div>
+        <div class="cmd">helm template krypton-shared . -f values-shared-only.yaml</div>
         <figure class="code">
           <figcaption><span class="dot dot-out"></span><span data-lang="en">rendered &middot; dedicated shared Application (complete output)</span><span data-lang="de">gerendert &middot; eigene shared-Application (gesamte Ausgabe)</span></figcaption>
           <pre data-hl="yaml">kind: NetworkPolicy
@@ -273,7 +276,7 @@ metadata:
     krypton.io/cost-center: cc-4711
     krypton.io/platform: krypton</pre>
         </figure>
-        <div class="cmd">helm template krypton krypton-umbrella --set krypton-shared.enabled=true</div>
+        <div class="cmd">helm template krypton . --set krypton-shared.enabled=true</div>
         <figure class="code">
           <figcaption><span class="dot dot-out"></span><span data-lang="en">rendered &middot; owning lane</span><span data-lang="de">gerendert &middot; Eigent&uuml;mer-Lane</span></figcaption>
           <pre data-hl="yaml"># the application plus the shared objects in one release
@@ -284,14 +287,14 @@ kind: Deployment   # krypton-banking-release, referencing both</pre>
         </figure>
       </div>
     </div>
-    <div class="note"><span data-lang="en"><b>Ownership:</b> one Application per namespace enables <code>krypton-shared</code> &mdash; the owning lane, or a dedicated shared Application via <code>values-shared-only.yaml</code> (see <a href="#argocd">ArgoCD</a>); every other lane keeps the default. Service-scoped sharing still exists: krypton-banking's <code>config.shared</code> renders its own ConfigMap as <code>krypton-banking</code>, gated by <code>config.create</code>. The slim umbrella ships the same <code>krypton-shared</code> subchart (see the <a href="slim.html">slim docs</a>).</span><span data-lang="de"><b>Eigent&uuml;merschaft:</b> eine Application pro Namespace aktiviert <code>krypton-shared</code> &mdash; die Eigent&uuml;mer-Lane oder eine eigene shared-Application &uuml;ber <code>values-shared-only.yaml</code> (siehe <a href="#argocd">ArgoCD</a>); jede andere Lane beh&auml;lt den Default. Service-bezogenes Teilen gibt es weiterhin: <code>config.shared</code> von krypton-banking rendert dessen ConfigMap als <code>krypton-banking</code>, geschaltet &uuml;ber <code>config.create</code>. Das schlanke Umbrella bringt dasselbe <code>krypton-shared</code>-Subchart mit (siehe <a href="slim.html">Slim-Doku</a>).</span></div>
+    <div class="note"><span data-lang="en"><b>Ownership:</b> one Application per namespace enables <code>krypton-shared</code> &mdash; the owning lane, or a dedicated shared Application via <code>values-shared-only.yaml</code> (see <a href="#argocd">ArgoCD</a>); every other lane keeps the default. Service-scoped sharing still exists: krypton-banking's <code>config.shared</code> renders its own ConfigMap as <code>krypton-banking</code>, gated by <code>config.create</code>. The slim umbrella has a similar shared subchart without NetworkPolicy (see the <a href="slim.html">slim docs</a>).</span><span data-lang="de"><b>Eigent&uuml;merschaft:</b> eine Application pro Namespace aktiviert <code>krypton-shared</code> &mdash; die Eigent&uuml;mer-Lane oder eine eigene shared-Application &uuml;ber <code>values-shared-only.yaml</code> (siehe <a href="#argocd">ArgoCD</a>); jede andere Lane beh&auml;lt den Default. Service-bezogenes Teilen gibt es weiterhin: <code>config.shared</code> von krypton-banking rendert dessen ConfigMap als <code>krypton-banking</code>, geschaltet &uuml;ber <code>config.create</code>. Slim bietet ein entsprechendes Shared-Subchart ohne NetworkPolicy (siehe <a href="slim.html">Slim-Doku</a>).</span></div>
   </article>
 
   <!-- E2 metadata -->
   <article class="example" id="ex-metadata">
     <h3 data-lang="en">Labels &amp; annotations merge</h3><h3 data-lang="de">Labels- &amp; Annotations-Merge</h3>
-    <p data-lang="en">Chart-generated standard keys merge with the static <code>global.labels</code> / <code>global.annotations</code>; the ArgoCD keys are applied last so they can never be shadowed. One <code>krypton-lib.metadata</code> include produces the whole block. Annotations for exactly one resource go into that call: <code>extra</code> (a dict), <code>annotation</code> (one <code>key=value</code> string) or <code>annotationsFrom</code> (a dotted values path such as <code>route.annotations</code>, or <code>routes.&lt;name&gt;.annotations</code> per instance inside a range, so one Route of many gets its HAProxy timeout) &mdash; merged after <code>global.annotations</code>, below the ArgoCD keys.</p>
-    <p data-lang="de">Chart-generierte Standard-Keys verschmelzen mit den statischen <code>global.labels</code> / <code>global.annotations</code>; die ArgoCD-Keys kommen zuletzt und k&ouml;nnen nie &uuml;berdeckt werden. Ein einziges <code>krypton-lib.metadata</code>-Include erzeugt den ganzen Block. Annotations f&uuml;r genau eine Ressource wandern in diesen Aufruf: <code>extra</code> (ein Dict), <code>annotation</code> (ein <code>key=value</code>-String) oder <code>annotationsFrom</code> (ein Punkt-Pfad in die Values wie <code>route.annotations</code>, oder <code>routes.&lt;name&gt;.annotations</code> je Instanz in einem range, sodass von mehreren Routes genau eine ihr HAProxy-Timeout bekommt) &mdash; gemergt nach <code>global.annotations</code>, unterhalb der ArgoCD-Keys.</p>
+    <p data-lang="en">The metadata helper merges standard metadata and custom values. The three Pod identity labels are reserved and applied after custom labels. Annotations merge global values with per-call extras; configured Argo CD values take precedence. All resulting values are strings.</p>
+    <p data-lang="de"><code>krypton-lib.metadata</code> erzeugt Name, Labels und Annotations. Eigene Labels ergänzen die Standardwerte; die drei Identitätslabels für Pod-Selektoren bleiben reserviert. Annotations werden aus <code>global.annotations</code> und den Argumenten des Aufrufs zusammengeführt. Konfigurierte Argo-CD-Werte haben abschließend Vorrang. Alle resultierenden Werte werden als Strings ausgegeben.</p>
     <div class="io">
       <figure class="code">
         <figcaption><span class="dot dot-in"></span>values.yaml &middot; umbrella</figcaption>
@@ -329,8 +332,8 @@ kind: Deployment   # krypton-banking-release, referencing both</pre>
   <!-- E2b per-resource annotations -->
   <article class="example" id="ex-annotation">
     <h3 data-lang="en">Annotations for exactly one resource</h3><h3 data-lang="de">Annotations f&uuml;r genau eine Ressource</h3>
-    <p data-lang="en"><code>global.annotations</code> and <code>&lt;subchart&gt;.annotations</code> reach every resource. For a single one &mdash; the HAProxy timeout of one Route, not of the Deployment next to it &mdash; the <code>metadata</code> call takes three optional arguments: <code>extra</code> (a dict; the slim library calls it <code>extraAnnotations</code>), <code>annotation</code> (one <code>key=value</code> string, the one-liner form of the same thing) and <code>annotationsFrom</code> (a dotted path below <code>.Values</code>). The path form is what a template uses when the annotations belong in the values: it tolerates a missing path, so inside a <code>range</code> over several Routes only the instances that carry a <code>routes.&lt;name&gt;.annotations</code> block get one, and it fails the render when the path holds anything but a map. All three merge after <code>global.annotations</code> and below the two ArgoCD keys.</p>
-    <p data-lang="de"><code>global.annotations</code> und <code>&lt;subchart&gt;.annotations</code> erreichen jede Ressource. F&uuml;r eine einzelne &mdash; das HAProxy-Timeout einer Route, nicht des Deployments daneben &mdash; nimmt der <code>metadata</code>-Aufruf drei optionale Argumente: <code>extra</code> (ein Dict; das schlanke Library-Chart nennt es <code>extraAnnotations</code>), <code>annotation</code> (ein <code>key=value</code>-String, die Einzeiler-Form desselben) und <code>annotationsFrom</code> (ein Punkt-Pfad unterhalb von <code>.Values</code>). Die Pfad-Form nimmt ein Template, wenn die Annotations in die Values geh&ouml;ren: Sie toleriert einen fehlenden Pfad, in einem <code>range</code> &uuml;ber mehrere Routes bekommen also nur die Instanzen mit einem <code>routes.&lt;name&gt;.annotations</code>-Block eine, und sie l&auml;sst das Rendern fehlschlagen, wenn der Pfad etwas anderes als eine Map enth&auml;lt. Alle drei werden nach <code>global.annotations</code> und unterhalb der beiden ArgoCD-Keys gemergt.</p>
+    <p data-lang="en">global.annotations applies to every resource. For a single resource, use extra (a map), annotation (key=value), or annotationsFrom (a dotted values path). Missing paths contribute nothing; existing scalar targets fail. Only the Slim library supports a subchart-wide annotations map.</p>
+    <p data-lang="de"><code>global.annotations</code> gilt für jede Ressource. Für einzelne Ressourcen stehen <code>extra</code> (Map), <code>annotation</code> (ein String <code>key=value</code>) und <code>annotationsFrom</code> (Pfad unter <code>.Values</code>) bereit. Beispiel: <code>route.annotations</code> ergänzt nur die Route. Ein fehlender Pfad wird ignoriert; ein vorhandener skalarer Zielwert ist ein Fehler. Eine eigene Subchart-Ebene <code>annotations</code> bietet nur die Slim-Library.</p>
     <div class="io">
       <div class="stack">
         <figure class="code">
@@ -359,7 +362,7 @@ kind: Deployment   # krypton-banking-release, referencing both</pre>
         </figure>
       </div>
       <div class="stack">
-        <div class="cmd">helm template krypton krypton-umbrella --set krypton-banking.route.annotations.haproxy\.router\.openshift\.io/timeout=300s</div>
+        <div class="cmd">helm template krypton . --set krypton-banking.route.annotations.haproxy\.router\.openshift\.io/timeout=300s</div>
         <figure class="code">
           <figcaption><span class="dot dot-out"></span><span data-lang="en">rendered &middot; Route</span><span data-lang="de">gerendert &middot; Route</span></figcaption>
           <pre data-hl="yaml">kind: Route
@@ -388,8 +391,8 @@ of annotations, got string (chart "krypton-banking")</pre>
   <!-- E2 pod selectors -->
   <article class="example" id="ex-selector">
     <h3 data-lang="en">Pod selectors: Deployment &harr; Service</h3><h3 data-lang="de">Pod-Selektoren: Deployment &harr; Service</h3>
-    <p data-lang="en">A Deployment's <code>spec.selector</code>, its pod template labels and the Service selector must agree, or the Service routes to nothing. <code>krypton-lib.selectorLabels</code> renders the identity all of them share: <code>app.kubernetes.io/name</code> (the subchart), <code>app.kubernetes.io/instance</code> (the Helm release, i.e. the ArgoCD Application) and <code>app.kubernetes.io/part-of</code> (the lane label, <code>[&lt;partOfPrefix&gt;-]&lt;laneName&gt;</code>). The pod template takes the full <code>krypton-lib.labels</code> set, which contains exactly these three values, so the selector always matches; the lane in the selector keeps a Service, PDB or NetworkPolicy of one lane from ever picking up another lane's pods in the same namespace.</p>
-    <p data-lang="de">Der <code>spec.selector</code> eines Deployments, seine Pod-Template-Labels und der Service-Selektor m&uuml;ssen &uuml;bereinstimmen, sonst routet der Service ins Leere. <code>krypton-lib.selectorLabels</code> rendert die Identit&auml;t, die alle drei teilen: <code>app.kubernetes.io/name</code> (das Subchart), <code>app.kubernetes.io/instance</code> (das Helm-Release, also die ArgoCD-Application) und <code>app.kubernetes.io/part-of</code> (das Lane-Label, <code>[&lt;partOfPrefix&gt;-]&lt;laneName&gt;</code>). Das Pod-Template bekommt den vollen <code>krypton-lib.labels</code>-Satz, der genau diese drei Werte enth&auml;lt, der Selektor passt also immer; die Lane im Selektor verhindert, dass ein Service, PDB oder eine NetworkPolicy einer Lane je die Pods einer anderen Lane im selben Namespace einsammelt.</p>
+    <p data-lang="en">Selectors use app.kubernetes.io/name, instance and part-of. The library protects these identity labels so Pod labels match. The release name defaults to the Argo CD Application name but helm.releaseName may override it. Deployment selectors are immutable; changing the lane label requires planned recreation.</p>
+    <p data-lang="de">Deployment- und Service-Selektoren verwenden die Labels <code>app.kubernetes.io/name</code>, <code>app.kubernetes.io/instance</code> und <code>app.kubernetes.io/part-of</code>. Die Library setzt diese Werte auch am Pod-Template und schützt sie vor Überschreiben. Der Release-Name ist standardmäßig der Argo-CD-Application-Name, kann aber mit <code>helm.releaseName</code> abweichen. Deployment-Selektoren sind unveränderlich; Änderungen am Lane-Label benötigen eine geplante Neuerstellung.</p>
     <div class="io">
       <div class="stack">
         <figure class="code">
@@ -415,7 +418,7 @@ of annotations, got string (chart "krypton-banking")</pre>
   laneName: release
   partOfPrefix: krypton-umbrella   # part-of: krypton-umbrella-release</pre>
         </figure>
-        <div class="cmd">helm template krypton krypton-umbrella --set global.partOfPrefix=krypton-umbrella</div>
+        <div class="cmd">helm template krypton . --set global.partOfPrefix=krypton-umbrella</div>
       </div>
       <figure class="code">
         <figcaption><span class="dot dot-out"></span><span data-lang="en">rendered &middot; Deployment and Service (excerpt)</span><span data-lang="de">gerendert &middot; Deployment und Service (Auszug)</span></figcaption>
@@ -457,14 +460,14 @@ spec:
     app.kubernetes.io/part-of: krypton-umbrella-release</pre>
       </figure>
     </div>
-    <div class="note"><span data-lang="en"><b>One-way door:</b> a Deployment selector is immutable. Renaming the lane creates a new Deployment anyway, but changing <code>global.partOfPrefix</code> on a lane that already runs changes only the selector and the apply is rejected &mdash; delete that lane's Deployments once, then sync again. Never add chart version or custom labels to the selector.</span><span data-lang="de"><b>Einbahnstra&szlig;e:</b> ein Deployment-Selektor ist unver&auml;nderlich. Eine Lane-Umbenennung erzeugt ohnehin ein neues Deployment, aber <code>global.partOfPrefix</code> auf einer bereits laufenden Lane zu &auml;ndern ver&auml;ndert nur den Selektor und der Apply wird abgelehnt &mdash; die Deployments dieser Lane einmalig l&ouml;schen, dann erneut syncen. Nie Chart-Version oder eigene Labels in den Selektor aufnehmen.</span></div>
+    <div class="note"><span data-lang="en"><b>Selector changes:</b> a Deployment selector is immutable. Renaming the lane creates a new Deployment anyway, but changing <code>global.partOfPrefix</code> on a lane that already runs changes only the selector and the apply is rejected &mdash; delete that lane's Deployments once, then sync again. Never add chart version or custom labels to the selector.</span><span data-lang="de"><b>Selektoränderungen:</b> ein Deployment-Selektor ist unveränderlich. Eine Lane-Umbenennung erzeugt ohnehin ein neues Deployment, aber <code>global.partOfPrefix</code> auf einer bereits laufenden Lane zu &auml;ndern ver&auml;ndert nur den Selektor und der Apply wird abgelehnt &mdash; die Neuerstellung betroffener Deployments planen und mögliche Ausfallzeiten berücksichtigen. Nie Chart-Version oder eigene Labels in den Selektor aufnehmen.</span></div>
   </article>
 
   <!-- E2b config delivery -->
   <article class="example" id="ex-config">
     <h3 data-lang="en">ConfigMap delivery &amp; pod restarts</h3><h3 data-lang="de">ConfigMap-Zustellung &amp; Pod-Neustarts</h3>
-    <p data-lang="en"><code>config.data</code> renders into the ConfigMap; the flags define delivery. envFrom consumers need the checksum roll &mdash; env vars never update in a running container. A service that watches its config file instead mounts it (<code>mountPath</code>; the kubelet refreshes the files, typically within a minute &mdash; whole-directory on purpose, subPath mounts would never refresh) and disables the roll.</p>
-    <p data-lang="de"><code>config.data</code> rendert in die ConfigMap; die Flags definieren die Zustellung. envFrom-Konsumenten brauchen den Checksum-Roll &mdash; Env-Variablen aktualisieren sich in laufenden Containern nie. Ein Service, der seine Config-Datei selbst &uuml;berwacht, mountet sie stattdessen (<code>mountPath</code>; das Kubelet aktualisiert die Dateien, typischerweise binnen einer Minute &mdash; bewusst als ganzes Verzeichnis, subPath-Mounts w&uuml;rden nie aktualisieren) und deaktiviert den Roll.</p>
+    <p data-lang="en">config.data supplies ConfigMap content. envFrom variables do not update in running containers, so rollPodsOnChange rolls Pods when config.data changes. A mountPath mounts a directory that updates asynchronously; the application must reload files itself. This checksum does not monitor external shared ConfigMaps or Secret updates.</p>
+    <p data-lang="de"><code>config.data</code> enthält den ConfigMap-Inhalt. <code>envFrom</code> importiert ihn als Umgebungsvariablen; diese ändern sich in laufenden Containern nicht. <code>rollPodsOnChange</code> löst deshalb bei Änderungen von <code>config.data</code> einen Rollout aus. Mit <code>mountPath</code> wird die ConfigMap als Verzeichnis eingebunden und zeitversetzt aktualisiert. Die Anwendung muss solche Dateien selbst neu einlesen. Externe Shared-ConfigMaps und Secret-Änderungen erfasst diese Prüfsumme nicht.</p>
     <div class="io">
       <figure class="code">
         <figcaption><span class="dot dot-in"></span>charts/krypton-banking/values.yaml</figcaption>
@@ -486,7 +489,7 @@ envFrom:
   - configMapRef:
       name: krypton-banking-release</pre>
         </figure>
-        <div class="cmd">helm template krypton krypton-umbrella --set krypton-banking.config.rollPodsOnChange=false --set krypton-banking.config.mountPath=/etc/krypton/config --set krypton-banking.config.envFrom=false</div>
+        <div class="cmd">helm template krypton . --set krypton-banking.config.rollPodsOnChange=false --set krypton-banking.config.mountPath=/etc/krypton/config --set krypton-banking.config.envFrom=false</div>
         <figure class="code">
           <figcaption><span class="dot dot-out"></span><span data-lang="en">rendered &middot; hot-reload pattern</span><span data-lang="de">gerendert &middot; Hot-Reload-Muster</span></figcaption>
           <pre data-hl="yaml"># no checksum annotation - pods keep running on config changes
@@ -506,8 +509,8 @@ volumes:
   <!-- E3 waves -->
   <article class="example" id="ex-waves">
     <h3 data-lang="en">Sync waves: three-layer resolution</h3><h3 data-lang="de">Sync-Waves: drei Aufl&ouml;sungsebenen</h3>
-    <p data-lang="en">First hit wins: the subchart&rsquo;s <code>syncWaves.&lt;component&gt;</code> (which already contains any umbrella override thanks to Helm coalescing), then <code>global.syncWaves.&lt;component&gt;</code>. Unconfigured components get no annotation.</p>
-    <p data-lang="de">Der erste Treffer gewinnt: <code>syncWaves.&lt;komponente&gt;</code> des Subcharts (enth&auml;lt dank Helm-Coalescing bereits jedes Umbrella-Override), danach <code>global.syncWaves.&lt;komponente&gt;</code>. Unkonfigurierte Komponenten bekommen keine Annotation.</p>
+    <p data-lang="en">Subchart syncWaves values, including umbrella overrides, take precedence over global.syncWaves. Without a wave or offset, no wave annotation is generated. Zero and negative values are supported.</p>
+    <p data-lang="de">Für eine Komponente gilt zuerst <code>syncWaves.&lt;component&gt;</code> im Subchart einschließlich Umbrella-Overrides, danach <code>global.syncWaves.&lt;component&gt;</code>. Ohne Wave und ohne Offset wird keine Wave-Annotation erzeugt. Die Zahl <code>0</code> und negative Zahlen sind gültig; YAML-<code>null</code> ist kein Zahlenwert.</p>
     <div class="io">
       <figure class="code">
         <figcaption><span class="dot dot-in"></span><span data-lang="en">three layers of values</span><span data-lang="de">drei Werte-Ebenen</span></figcaption>
@@ -551,8 +554,8 @@ argocd.argoproj.io/sync-wave: "3"</pre>
   <!-- E4 offset -->
   <article class="example" id="ex-offset">
     <h3 data-lang="en">Cross-subchart ordering with syncWaveOffset</h3><h3 data-lang="de">Subchart-&uuml;bergreifende Reihenfolge mit syncWaveOffset</h3>
-    <p data-lang="en">The offset is added to every resolved wave of the subchart, shifting its whole band behind (or before) its siblings while keeping the internal order. Components without a configured wave &mdash; implicitly wave 0 &mdash; are annotated with the bare offset, so they move with the block.</p>
-    <p data-lang="de">Der Offset wird auf jede aufgel&ouml;ste Wave des Subcharts addiert und verschiebt das gesamte Band hinter (oder vor) seine Geschwister, bei unver&auml;nderter innerer Reihenfolge. Komponenten ohne konfigurierte Wave &mdash; implizit Wave 0 &mdash; erhalten den nackten Offset und wandern mit dem Block.</p>
+    <p data-lang="en">syncWaveOffset shifts every component wave, using zero for unconfigured waves. Choose offsets from actual ranges: local waves -9..9 need a step of at least 19; steps of ten overlap.</p>
+    <p data-lang="de"><code>syncWaveOffset</code> verschiebt alle Waves des Subcharts um denselben Wert. Eine nicht konfigurierte Wave zählt dafür als null. Die tatsächlichen Bereiche müssen getrennt bleiben: Für lokale Waves <code>-9..9</code> sind mindestens <code>19</code> Abstand nötig; Zehnerschritte würden überlappen.</p>
     <div class="io">
       <figure class="code">
         <figcaption><span class="dot dot-in"></span>values.yaml &middot; umbrella</figcaption>
@@ -569,14 +572,14 @@ argocd.argoproj.io/sync-wave: "8"
 argocd.argoproj.io/sync-wave: "11"</pre>
       </figure>
     </div>
-    <div class="note"><span data-lang="en"><b>Implicit wave 0:</b> with <code>krypton-banking.syncWaveOffset=100</code>, the HPA &mdash; which has no configured wave anywhere &mdash; renders <code>sync-wave: "100"</code> instead of escaping to wave 0. Convention: component waves stay within -9..9, offsets go in steps of 10, so bands never overlap.</span><span data-lang="de"><b>Implizite Wave 0:</b> mit <code>krypton-banking.syncWaveOffset=100</code> rendert der HPA &mdash; der nirgendwo eine Wave konfiguriert hat &mdash; <code>sync-wave: "100"</code>, statt auf Wave 0 auszubrechen. Konvention: Komponenten-Waves bleiben in -9..9, Offsets in 10er-Schritten &mdash; B&auml;nder &uuml;berlappen nie.</span></div>
+    <div class="note"><span data-lang="en"><b>Implicit wave 0:</b> with <code>krypton-banking.syncWaveOffset=100</code>, the HPA &mdash; which has no configured wave anywhere &mdash; renders <code>sync-wave: "100"</code> instead of escaping to wave 0. For local waves -9..9, use offset steps of at least 19 to avoid overlap.</span><span data-lang="de"><b>Implizite Wave 0:</b> mit <code>krypton-banking.syncWaveOffset=100</code> rendert der HPA &mdash; der nirgendwo eine Wave konfiguriert hat &mdash; <code>sync-wave: "100"</code>, statt auf Wave 0 auszubrechen. Für lokale Waves -9..9 sind mindestens 19 Abstand nötig, damit sich die Bereiche nicht überlappen.</span></div>
   </article>
 
   <!-- E5 prune -->
   <article class="example" id="ex-prune">
     <h3 data-lang="en">Per-component prune protection</h3><h3 data-lang="de">Prune-Schutz je Komponente</h3>
     <p data-lang="en"><code>syncPrune.&lt;component&gt;: false</code> (same resolution chain as the waves) stamps <code>Prune=false</code>: the resource survives app-level pruning even when its manifest disappears or the subchart is disabled. Setting a key to <code>true</code> re-enables pruning over a global <code>false</code>.</p>
-    <p data-lang="de"><code>syncPrune.&lt;komponente&gt;: false</code> (gleiche Aufl&ouml;sungskette wie die Waves) stempelt <code>Prune=false</code>: die Ressource &uuml;berlebt das Pruning der App, selbst wenn ihr Manifest verschwindet oder das Subchart deaktiviert wird. Ein <code>true</code> reaktiviert das Pruning gegen ein globales <code>false</code>.</p>
+    <p data-lang="de"><code>syncPrune.&lt;component&gt;: false</code> erzeugt <code>Prune=false</code>. Die Ressource bleibt dann beim Sync-Pruning erhalten, auch wenn ihr Manifest entfernt wird. <code>true</code> hebt einen geerbten Schutz auf. Das schützt nicht automatisch bei der kaskadierenden Löschung einer Application; Slim unterstützt dafür zusätzlich <code>Delete=false</code>.</p>
     <div class="io">
       <figure class="code">
         <figcaption><span class="dot dot-in"></span>values.yaml &middot; umbrella</figcaption>
@@ -608,7 +611,7 @@ argocd.argoproj.io/sync-wave: "-1"
   <article class="example" id="ex-switch">
     <h3 data-lang="en">Deploy switches per subchart</h3><h3 data-lang="de">Deploy-Schalter je Subchart</h3>
     <p data-lang="en">Every application subchart hangs on a <code>condition</code> flag in the umbrella <code>Chart.yaml</code>. Disabling removes all of its manifests from the release; ArgoCD prunes the live resources &mdash; except those protected via <code>syncPrune</code>.</p>
-    <p data-lang="de">Jedes Anwendungs-Subchart h&auml;ngt an einem <code>condition</code>-Flag in der Umbrella-<code>Chart.yaml</code>. Deaktivieren entfernt alle seine Manifeste aus dem Release; ArgoCD pruned die Live-Ressourcen &mdash; au&szlig;er den per <code>syncPrune</code> gesch&uuml;tzten.</p>
+    <p data-lang="de">Ein <code>condition</code>-Eintrag in der Umbrella-<code>Chart.yaml</code> verbindet jedes Subchart mit seinem <code>enabled</code>-Schalter. Bei <code>false</code> werden seine Manifeste nicht mehr erzeugt. Wenn Pruning aktiviert ist, entfernt Argo CD die bisherigen Ressourcen mit Ausnahme geschützter Objekte.</p>
     <div class="io">
       <figure class="code">
         <figcaption><span class="dot dot-in"></span>Chart.yaml + values.yaml &middot; umbrella</figcaption>
@@ -623,7 +626,7 @@ krypton-banking:
   enabled: true</pre>
       </figure>
       <div class="stack">
-        <div class="cmd">helm template krypton krypton-umbrella --set krypton-banking.enabled=false</div>
+        <div class="cmd">helm template krypton . --set krypton-banking.enabled=false</div>
         <figure class="code">
           <figcaption><span class="dot dot-out"></span><span data-lang="en">rendered kinds</span><span data-lang="de">gerenderte Kinds</span></figcaption>
           <pre data-hl="yaml"># only krypton-auth remains:
@@ -638,7 +641,7 @@ kind: Deployment         # krypton-auth-release</pre>
   <article class="example" id="ex-image">
     <h3 data-lang="en">Images &amp; the per-lane registry switch</h3><h3 data-lang="de">Images &amp; der Registry-Schalter pro Lane</h3>
     <p data-lang="en"><code>krypton-lib.image</code> joins <code>registry/repository:tag</code> (a <code>digest</code> beats the tag). One umbrella key, <code>global.imageRegistry</code>, repoints every subchart at a proxy or air-gapped registry.</p>
-    <p data-lang="de"><code>krypton-lib.image</code> setzt <code>registry/repository:tag</code> zusammen (ein <code>digest</code> schl&auml;gt den Tag). Ein einziger Umbrella-Key, <code>global.imageRegistry</code>, biegt alle Subcharts auf eine Proxy- oder Air-Gapped-Registry um.</p>
+    <p data-lang="de"><code>krypton-lib.image</code> bildet <code>registry/repository:tag</code>. Ein Digest hat Vorrang vor dem Tag. <code>global.imageRegistry</code> überschreibt die Registry der Subcharts, die diesen Helper verwenden.</p>
     <div class="io">
       <figure class="code">
         <figcaption><span class="dot dot-in"></span>values.yaml &middot; subchart + umbrella</figcaption>
@@ -659,7 +662,7 @@ global:
           <pre data-hl="yaml">image: "registry.example.com/krypton/banking-service:1.4.2"
 image: "registry.example.com/krypton/auth-service:0.9.0"</pre>
         </figure>
-        <div class="cmd">helm template krypton krypton-umbrella --set global.imageRegistry=proxy.bank.internal:5000</div>
+        <div class="cmd">helm template krypton . --set global.imageRegistry=proxy.bank.internal:5000</div>
         <figure class="code">
           <figcaption><span class="dot dot-out"></span><span data-lang="en">rendered &middot; proxied lane</span><span data-lang="de">gerendert &middot; Proxy-Lane</span></figcaption>
           <pre data-hl="yaml">image: "proxy.bank.internal:5000/krypton/banking-service:1.4.2"
@@ -672,8 +675,8 @@ image: "proxy.bank.internal:5000/krypton/auth-service:0.9.0"</pre>
   <!-- E8 vault -->
   <article class="example" id="ex-vault">
     <h3 data-lang="en">Multiple VaultStaticSecrets, lane-aware paths</h3><h3 data-lang="de">Mehrere VaultStaticSecrets, Lane-abh&auml;ngige Pfade</h3>
-    <p data-lang="en">One VaultStaticSecret per entry under <code>vault.secrets</code>; the key becomes the instance suffix. Paths run through <code>tpl</code>, so the lane is templated in &mdash; release and test never read the same secrets. <code>envFrom: true</code> wires the materialised Secret into the Deployment.</p>
-    <p data-lang="de">Ein VaultStaticSecret je Eintrag unter <code>vault.secrets</code>; der Key wird zum Instance-Suffix. Pfade laufen durch <code>tpl</code>, die Lane wird also hineintemplatet &mdash; release und test lesen nie dieselben Secrets. <code>envFrom: true</code> verdrahtet das materialisierte Secret ins Deployment.</p>
+    <p data-lang="en">Banking creates one VaultStaticSecret per vault.secrets entry. Its key supplies the name instance. Paths are evaluated with tpl; lane isolation depends on the configured path containing the lane. envFrom imports the operator-created destination Secret.</p>
+    <p data-lang="de">Banking erzeugt je Eintrag unter <code>vault.secrets</code> ein VaultStaticSecret. Der Schlüssel wird zur Instanz im Namen. Die Pfade werden mit <code>tpl</code> ausgewertet; nur wenn der konfigurierte Pfad die Lane enthält, sind die Pfade je Lane getrennt. <code>envFrom: true</code> importiert das vom Operator erzeugte Ziel-Secret.</p>
     <div class="io">
       <figure class="code">
         <figcaption><span class="dot dot-in"></span>charts/krypton-banking/values.yaml</figcaption>
@@ -714,8 +717,8 @@ image: "proxy.bank.internal:5000/krypton/auth-service:0.9.0"</pre>
   <!-- E9 SA -->
   <article class="example" id="ex-sa">
     <h3 data-lang="en">ServiceAccount: created or referenced</h3><h3 data-lang="de">ServiceAccount: erzeugt oder referenziert</h3>
-    <p data-lang="en">Each subchart runs under a dedicated SA at wave -2 &mdash; before the Vault objects that authenticate with it. Bind the VaultAuth Kubernetes role to exactly this name. <code>create: false</code> plus <code>name:</code> references an existing SA instead.</p>
-    <p data-lang="de">Jedes Subchart l&auml;uft unter einem eigenen SA in Wave -2 &mdash; vor den Vault-Objekten, die sich damit authentifizieren. Die VaultAuth-Kubernetes-Rolle an genau diesen Namen binden. <code>create: false</code> plus <code>name:</code> referenziert stattdessen einen bestehenden SA.</p>
+    <p data-lang="en">Banking and Auth create ServiceAccounts by default. The base wave is -2; Auth adds its offset for wave 8. create: false references name, falling back to default. Configure VaultAuth for the account actually used.</p>
+    <p data-lang="de">Banking und Auth erstellen standardmäßig eigene ServiceAccounts. Die Basis-Wave ist <code>-2</code>; bei Auth kommt der Offset hinzu, also Wave <code>8</code>. Mit <code>serviceAccount.create: false</code> und <code>name</code> wird ein vorhandener Account referenziert. Ohne Namen wird dann <code>default</code> verwendet. VaultAuth muss passend zum tatsächlich verwendeten Account konfiguriert sein.</p>
     <div class="io">
       <figure class="code">
         <figcaption><span class="dot dot-in"></span>charts/krypton-banking/values.yaml</figcaption>
@@ -735,7 +738,7 @@ metadata:
       serviceAccountName: krypton-banking-release</pre>
       </figure>
     </div>
-    <div class="cmd" style="margin-top:12px">helm template krypton krypton-umbrella --set krypton-banking.serviceAccount.create=false --set krypton-banking.serviceAccount.name=legacy-vault-sa</div>
+    <div class="cmd" style="margin-top:12px">helm template krypton . --set krypton-banking.serviceAccount.create=false --set krypton-banking.serviceAccount.name=legacy-vault-sa</div>
     <figure class="code" style="margin-top:10px">
       <figcaption><span class="dot dot-out"></span><span data-lang="en">rendered &middot; reference an existing SA</span><span data-lang="de">gerendert &middot; bestehenden SA referenzieren</span></figcaption>
       <pre data-hl="yaml"># no ServiceAccount manifest for krypton-banking is rendered
@@ -746,8 +749,8 @@ metadata:
   <!-- E10 resources -->
   <article class="example" id="ex-resources">
     <h3 data-lang="en">Resources sized per lane</h3><h3 data-lang="de">Resources pro Lane dimensioniert</h3>
-    <p data-lang="en">Subcharts ship sensible defaults; the umbrella deep-merges lane sizing over them &mdash; the classic override on OpenShift with ResourceQuotas and LimitRanges.</p>
-    <p data-lang="de">Subcharts bringen sinnvolle Defaults mit; das Umbrella-Chart merged die Lane-Dimensionierung dar&uuml;ber &mdash; das klassische Override auf OpenShift mit ResourceQuotas und LimitRanges.</p>
+    <p data-lang="en">Set resource requests and limits in each subchart block. Changing the lane name alone does not select different sizing. Use values files for environment-specific overrides.</p>
+    <p data-lang="de">Das Umbrella überschreibt Ressourcenanforderungen und Limits je Subchart. Die Lane-Bezeichnung allein wählt keine andere Dimensionierung. Eigene Values-Dateien können zum Beispiel für Testumgebungen kleinere Werte festlegen.</p>
     <div class="io">
       <figure class="code">
         <figcaption><span class="dot dot-in"></span><span data-lang="en">subchart default + umbrella override</span><span data-lang="de">Subchart-Default + Umbrella-Override</span></figcaption>
@@ -779,7 +782,7 @@ krypton-banking:
   <article class="example" id="ex-optional">
     <h3 data-lang="en">Optional components: PDB, HPA</h3><h3 data-lang="de">Optionale Komponenten: PDB, HPA</h3>
     <p data-lang="en">Each follows the enabled-flag pattern and is steered per lane. While <code>autoscaling.enabled</code> is true, the Deployment stops rendering <code>spec.replicas</code>, so ArgoCD and the HPA never fight over the replica count. The namespace-wide NetworkPolicy is not a per-lane component &mdash; it is a shared resource of <code>krypton-shared</code> (see <a href="#ex-shared">shared resources</a>).</p>
-    <p data-lang="de">Jede folgt dem Enabled-Flag-Muster und wird pro Lane gesteuert. Solange <code>autoscaling.enabled</code> aktiv ist, rendert das Deployment kein <code>spec.replicas</code> mehr &mdash; ArgoCD und HPA streiten nie um die Replikazahl. Die namespace-weite NetworkPolicy ist keine Lane-Komponente &mdash; sie ist eine geteilte Ressource von <code>krypton-shared</code> (siehe <a href="#ex-shared">geteilte Ressourcen</a>).</p>
+    <p data-lang="de">Banking unterstützt ein optionales PDB und einen HPA. Bei aktiviertem <code>autoscaling</code> entfällt die feste Replikazahl im Deployment. Die namespaceweite NetworkPolicy gehört zu <code>krypton-shared</code> und wird getrennt von den Lane-Komponenten verwaltet.</p>
     <div class="io">
       <figure class="code">
         <figcaption><span class="dot dot-in"></span>values.yaml</figcaption>
@@ -822,7 +825,7 @@ spec:
   <article class="example" id="ex-domain">
     <h3 data-lang="en">Rebranding the label domain</h3><h3 data-lang="de">Label-Domain umbenennen</h3>
     <p data-lang="en">The generated label/annotation keys take their prefix from <code>global.labelDomain</code>, so the scaffold is reusable for other platforms with one values key &mdash; the library needs no edits.</p>
-    <p data-lang="de">Die generierten Label-/Annotation-Keys beziehen ihr Pr&auml;fix aus <code>global.labelDomain</code> &mdash; das Ger&uuml;st ist damit &uuml;ber einen einzigen Values-Key f&uuml;r andere Plattformen wiederverwendbar, ohne Änderung am Library-Chart.</p>
+    <p data-lang="de"><code>global.labelDomain</code> bestimmt das Präfix der erzeugten Annotation <code>&lt;domain&gt;/source-chart</code>. Eigene Schlüssel unter <code>global.labels</code> und <code>global.annotations</code> müssen bei einem Domain-Wechsel separat angepasst werden.</p>
     <div class="io">
       <div class="stack">
         <figure class="code">
@@ -830,7 +833,7 @@ spec:
           <pre data-hl="yaml">global:
   labelDomain: acme.dev</pre>
         </figure>
-        <div class="cmd">helm template krypton krypton-umbrella --set global.labelDomain=acme.dev</div>
+        <div class="cmd">helm template krypton . --set global.labelDomain=acme.dev</div>
       </div>
       <figure class="code">
         <figcaption><span class="dot dot-out"></span><span data-lang="en">rendered keys</span><span data-lang="de">gerenderte Keys</span></figcaption>
@@ -844,15 +847,15 @@ acme.dev/source-chart: krypton-banking-0.1.0</pre>
 <!-- ============================ GUARDRAILS ============================ -->
 <section id="guardrails">
   <span class="eyebrow" data-lang="en">Fail loudly</span><span class="eyebrow" data-lang="de">Laut fehlschlagen</span>
-  <h2 data-lang="en">Guardrails</h2><h2 data-lang="de">Leitplanken</h2>
-  <p data-lang="en">Misconfiguration never degrades silently. The component catalog in the library validates every component key at render time; the per-chart <code>values.schema.json</code> validates structure and value shapes against the <em>coalesced</em> values &mdash; a typo made in the umbrella block fails in the subchart&rsquo;s schema.</p>
-  <p data-lang="de">Fehlkonfiguration degradiert nie still. Der Komponentenkatalog im Library-Chart validiert jeden Komponenten-Key beim Rendern; die <code>values.schema.json</code> je Chart validiert Struktur und Wertformen gegen die <em>koaleszierten</em> Values &mdash; ein Tippfehler im Umbrella-Block schl&auml;gt im Schema des Subcharts fehl.</p>
+  <h2 data-lang="en">Guardrails</h2><h2 data-lang="de">Validierung</h2>
+  <p data-lang="en">Schemas validate merged umbrella and application/shared-subchart values. Component helpers validate keys when rendering resources. Example charts also check resource-map names for collisions. Disabled charts do not run their template checks; rendering does not validate target-cluster prerequisites.</p>
+  <p data-lang="de">Schemas prüfen die zusammengeführten Values des Umbrellas und seiner Anwendungs-/Shared-Subcharts. Die Library prüft Komponenten-Keys, wenn sie Ressourcen rendert. Die Ressourcen-Maps der Beispielcharts werden zusätzlich auf gleiche fertige Namen geprüft. Das ersetzt keine Prüfung im Zielcluster; deaktivierte Charts führen ihre Template-Prüfungen nicht aus.</p>
 
   <div class="stack" style="display:grid;gap:14px;margin-top:1.2rem">
-    <div class="cmd">helm template krypton krypton-umbrella --set krypton-banking.syncWaves.rout=9</div>
+    <div class="cmd">helm template krypton . --set krypton-banking.syncWaves.rout=9</div>
     <figure class="code err-fig">
       <figcaption><span class="dot dot-err"></span><span data-lang="en">render error &middot; component catalog</span><span data-lang="de">Render-Fehler &middot; Komponentenkatalog</span></figcaption>
-      <pre data-hl="none">Error: execution error at (krypton-umbrella/charts/krypton-banking/templates/vaultstaticsecret.yaml:15:6):
+      <pre data-hl="none">Error: execution error at (charts/krypton-banking/templates/vaultstaticsecret.yaml:15:6):
 krypton-lib: unknown component type "rout" (chart "krypton-banking", syncWaves key).
 Known types: buildConfig,clusterRole,clusterRoleBinding,configMap,cronJob,daemonSet,deployment,
 horizontalPodAutoscaler,imageStream,ingress,job,networkPolicy,persistentVolumeClaim,
@@ -862,7 +865,7 @@ vaultStaticSecret.
 Genuinely new kinds are added to krypton-lib.componentCatalog in krypton-lib/templates/_helpers.tpl.</pre>
     </figure>
 
-    <div class="cmd">helm template krypton krypton-umbrella --set krypton-banking.syncWaves.route=abc</div>
+    <div class="cmd">helm template krypton . --set krypton-banking.syncWaves.route=abc</div>
     <figure class="code err-fig">
       <figcaption><span class="dot dot-err"></span><span data-lang="en">schema error &middot; wave shape</span><span data-lang="de">Schema-Fehler &middot; Wave-Format</span></figcaption>
       <pre data-hl="none">Error: values don't meet the specifications of the schema(s) in the following chart(s):
@@ -872,7 +875,7 @@ krypton-banking:
   - at '/syncWaves/route': got string, want integer</pre>
     </figure>
 
-    <div class="cmd">helm template krypton krypton-umbrella --set krypton-banking.vault.secrets.app.pth=x</div>
+    <div class="cmd">helm template krypton . --set krypton-banking.vault.secrets.app.pth=x</div>
     <figure class="code err-fig">
       <figcaption><span class="dot dot-err"></span><span data-lang="en">schema error &middot; unknown key</span><span data-lang="de">Schema-Fehler &middot; unbekannter Key</span></figcaption>
       <pre data-hl="none">Error: values don't meet the specifications of the schema(s) in the following chart(s):
@@ -888,8 +891,8 @@ krypton-banking:
 <section id="argocd">
   <span class="eyebrow">GitOps</span>
   <h2>ArgoCD</h2>
-  <p data-lang="en">Point one Application per lane at the chart directory. Waves order resources within each sync; the lane is set via a values file or a Helm parameter. Lane Applications leave <code>krypton-shared.enabled</code> at its default (off) and merely reference the shared objects; one additional Application per namespace owns them through <code>values-shared-only.yaml</code>.</p>
-  <p data-lang="de">Pro Lane zeigt eine Application auf das Chart-Verzeichnis. Die Waves ordnen die Ressourcen innerhalb jedes Syncs; die Lane kommt aus einer Values-Datei oder einem Helm-Parameter. Lane-Applications lassen <code>krypton-shared.enabled</code> auf dem Default (aus) und referenzieren die geteilten Objekte nur; eine zus&auml;tzliche Application pro Namespace besitzt sie &uuml;ber <code>values-shared-only.yaml</code>.</p>
+  <p data-lang="en">Use chart path . for a lane Application. A separate Application can create shared objects using values-shared-only.yaml. Provision those objects before consumers; waves do not coordinate independent Applications.</p>
+  <p data-lang="de">Eine Application pro Lane verwendet den Chart-Pfad <code>.</code>. Sie kann vorhandene gemeinsame Objekte nutzen, während eine separate Application mit <code>values-shared-only.yaml</code> diese erzeugt. Gemeinsame Objekte müssen vor den Konsumenten verfügbar sein; Waves koordinieren keine unabhängigen Applications.</p>
   <figure class="code" style="margin-bottom:14px">
     <figcaption><span class="dot dot-in"></span>application-shared.yaml &middot; <span data-lang="en">owns the shared objects</span><span data-lang="de">besitzt die geteilten Objekte</span></figcaption>
     <pre data-hl="yaml">apiVersion: argoproj.io/v1alpha1
@@ -902,7 +905,7 @@ spec:
   source:
     repoURL: https://git.example.com/krypton/krypton-umbrella.git
     targetRevision: main
-    path: krypton-umbrella
+    path: .
     helm:
       valueFiles:
         - values.yaml
@@ -929,7 +932,7 @@ spec:
   source:
     repoURL: https://git.example.com/krypton/krypton-umbrella.git
     targetRevision: main
-    path: krypton-umbrella
+    path: .
     helm:
       parameters:
         - name: global.laneName
@@ -952,7 +955,7 @@ spec:
 <footer>
   <span class="eyebrow">Kr &middot; 36</span><br>
   <span data-lang="en">krypton-umbrella platform docs &middot; all rendered outputs captured from <code style="border:0;background:transparent;padding:0">helm template</code> v4.2.4 &middot; chart is Helm&nbsp;3 compatible &middot; see README.md / README.de.md in the repository</span>
-  <span data-lang="de">krypton-umbrella Plattform-Doku &middot; alle gerenderten Ausgaben stammen aus <code style="border:0;background:transparent;padding:0">helm template</code> v4.2.4 &middot; das Chart ist Helm-3-kompatibel &middot; siehe README.md / README.de.md im Repository</span>
+  <span data-lang="de">krypton-umbrella Plattform-Doku &middot; Beispiele auf Basis von <code style="border:0;background:transparent;padding:0">helm template</code> v4.2.4 &middot; mit der eingesetzten Helm-Version prüfen &middot; siehe README.md / README.de.md im Repository</span>
 </footer>
 
 <script src="assets/site.js"></script>
